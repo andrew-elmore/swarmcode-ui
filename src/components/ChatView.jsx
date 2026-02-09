@@ -164,7 +164,7 @@ export default function ChatView() {
                     fontSize: "0.6rem",
                   }}
                 >
-                  {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString() : ""}
+                  {msg.createdAt ? new Date(msg.createdAt.iso || msg.createdAt).toLocaleTimeString() : ""}
                 </Typography>
               </Paper>
             </Box>
