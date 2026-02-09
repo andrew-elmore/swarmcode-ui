@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "swarmcode-prod",
+    "test": "swarmcode-test",
+    "prod": "swarmcode-prod"
+  },
+  "targets": {}
+}
