@@ -16,7 +16,7 @@ import ListItemText from "@mui/material/ListItemText";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch } from "../store";
-import { updateCard, addComment, fetchBoard } from "../store/boardSlice";
+import { updateCard, addComment } from "../store/boardSlice";
 
 const STATUSES = ["backlog", "todo", "in_progress", "review", "qa", "done"];
 const PRIORITIES = ["low", "medium", "high", "critical"];

@@ -4,7 +4,7 @@
  */
 
 import React from "react";
-import { render, screen, within, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -16,6 +16,8 @@ import projectsReducer from "../src/store/projectsSlice";
 import App from "../src/App";
 import BoardView from "../src/components/BoardView";
 import MessagesView from "../src/components/MessagesView";
+import ChatView from "../src/components/ChatView";
+import AgentSidebar from "../src/components/AgentSidebar";
 import CreateCardDialog from "../src/components/CreateCardDialog";
 import CardDetailDialog from "../src/components/CardDetailDialog";
 import ProjectSelector from "../src/components/ProjectSelector";
@@ -31,6 +33,8 @@ jest.mock("../src/services/api", () => ({
   pollBoard: jest.fn(),
   sendMessage: jest.fn(),
   pollMessages: jest.fn(),
+  getConversation: jest.fn(),
+  subscribeToMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
 }));
@@ -73,6 +77,8 @@ beforeEach(() => {
   api.pollBoard.mockResolvedValue({ changed: false, cards: [] });
   api.sendMessage.mockResolvedValue({ success: true });
   api.pollMessages.mockResolvedValue({ messages: [] });
+  api.getConversation.mockResolvedValue({ messages: [] });
+  api.subscribeToMessages.mockResolvedValue(jest.fn()); // returns unsubscribe function
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
 });
@@ -111,9 +117,11 @@ describe("App", () => {
 
     await user.click(screen.getByRole("tab", { name: /messages/i }));
 
-    // MessagesView renders "Inbox" heading and "Send Message" section
-    expect(screen.getByText("Inbox")).toBeInTheDocument();
-    expect(screen.getByText("Send Message")).toBeInTheDocument();
+    // MessagesView renders AgentSidebar with "Conversations" heading and ChatView placeholder
+    await waitFor(() => {
+      expect(screen.getByText("Conversations")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
   });
 
   test("switches back to BoardView when Board tab is clicked", async () => {
@@ -121,9 +129,15 @@ describe("App", () => {
     renderWithProviders(<App />);
 
     await user.click(screen.getByRole("tab", { name: /messages/i }));
+    await waitFor(() => {
+      expect(screen.getByText("Conversations")).toBeInTheDocument();
+    });
+
     await user.click(screen.getByRole("tab", { name: /board/i }));
 
-    expect(screen.getByText(/select a project/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/select a project/i)).toBeInTheDocument();
+    });
   });
 });
 
@@ -238,73 +252,220 @@ describe("BoardView", () => {
 // ─── MessagesView Component ──────────────────────────────────────────────────
 
 describe("MessagesView", () => {
-  test("renders Inbox heading", () => {
-    renderWithProviders(<MessagesView />);
-    expect(screen.getByText("Inbox")).toBeInTheDocument();
-  });
-
-  test("renders Send Message form", () => {
-    renderWithProviders(<MessagesView />);
-    expect(screen.getByText("Send Message")).toBeInTheDocument();
-    expect(screen.getByLabelText("Subject")).toBeInTheDocument();
-    expect(screen.getByLabelText("Message")).toBeInTheDocument();
-  });
-
-  test("shows 'No messages' when inbox is empty", () => {
-    renderWithProviders(<MessagesView />);
-    expect(screen.getByText("No messages.")).toBeInTheDocument();
-  });
-
-  test("renders Refresh button", () => {
-    renderWithProviders(<MessagesView />);
-    expect(screen.getByText("Refresh")).toBeInTheDocument();
-  });
-
-  test("Send button is disabled when fields are empty", () => {
-    renderWithProviders(<MessagesView />);
-    const sendBtn = screen.getByRole("button", { name: /send/i });
-    expect(sendBtn).toBeDisabled();
-  });
-
-  test("renders messages when they exist in store", () => {
-    const store = createTestStore({
-      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
-      messages: {
-        messages: [
-          { from: "pm-1", to: "qa-1", subject: "Test Subject", message: "Test body", createdAt: "2026-01-01T00:00:00Z" },
-        ],
-        sending: false,
-        polling: false,
-        error: null,
-        lastPoll: "2026-01-01",
-      },
-      projects: { projects: [], activeProject: null, loading: false, error: null },
+  // Helper to render MessagesView and wait for the subscribeToMessages effect to settle
+  async function renderMessages(store) {
+    const result = renderWithProviders(<MessagesView />, store ? { store } : undefined);
+    // Wait for the useEffect that calls subscribeToMessages to complete
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
     });
-    renderWithProviders(<MessagesView />, { store });
-    expect(screen.getByText("Test Subject")).toBeInTheDocument();
+    return result;
+  }
+
+  test("renders Conversations heading in sidebar", async () => {
+    await renderMessages();
+    expect(screen.getByText("Conversations")).toBeInTheDocument();
   });
 
-  test("shows error alert when error exists", () => {
+  test("renders agent list in sidebar", async () => {
+    await renderMessages();
+    expect(screen.getByText("All Agents")).toBeInTheDocument();
+    expect(screen.getByText("PM Agent")).toBeInTheDocument();
+    expect(screen.getByText("Senior Dev")).toBeInTheDocument();
+    expect(screen.getByText("Developer")).toBeInTheDocument();
+    expect(screen.getByText("QA Agent")).toBeInTheDocument();
+    expect(screen.getByText("DevOps Agent")).toBeInTheDocument();
+  });
+
+  test("shows 'Select an agent to start chatting' placeholder when no agent selected", async () => {
+    await renderMessages();
+    expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
+  });
+
+  test("subscribes to LiveQuery messages on mount", async () => {
+    await renderMessages();
+    expect(api.subscribeToMessages).toHaveBeenCalled();
+  });
+
+  test("shows chat view with empty state when agent is selected", async () => {
     const store = createTestStore({
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
-        messages: [],
+        conversations: {
+          "pm-1": { messages: [], loaded: true },
+          "senior-dev-1": { messages: [], loaded: false },
+          "developer-1": { messages: [], loaded: false },
+          "qa-1": { messages: [], loaded: false },
+          "devops-1": { messages: [], loaded: false },
+          all: { messages: [], loaded: false },
+        },
+        selectedAgent: "pm-1",
         sending: false,
+        error: null,
+        messages: [],
         polling: false,
-        error: "Network timeout",
         lastPoll: null,
       },
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
-    renderWithProviders(<MessagesView />, { store });
-    expect(screen.getByText("Network timeout")).toBeInTheDocument();
+    await renderMessages(store);
+    // "PM Agent" appears in both sidebar and chat header — verify both exist
+    expect(screen.getAllByText("PM Agent").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("No messages yet. Send a message to get started.")).toBeInTheDocument();
   });
 
-  test("polls messages on mount", async () => {
-    renderWithProviders(<MessagesView />);
-    await waitFor(() => {
-      expect(api.pollMessages).toHaveBeenCalled();
+  test("renders messages in chat view when conversation has messages", async () => {
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: {
+        conversations: {
+          "pm-1": {
+            messages: [
+              { id: "m1", from: "pm-1", to: "owner", message: "Hello there", createdAt: "2026-01-01T00:00:00Z" },
+            ],
+            loaded: true,
+          },
+          "senior-dev-1": { messages: [], loaded: false },
+          "developer-1": { messages: [], loaded: false },
+          "qa-1": { messages: [], loaded: false },
+          "devops-1": { messages: [], loaded: false },
+          all: { messages: [], loaded: false },
+        },
+        selectedAgent: "pm-1",
+        sending: false,
+        error: null,
+        messages: [],
+        polling: false,
+        lastPoll: null,
+      },
+      projects: { projects: [], activeProject: null, loading: false, error: null },
     });
+    await renderMessages(store);
+    expect(screen.getByText("Hello there")).toBeInTheDocument();
+  });
+
+  test("send button is disabled when input is empty", async () => {
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: {
+        conversations: {
+          "pm-1": { messages: [], loaded: true },
+          "senior-dev-1": { messages: [], loaded: false },
+          "developer-1": { messages: [], loaded: false },
+          "qa-1": { messages: [], loaded: false },
+          "devops-1": { messages: [], loaded: false },
+          all: { messages: [], loaded: false },
+        },
+        selectedAgent: "pm-1",
+        sending: false,
+        error: null,
+        messages: [],
+        polling: false,
+        lastPoll: null,
+      },
+      projects: { projects: [], activeProject: null, loading: false, error: null },
+    });
+    await renderMessages(store);
+    // ChatView send button is an IconButton with SendIcon (no text label) — find by testid on SVG
+    const sendBtns = screen.getAllByRole("button");
+    // The last button in the chat area is the send icon button
+    const sendBtn = sendBtns.find((btn) => btn.querySelector("[data-testid='SendIcon']"));
+    expect(sendBtn).toBeTruthy();
+    expect(sendBtn).toBeDisabled();
+  });
+
+  test("renders message input placeholder with agent name", async () => {
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: {
+        conversations: {
+          "pm-1": { messages: [], loaded: true },
+          "senior-dev-1": { messages: [], loaded: false },
+          "developer-1": { messages: [], loaded: false },
+          "qa-1": { messages: [], loaded: false },
+          "devops-1": { messages: [], loaded: false },
+          all: { messages: [], loaded: false },
+        },
+        selectedAgent: "pm-1",
+        sending: false,
+        error: null,
+        messages: [],
+        polling: false,
+        lastPoll: null,
+      },
+      projects: { projects: [], activeProject: null, loading: false, error: null },
+    });
+    await renderMessages(store);
+    expect(screen.getByPlaceholderText("Message PM Agent...")).toBeInTheDocument();
+  });
+
+  test("calls unsubscribe on unmount", async () => {
+    const unsubscribeFn = jest.fn();
+    api.subscribeToMessages.mockResolvedValue(unsubscribeFn);
+
+    const { unmount } = renderWithProviders(<MessagesView />);
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
+
+    unmount();
+
+    // Allow the cleanup to run
+    await waitFor(() => {
+      expect(unsubscribeFn).toHaveBeenCalled();
+    });
+  });
+
+  test("dispatches appendMessage when LiveQuery delivers a message", async () => {
+    let liveQueryCallback = null;
+    api.subscribeToMessages.mockImplementation((cb) => {
+      liveQueryCallback = cb;
+      return Promise.resolve(jest.fn());
+    });
+
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: {
+        conversations: {
+          "pm-1": { messages: [], loaded: true },
+          "senior-dev-1": { messages: [], loaded: false },
+          "developer-1": { messages: [], loaded: false },
+          "qa-1": { messages: [], loaded: false },
+          "devops-1": { messages: [], loaded: false },
+          all: { messages: [], loaded: false },
+        },
+        selectedAgent: "pm-1",
+        sending: false,
+        error: null,
+        messages: [],
+        polling: false,
+        lastPoll: null,
+      },
+      projects: { projects: [], activeProject: null, loading: false, error: null },
+    });
+
+    await renderMessages(store);
+
+    // Simulate a LiveQuery message arriving
+    const incomingMsg = {
+      id: "live-1",
+      from: "pm-1",
+      to: "owner",
+      message: "Live message!",
+      createdAt: "2026-02-09T00:00:00Z",
+      broadcast: false,
+      broadcastId: null,
+    };
+
+    // Use act to wrap the state update from LiveQuery callback
+    const { act } = await import("@testing-library/react");
+    await act(async () => {
+      liveQueryCallback(incomingMsg);
+    });
+
+    // The message should appear in the pm-1 conversation in the store
+    const state = store.getState();
+    expect(state.messages.conversations["pm-1"].messages).toContainEqual(incomingMsg);
   });
 });
 
