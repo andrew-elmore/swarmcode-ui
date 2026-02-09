@@ -11,6 +11,8 @@ module.exports = {
     // Mock CSS modules and static assets
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
     "\\.(jpg|jpeg|png|gif|svg)$": "<rootDir>/tests/__mocks__/fileMock.cjs",
+    // Mock Parse SDK to prevent module-level initialization crash in Jest/Node
+    "^parse$": "<rootDir>/tests/__mocks__/parseMock.cjs",
   },
   testMatch: ["<rootDir>/tests/**/*.test.{js,jsx}"],
 };

@@ -6,6 +6,8 @@
 import {
   sendMessage,
   pollMessages,
+  getConversation,
+  subscribeToMessages,
   getOrCreateBoard,
   createCard,
   updateCard,
@@ -56,14 +58,12 @@ describe("api.sendMessage", () => {
     const result = await sendMessage({
       from: "qa-1",
       to: "developer-1",
-      subject: "Test",
       message: "Hello",
     });
     expect(getLastFetchUrl()).toContain("/functions/sendMessage");
     expect(getLastFetchBody()).toEqual({
       from: "qa-1",
       to: "developer-1",
-      subject: "Test",
       message: "Hello",
     });
     expect(result).toEqual({ success: true, messageId: "abc123" });
@@ -72,7 +72,7 @@ describe("api.sendMessage", () => {
   test("throws on API error", async () => {
     mockFetchError("Unknown sender 'bad-agent'");
     await expect(
-      sendMessage({ from: "bad-agent", to: "qa-1", subject: "X", message: "Y" })
+      sendMessage({ from: "bad-agent", to: "qa-1", message: "Y" })
     ).rejects.toThrow("Unknown sender 'bad-agent'");
   });
 });
@@ -98,6 +98,105 @@ describe("api.pollMessages", () => {
     mockFetchSuccess({ messages: msgs });
     const result = await pollMessages();
     expect(result.messages).toEqual(msgs);
+  });
+});
+
+// ─── getConversation ─────────────────────────────────────────────────────────
+
+describe("api.getConversation", () => {
+  test("calls getConversation with userA and userB", async () => {
+    mockFetchSuccess({ messages: [] });
+    await getConversation("owner", "pm-1");
+    expect(getLastFetchUrl()).toContain("/functions/getConversation");
+    expect(getLastFetchBody()).toEqual({ userA: "owner", userB: "pm-1" });
+  });
+
+  test("returns messages array", async () => {
+    const msgs = [
+      { from: "owner", to: "pm-1", message: "Hello", createdAt: "2026-01-01T00:00:00Z" },
+    ];
+    mockFetchSuccess({ messages: msgs });
+    const result = await getConversation("owner", "pm-1");
+    expect(result.messages).toEqual(msgs);
+  });
+});
+
+// ─── subscribeToMessages ─────────────────────────────────────────────────────
+
+describe("api.subscribeToMessages", () => {
+  test("returns an unsubscribe function", async () => {
+    const unsubscribe = await subscribeToMessages(jest.fn());
+    expect(typeof unsubscribe).toBe("function");
+  });
+
+  test("calls onMessage when a new message is created", async () => {
+    const Parse = require("parse");
+
+    // Capture the 'create' handler registered on the subscription
+    let createHandler = null;
+    const mockSubscription = {
+      on: jest.fn((event, handler) => {
+        if (event === "create") createHandler = handler;
+      }),
+      unsubscribe: jest.fn(),
+    };
+    Parse.Query.mockImplementationOnce(() => ({
+      subscribe: jest.fn().mockResolvedValue(mockSubscription),
+    }));
+
+    const onMessage = jest.fn();
+    await subscribeToMessages(onMessage);
+
+    // Simulate a new Message object arriving via LiveQuery
+    const mockObject = {
+      id: "msg-001",
+      get: jest.fn((key) => {
+        const data = {
+          from: "pm-1",
+          to: "owner",
+          subject: "Test",
+          message: "Hello from LiveQuery",
+          createdAt: "2026-01-01T00:00:00Z",
+          broadcast: false,
+          broadcastId: null,
+        };
+        return data[key];
+      }),
+    };
+
+    expect(createHandler).not.toBeNull();
+    createHandler(mockObject);
+
+    expect(onMessage).toHaveBeenCalledWith({
+      id: "msg-001",
+      from: "pm-1",
+      to: "owner",
+      subject: "Test",
+      message: "Hello from LiveQuery",
+      createdAt: "2026-01-01T00:00:00Z",
+      broadcast: false,
+      broadcastId: null,
+    });
+  });
+
+  test("unsubscribes previous subscription when called again", async () => {
+    const Parse = require("parse");
+
+    const mockSub1 = { on: jest.fn(), unsubscribe: jest.fn() };
+    const mockSub2 = { on: jest.fn(), unsubscribe: jest.fn() };
+
+    Parse.Query
+      .mockImplementationOnce(() => ({
+        subscribe: jest.fn().mockResolvedValue(mockSub1),
+      }))
+      .mockImplementationOnce(() => ({
+        subscribe: jest.fn().mockResolvedValue(mockSub2),
+      }));
+
+    await subscribeToMessages(jest.fn());
+    await subscribeToMessages(jest.fn());
+
+    expect(mockSub1.unsubscribe).toHaveBeenCalled();
   });
 });
 
@@ -274,11 +373,12 @@ describe("api.getRecentProjects", () => {
 // ─── Headers and URL ─────────────────────────────────────────────────────────
 
 describe("api request configuration", () => {
-  test("includes X-Parse-Application-Id header", async () => {
+  test("includes X-Parse-Application-Id and X-Parse-REST-API-Key headers", async () => {
     mockFetchSuccess({ projects: [] });
     await getRecentProjects();
     const headers = global.fetch.mock.calls[0][1].headers;
     expect(headers["X-Parse-Application-Id"]).toBe("swarmcode");
+    expect(headers["X-Parse-REST-API-Key"]).toBeDefined();
     expect(headers["Content-Type"]).toBe("application/json");
   });
 

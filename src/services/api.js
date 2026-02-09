@@ -1,16 +1,22 @@
-// api.js — Parse Cloud Function client service layer
+// api.js — Parse Cloud Function client service layer + LiveQuery
+
+import Parse from "parse";
 
 const PARSE_URL = process.env.REACT_APP_PARSE_URL || "http://localhost:1337/parse";
 const APP_ID = process.env.REACT_APP_PARSE_APP_ID || "swarmcode";
-const REST_API_KEY = process.env.REACT_APP_PARSE_REST_API_KEY || "";
+const JS_KEY = process.env.REACT_APP_PARSE_REST_API_KEY || "";
+
+// Initialize Parse SDK (needed for LiveQuery)
+Parse.initialize(APP_ID, JS_KEY);
+Parse.serverURL = PARSE_URL;
+
+// --- Low-level REST call ---
 
 const HEADERS = {
   "X-Parse-Application-Id": APP_ID,
+  "X-Parse-REST-API-Key": JS_KEY,
   "Content-Type": "application/json",
 };
-if (REST_API_KEY) {
-  HEADERS["X-Parse-REST-API-Key"] = REST_API_KEY;
-}
 
 async function callFunction(name, params = {}) {
   const res = await fetch(`${PARSE_URL}/functions/${name}`, {
@@ -30,13 +36,57 @@ async function callFunction(name, params = {}) {
 
 // --- Messaging ---
 
-export async function sendMessage({ from, to, subject, message }) {
-  return callFunction("sendMessage", { from, to, subject, message });
+export async function sendMessage({ from, to, message }) {
+  return callFunction("sendMessage", { from, to, message });
 }
 
 export async function pollMessages(since) {
   const params = since ? { since } : {};
   return callFunction("pollMessages", params);
+}
+
+export async function getConversation(userA, userB) {
+  return callFunction("getConversation", { userA, userB });
+}
+
+// --- LiveQuery ---
+
+let _messageSubscription = null;
+
+/**
+ * Subscribe to new Message objects via LiveQuery.
+ * Calls onMessage(msg) for each new message created.
+ * Returns an unsubscribe function.
+ */
+export async function subscribeToMessages(onMessage) {
+  // Unsubscribe previous if any
+  if (_messageSubscription) {
+    _messageSubscription.unsubscribe();
+    _messageSubscription = null;
+  }
+
+  const query = new Parse.Query("Message");
+  const subscription = await query.subscribe();
+  _messageSubscription = subscription;
+
+  subscription.on("create", (object) => {
+    const msg = {
+      id: object.id,
+      from: object.get("from"),
+      to: object.get("to"),
+      subject: object.get("subject"),
+      message: object.get("message"),
+      createdAt: object.get("createdAt"),
+      broadcast: object.get("broadcast") || false,
+      broadcastId: object.get("broadcastId") || null,
+    };
+    onMessage(msg);
+  });
+
+  return () => {
+    subscription.unsubscribe();
+    _messageSubscription = null;
+  };
 }
 
 // --- Board ---
