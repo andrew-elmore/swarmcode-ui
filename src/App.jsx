@@ -44,13 +44,13 @@ export default function App() {
           >
             {isMobile ? (
               [
-                <Tab key="board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="messages" icon={<MailIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
               ]
             ) : (
               [
-                <Tab key="board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
                 <Tab key="messages" icon={<MailIcon />} iconPosition="start" label="Messages" />,
+                <Tab key="board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
               ]
             )}
           </Tabs>
@@ -72,8 +72,8 @@ export default function App() {
       </AppBar>
 
       <Box component="main" sx={{ flex: 1 }}>
-        {tab === 0 && <BoardView />}
-        {tab === 1 && <MessagesView />}
+        {tab === 0 && <MessagesView />}
+        {tab === 1 && <BoardView />}
       </Box>
     </Box>
   );

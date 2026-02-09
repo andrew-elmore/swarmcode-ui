@@ -14,6 +14,15 @@ function buildInitialConversations() {
   return convos;
 }
 
+function buildInitialUnreadCounts() {
+  const counts = {};
+  AGENTS.forEach((agent) => {
+    counts[agent] = 0;
+  });
+  counts["all"] = 0;
+  return counts;
+}
+
 // --- Async Thunks ---
 
 export const loadConversation = createAsyncThunk(
@@ -51,6 +60,7 @@ const messagesSlice = createSlice({
   name: "messages",
   initialState: {
     conversations: buildInitialConversations(),
+    unreadCounts: buildInitialUnreadCounts(),
     selectedAgent: null,
     sending: false,
     error: null,
@@ -62,11 +72,13 @@ const messagesSlice = createSlice({
   reducers: {
     selectAgent(state, action) {
       state.selectedAgent = action.payload;
+      state.unreadCounts[action.payload] = 0;
     },
     appendMessage(state, action) {
       // Append a single message from LiveQuery
       const msg = action.payload;
       const { from, to } = msg;
+      const isIncoming = from !== "owner";
 
       if (msg.broadcast) {
         // Broadcast messages go to the "all" channel
@@ -77,6 +89,9 @@ const messagesSlice = createSlice({
           );
           if (!isDupe) {
             allConvo.messages.push(msg);
+            if (isIncoming && state.selectedAgent !== "all") {
+              state.unreadCounts["all"] += 1;
+            }
           }
         }
       }
@@ -91,6 +106,9 @@ const messagesSlice = createSlice({
         );
         if (!isDupe) {
           convo.messages.push(msg);
+          if (isIncoming && state.selectedAgent !== otherAgent) {
+            state.unreadCounts[otherAgent] += 1;
+          }
         }
       }
     },
@@ -99,6 +117,7 @@ const messagesSlice = createSlice({
     },
     clearMessages(state) {
       state.conversations = buildInitialConversations();
+      state.unreadCounts = buildInitialUnreadCounts();
       state.messages = [];
     },
   },

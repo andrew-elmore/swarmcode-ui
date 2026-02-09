@@ -99,10 +99,11 @@ describe("App", () => {
     expect(screen.getByRole("tab", { name: /messages/i })).toBeInTheDocument();
   });
 
-  test("shows BoardView by default (no project selected = prompt)", () => {
+  test("shows MessagesView by default", () => {
     renderWithProviders(<App />);
-    // No active project → BoardView shows "Select a project" prompt
-    expect(screen.getByText(/select a project/i)).toBeInTheDocument();
+    // Default tab is Messages → shows AgentSidebar and ChatView placeholder
+    expect(screen.getByText("Conversations")).toBeInTheDocument();
+    expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
   });
 
   test("shows ProjectSelector in the app bar", () => {
@@ -111,32 +112,31 @@ describe("App", () => {
     expect(screen.getByTitle("Add project")).toBeInTheDocument();
   });
 
-  test("switches to MessagesView when Messages tab is clicked", async () => {
+  test("switches to BoardView when Board tab is clicked", async () => {
     const user = userEvent.setup();
     renderWithProviders(<App />);
-
-    await user.click(screen.getByRole("tab", { name: /messages/i }));
-
-    // MessagesView renders AgentSidebar with "Conversations" heading and ChatView placeholder
-    await waitFor(() => {
-      expect(screen.getByText("Conversations")).toBeInTheDocument();
-    });
-    expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
-  });
-
-  test("switches back to BoardView when Board tab is clicked", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<App />);
-
-    await user.click(screen.getByRole("tab", { name: /messages/i }));
-    await waitFor(() => {
-      expect(screen.getByText("Conversations")).toBeInTheDocument();
-    });
 
     await user.click(screen.getByRole("tab", { name: /board/i }));
 
+    // No active project → BoardView shows "Select a project" prompt
     await waitFor(() => {
       expect(screen.getByText(/select a project/i)).toBeInTheDocument();
+    });
+  });
+
+  test("switches back to MessagesView when Messages tab is clicked", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /board/i }));
+    await waitFor(() => {
+      expect(screen.getByText(/select a project/i)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("tab", { name: /messages/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Conversations")).toBeInTheDocument();
     });
   });
 });

@@ -84,7 +84,7 @@ export default function ChatView() {
       <Box
         sx={{
           px: 2,
-          py: 1.5,
+          py: { xs: 0.75, md: 1.5 },
           borderBottom: 1,
           borderColor: "divider",
           bgcolor: "background.paper",
@@ -107,7 +107,7 @@ export default function ChatView() {
           flex: 1,
           overflow: "auto",
           px: 2,
-          py: 2,
+          py: { xs: 1, md: 2 },
           display: "flex",
           flexDirection: "column",
           gap: 1,

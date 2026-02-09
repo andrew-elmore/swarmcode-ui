@@ -15,7 +15,7 @@ const SIDEBAR_WIDTH = 240;
 
 export default function MessagesView() {
   const dispatch = useAppDispatch();
-  const { selectedAgent } = useAppSelector((s) => s.messages);
+  const { selectedAgent, unreadCounts } = useAppSelector((s) => s.messages);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -41,7 +41,7 @@ export default function MessagesView() {
   };
 
   const sidebarContent = (
-    <AgentSidebar selectedAgent={selectedAgent} onSelectAgent={handleSelectAgent} />
+    <AgentSidebar selectedAgent={selectedAgent} onSelectAgent={handleSelectAgent} unreadCounts={unreadCounts} />
   );
 
   return (
