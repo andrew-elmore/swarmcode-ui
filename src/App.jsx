@@ -9,8 +9,10 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import MailIcon from "@mui/icons-material/Mail";
+import FolderIcon from "@mui/icons-material/Folder";
 import BoardView from "./components/BoardView";
 import MessagesView from "./components/MessagesView";
+import ProjectsView from "./components/ProjectsView";
 import ProjectSelector from "./components/ProjectSelector";
 
 export default function App() {
@@ -46,11 +48,13 @@ export default function App() {
               [
                 <Tab key="messages" icon={<MailIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="projects" icon={<FolderIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
               ]
             ) : (
               [
                 <Tab key="messages" icon={<MailIcon />} iconPosition="start" label="Messages" />,
                 <Tab key="board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
+                <Tab key="projects" icon={<FolderIcon />} iconPosition="start" label="Projects" />,
               ]
             )}
           </Tabs>
@@ -74,6 +78,7 @@ export default function App() {
       <Box component="main" sx={{ flex: 1 }}>
         {tab === 0 && <MessagesView />}
         {tab === 1 && <BoardView />}
+        {tab === 2 && <ProjectsView />}
       </Box>
     </Box>
   );

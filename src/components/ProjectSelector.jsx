@@ -10,11 +10,9 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import DialogContentText from "@mui/material/DialogContentText";
 import AddIcon from "@mui/icons-material/Add";
-import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppDispatch, useAppSelector } from "../store";
-import { fetchRecentProjects, addRecentProject, setActiveProject, deleteProject } from "../store/projectsSlice";
+import { fetchRecentProjects, addRecentProject, setActiveProject } from "../store/projectsSlice";
 
 export default function ProjectSelector() {
   const dispatch = useAppDispatch();
@@ -23,7 +21,6 @@ export default function ProjectSelector() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [addOpen, setAddOpen] = useState(false);
   const [newPath, setNewPath] = useState("");
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchRecentProjects());
@@ -43,12 +40,6 @@ export default function ProjectSelector() {
       dispatch(setActiveProject(project));
       dispatch(addRecentProject({ path: project.path, name: project.name }));
     }
-  };
-
-  const handleDeleteProject = async () => {
-    if (!activeProject) return;
-    await dispatch(deleteProject({ path: activeProject.path }));
-    setDeleteOpen(false);
   };
 
   const handleAddProject = async () => {
@@ -91,36 +82,6 @@ export default function ProjectSelector() {
       <IconButton color="inherit" size="small" onClick={() => setAddOpen(true)} title="Add project">
         <AddIcon />
       </IconButton>
-      <IconButton
-        color="inherit"
-        size="small"
-        onClick={() => setDeleteOpen(true)}
-        title="Delete project"
-        disabled={!activeProject}
-      >
-        <DeleteIcon />
-      </IconButton>
-
-      <Dialog
-        open={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        fullWidth
-        maxWidth="xs"
-      >
-        <DialogTitle>Delete Project</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete <strong>{activeProject?.name}</strong>? This will
-            also delete all board cards associated with this project. This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
-          <Button onClick={handleDeleteProject} color="error" variant="contained">
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="sm" fullScreen={isMobile}>
         <DialogTitle>Add Project</DialogTitle>

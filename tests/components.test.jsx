@@ -21,6 +21,7 @@ import AgentSidebar from "../src/components/AgentSidebar";
 import CreateCardDialog from "../src/components/CreateCardDialog";
 import CardDetailDialog from "../src/components/CardDetailDialog";
 import ProjectSelector from "../src/components/ProjectSelector";
+import ProjectsView from "../src/components/ProjectsView";
 
 // Mock the entire API module to prevent real fetch calls
 jest.mock("../src/services/api", () => ({
@@ -94,10 +95,11 @@ describe("App", () => {
     expect(screen.getByText("SwarmCode")).toBeInTheDocument();
   });
 
-  test("renders Board and Messages tabs", () => {
+  test("renders Messages, Board, and Projects tabs", () => {
     renderWithProviders(<App />);
-    expect(screen.getByRole("tab", { name: /board/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /messages/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /board/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /projects/i })).toBeInTheDocument();
   });
 
   test("shows MessagesView by default", () => {
@@ -138,6 +140,17 @@ describe("App", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Conversations")).toBeInTheDocument();
+    });
+  });
+
+  test("switches to ProjectsView when Projects tab is clicked", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<App />);
+
+    await user.click(screen.getByRole("tab", { name: /projects/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/no projects yet/i)).toBeInTheDocument();
     });
   });
 });
@@ -670,55 +683,116 @@ describe("ProjectSelector", () => {
     expect(screen.getByText("alpha")).toBeInTheDocument();
   });
 
-  test("renders Delete project button", () => {
+  test("does not render a Delete project button (delete moved to ProjectsView)", () => {
     renderWithProviders(<ProjectSelector />);
-    expect(screen.getByTitle("Delete project")).toBeInTheDocument();
+    expect(screen.queryByTitle("Delete project")).not.toBeInTheDocument();
+  });
+});
+
+// ─── ProjectsView Component ─────────────────────────────────────────────────
+
+describe("ProjectsView", () => {
+  test("shows empty state when no projects exist", () => {
+    renderWithProviders(<ProjectsView />);
+    expect(screen.getByText(/no projects yet/i)).toBeInTheDocument();
   });
 
-  test("Delete button is disabled when no active project", () => {
-    renderWithProviders(<ProjectSelector />);
-    const deleteBtn = screen.getByTitle("Delete project");
-    expect(deleteBtn).toBeDisabled();
+  test("renders Projects heading and Add Project button", () => {
+    renderWithProviders(<ProjectsView />);
+    expect(screen.getByText("Projects")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /add project/i })).toBeInTheDocument();
   });
 
-  test("Delete button is enabled when a project is active", () => {
+  test("renders project list with names and paths", () => {
     const store = createTestStore({
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
-        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        projects: [
+          { path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" },
+          { path: "/proj/beta", name: "beta", lastOpened: "2026-01-01" },
+        ],
         activeProject: { path: "/proj/alpha", name: "alpha" },
         loading: false,
         error: null,
       },
     });
-    renderWithProviders(<ProjectSelector />, { store });
-    const deleteBtn = screen.getByTitle("Delete project");
-    expect(deleteBtn).not.toBeDisabled();
+    renderWithProviders(<ProjectsView />, { store });
+    expect(screen.getByText("alpha")).toBeInTheDocument();
+    expect(screen.getByText("/proj/alpha")).toBeInTheDocument();
+    expect(screen.getByText("beta")).toBeInTheDocument();
+    expect(screen.getByText("/proj/beta")).toBeInTheDocument();
   });
 
-  test("opens Delete Project confirmation dialog on button click", async () => {
+  test("active project list item has selected styling", () => {
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [
+          { path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" },
+          { path: "/proj/beta", name: "beta", lastOpened: "2026-01-01" },
+        ],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+    // The active project's ListItem should exist and be distinguishable
+    const activeItem = screen.getByText("alpha").closest("li");
+    const inactiveItem = screen.getByText("beta").closest("li");
+    expect(activeItem).toBeInTheDocument();
+    expect(inactiveItem).toBeInTheDocument();
+    // Active item has different class than inactive (MUI applies bgcolor via className)
+    expect(activeItem.className).not.toBe(inactiveItem.className);
+  });
+
+  test("renders a delete button for each project", () => {
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [
+          { path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" },
+          { path: "/proj/beta", name: "beta", lastOpened: "2026-01-01" },
+        ],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+    const deleteButtons = screen.getAllByTitle("Delete project");
+    expect(deleteButtons).toHaveLength(2);
+  });
+
+  test("clicking delete button opens confirmation dialog for that project", async () => {
     const user = userEvent.setup();
     const store = createTestStore({
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
-        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        projects: [
+          { path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" },
+          { path: "/proj/beta", name: "beta", lastOpened: "2026-01-01" },
+        ],
         activeProject: { path: "/proj/alpha", name: "alpha" },
         loading: false,
         error: null,
       },
     });
-    renderWithProviders(<ProjectSelector />, { store });
+    renderWithProviders(<ProjectsView />, { store });
 
-    await user.click(screen.getByTitle("Delete project"));
+    const deleteButtons = screen.getAllByTitle("Delete project");
+    // Click delete on the second project (beta)
+    await user.click(deleteButtons[1]);
 
     expect(screen.getByText("Delete Project")).toBeInTheDocument();
     expect(screen.getByText(/are you sure you want to delete/i)).toBeInTheDocument();
-    expect(screen.getByText("alpha")).toBeInTheDocument();
   });
 
-  test("cancel button closes the delete confirmation dialog", async () => {
+  test("cancel closes the delete dialog", async () => {
     const user = userEvent.setup();
     const store = createTestStore({
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
@@ -730,7 +804,7 @@ describe("ProjectSelector", () => {
         error: null,
       },
     });
-    renderWithProviders(<ProjectSelector />, { store });
+    renderWithProviders(<ProjectsView />, { store });
 
     await user.click(screen.getByTitle("Delete project"));
     expect(screen.getByText("Delete Project")).toBeInTheDocument();
@@ -741,7 +815,7 @@ describe("ProjectSelector", () => {
     });
   });
 
-  test("confirm delete calls deleteProject API", async () => {
+  test("confirming delete calls deleteProject API", async () => {
     const user = userEvent.setup();
     api.deleteProject.mockResolvedValue({ success: true });
     const store = createTestStore({
@@ -754,13 +828,51 @@ describe("ProjectSelector", () => {
         error: null,
       },
     });
-    renderWithProviders(<ProjectSelector />, { store });
+    renderWithProviders(<ProjectsView />, { store });
 
     await user.click(screen.getByTitle("Delete project"));
     await user.click(screen.getByRole("button", { name: /^delete$/i }));
 
     await waitFor(() => {
       expect(api.deleteProject).toHaveBeenCalledWith("/proj/alpha");
+    });
+  });
+
+  test("opens Add Project dialog on button click", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsView />);
+
+    await user.click(screen.getByRole("button", { name: /add project/i }));
+
+    expect(screen.getByLabelText(/project path/i)).toBeInTheDocument();
+    // Dialog should contain the Add button inside DialogActions
+    expect(screen.getByRole("button", { name: /^add$/i })).toBeInTheDocument();
+  });
+
+  test("clicking a project sets it as active", async () => {
+    const user = userEvent.setup();
+    api.addRecentProject.mockResolvedValue({ success: true });
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [
+          { path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" },
+          { path: "/proj/beta", name: "beta", lastOpened: "2026-01-01" },
+        ],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+
+    await user.click(screen.getByText("beta"));
+
+    await waitFor(() => {
+      const active = store.getState().projects.activeProject;
+      expect(active.path).toBe("/proj/beta");
+      expect(active.name).toBe("beta");
     });
   });
 });
