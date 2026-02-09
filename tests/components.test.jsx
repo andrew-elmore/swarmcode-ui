@@ -37,6 +37,7 @@ jest.mock("../src/services/api", () => ({
   subscribeToMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
+  deleteProject: jest.fn(),
 }));
 
 const theme = createTheme({
@@ -667,5 +668,99 @@ describe("ProjectSelector", () => {
     renderWithProviders(<ProjectSelector />, { store });
     // Active project name should be visible in the selector display
     expect(screen.getByText("alpha")).toBeInTheDocument();
+  });
+
+  test("renders Delete project button", () => {
+    renderWithProviders(<ProjectSelector />);
+    expect(screen.getByTitle("Delete project")).toBeInTheDocument();
+  });
+
+  test("Delete button is disabled when no active project", () => {
+    renderWithProviders(<ProjectSelector />);
+    const deleteBtn = screen.getByTitle("Delete project");
+    expect(deleteBtn).toBeDisabled();
+  });
+
+  test("Delete button is enabled when a project is active", () => {
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectSelector />, { store });
+    const deleteBtn = screen.getByTitle("Delete project");
+    expect(deleteBtn).not.toBeDisabled();
+  });
+
+  test("opens Delete Project confirmation dialog on button click", async () => {
+    const user = userEvent.setup();
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectSelector />, { store });
+
+    await user.click(screen.getByTitle("Delete project"));
+
+    expect(screen.getByText("Delete Project")).toBeInTheDocument();
+    expect(screen.getByText(/are you sure you want to delete/i)).toBeInTheDocument();
+    expect(screen.getByText("alpha")).toBeInTheDocument();
+  });
+
+  test("cancel button closes the delete confirmation dialog", async () => {
+    const user = userEvent.setup();
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectSelector />, { store });
+
+    await user.click(screen.getByTitle("Delete project"));
+    expect(screen.getByText("Delete Project")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    await waitFor(() => {
+      expect(screen.queryByText(/are you sure you want to delete/i)).not.toBeInTheDocument();
+    });
+  });
+
+  test("confirm delete calls deleteProject API", async () => {
+    const user = userEvent.setup();
+    api.deleteProject.mockResolvedValue({ success: true });
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectSelector />, { store });
+
+    await user.click(screen.getByTitle("Delete project"));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    await waitFor(() => {
+      expect(api.deleteProject).toHaveBeenCalledWith("/proj/alpha");
+    });
   });
 });

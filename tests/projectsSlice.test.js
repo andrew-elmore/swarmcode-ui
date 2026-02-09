@@ -5,7 +5,7 @@
 
 import { configureStore } from "@reduxjs/toolkit";
 import * as api from "../src/services/api";
-import projectsReducer, { fetchRecentProjects, addRecentProject, setActiveProject, clearError } from "../src/store/projectsSlice";
+import projectsReducer, { fetchRecentProjects, addRecentProject, setActiveProject, clearError, deleteProject } from "../src/store/projectsSlice";
 
 jest.mock("../src/services/api", () => ({
   getOrCreateBoard: jest.fn(),
@@ -19,6 +19,7 @@ jest.mock("../src/services/api", () => ({
   pollMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
+  deleteProject: jest.fn(),
 }));
 
 function createTestStore(preloadedState) {
@@ -130,5 +131,82 @@ describe("addRecentProject thunk", () => {
     await store.dispatch(addRecentProject({ path: "", name: "bad" }));
 
     expect(store.getState().projects.error).toBe("Path is required");
+  });
+});
+
+// ─── deleteProject ──────────────────────────────────────────────────────────
+
+describe("deleteProject thunk", () => {
+  test("removes the project from the list on fulfilled", async () => {
+    api.deleteProject.mockResolvedValue({ success: true });
+
+    const store = createTestStore({
+      projects: [
+        { path: "C:\\proj1", name: "proj1", lastOpened: "2026-02-07" },
+        { path: "C:\\proj2", name: "proj2", lastOpened: "2026-02-06" },
+      ],
+    });
+    await store.dispatch(deleteProject({ path: "C:\\proj1" }));
+
+    const projects = store.getState().projects.projects;
+    expect(projects).toHaveLength(1);
+    expect(projects[0].path).toBe("C:\\proj2");
+  });
+
+  test("switches activeProject to next project when active is deleted", async () => {
+    api.deleteProject.mockResolvedValue({ success: true });
+
+    const store = createTestStore({
+      projects: [
+        { path: "C:\\active", name: "active", lastOpened: "2026-02-07" },
+        { path: "C:\\other", name: "other", lastOpened: "2026-02-06" },
+      ],
+      activeProject: { path: "C:\\active", name: "active" },
+    });
+    await store.dispatch(deleteProject({ path: "C:\\active" }));
+
+    const state = store.getState().projects;
+    expect(state.projects).toHaveLength(1);
+    expect(state.activeProject).toEqual(state.projects[0]);
+  });
+
+  test("sets activeProject to null when last project is deleted", async () => {
+    api.deleteProject.mockResolvedValue({ success: true });
+
+    const store = createTestStore({
+      projects: [{ path: "C:\\only", name: "only", lastOpened: "2026-02-07" }],
+      activeProject: { path: "C:\\only", name: "only" },
+    });
+    await store.dispatch(deleteProject({ path: "C:\\only" }));
+
+    const state = store.getState().projects;
+    expect(state.projects).toHaveLength(0);
+    expect(state.activeProject).toBeNull();
+  });
+
+  test("does not change activeProject when non-active project is deleted", async () => {
+    api.deleteProject.mockResolvedValue({ success: true });
+
+    const store = createTestStore({
+      projects: [
+        { path: "C:\\active", name: "active", lastOpened: "2026-02-07" },
+        { path: "C:\\other", name: "other", lastOpened: "2026-02-06" },
+      ],
+      activeProject: { path: "C:\\active", name: "active" },
+    });
+    await store.dispatch(deleteProject({ path: "C:\\other" }));
+
+    const state = store.getState().projects;
+    expect(state.activeProject).toEqual({ path: "C:\\active", name: "active" });
+    expect(state.projects).toHaveLength(1);
+  });
+
+  test("sets error on rejected", async () => {
+    api.deleteProject.mockRejectedValue(new Error("Project not found"));
+
+    const store = createTestStore();
+    await store.dispatch(deleteProject({ path: "C:\\bad" }));
+
+    expect(store.getState().projects.error).toBe("Project not found");
   });
 });

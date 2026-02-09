@@ -150,3 +150,7 @@ export async function addRecentProject(path, name) {
 export async function getRecentProjects() {
   return callFunction("getRecentProjects", {});
 }
+
+export async function deleteProject(path) {
+  return callFunction("deleteProject", { path });
+}

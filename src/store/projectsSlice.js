@@ -18,6 +18,14 @@ export const addRecentProject = createAsyncThunk(
   }
 );
 
+export const deleteProject = createAsyncThunk(
+  "projects/deleteProject",
+  async ({ path }) => {
+    await api.deleteProject(path);
+    return { path };
+  }
+);
+
 // --- Slice ---
 
 const projectsSlice = createSlice({
@@ -67,6 +75,18 @@ const projectsSlice = createSlice({
       }
     });
     builder.addCase(addRecentProject.rejected, (state, action) => {
+      state.error = action.error.message;
+    });
+
+    // deleteProject
+    builder.addCase(deleteProject.fulfilled, (state, action) => {
+      const { path } = action.payload;
+      state.projects = state.projects.filter((p) => p.path !== path);
+      if (state.activeProject?.path === path) {
+        state.activeProject = state.projects.length > 0 ? state.projects[0] : null;
+      }
+    });
+    builder.addCase(deleteProject.rejected, (state, action) => {
       state.error = action.error.message;
     });
   },
