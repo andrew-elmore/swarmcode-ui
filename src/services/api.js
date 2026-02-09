@@ -49,8 +49,11 @@ export async function pollMessages(since) {
   return callFunction("pollMessages", params);
 }
 
-export async function getConversation(userA, userB) {
-  return callFunction("getConversation", { userA, userB });
+export async function getConversation(userA, userB, { limit, before } = {}) {
+  const params = { userA, userB };
+  if (limit) params.limit = limit;
+  if (before) params.before = before;
+  return callFunction("getConversation", params);
 }
 
 // --- LiveQuery ---

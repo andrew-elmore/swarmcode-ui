@@ -483,6 +483,130 @@ describe("MessagesView", () => {
   });
 });
 
+// ─── ChatView — Lazy Loading ────────────────────────────────────────────────
+
+describe("ChatView — lazy loading", () => {
+  function buildConversations(agentOverrides = {}) {
+    const defaults = { messages: [], loaded: false, hasMore: true, loadingMore: false };
+    const agents = ["pm-1", "senior-dev-1", "developer-1", "qa-1", "devops-1"];
+    const convos = {};
+    agents.forEach((a) => { convos[a] = { ...defaults, ...agentOverrides[a] }; });
+    convos["all"] = { messages: [], loaded: false, hasMore: false, loadingMore: false };
+    return convos;
+  }
+
+  function buildMessagesState(overrides = {}) {
+    return {
+      conversations: buildConversations(overrides.conversations),
+      unreadCounts: { "pm-1": 0, "senior-dev-1": 0, "developer-1": 0, "qa-1": 0, "devops-1": 0, all: 0 },
+      selectedAgent: overrides.selectedAgent || "developer-1",
+      sending: false,
+      error: null,
+      messages: [],
+      polling: false,
+      lastPoll: null,
+    };
+  }
+
+  test("shows 'Load older messages' button when hasMore=true", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: buildMessagesState({
+        selectedAgent: "developer-1",
+        conversations: {
+          "developer-1": {
+            messages: [{ from: "owner", to: "developer-1", message: "Msg", createdAt: "2026-02-09T10:00:00Z" }],
+            loaded: true,
+            hasMore: true,
+            loadingMore: false,
+          },
+        },
+      }),
+      projects: { projects: [], activeProject: null, loading: false, error: null },
+    });
+    renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+
+    expect(screen.getByText("Load older messages")).toBeInTheDocument();
+  });
+
+  test("hides 'Load older messages' button when hasMore=false", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: buildMessagesState({
+        selectedAgent: "developer-1",
+        conversations: {
+          "developer-1": {
+            messages: [{ from: "owner", to: "developer-1", message: "Msg", createdAt: "2026-02-09T10:00:00Z" }],
+            loaded: true,
+            hasMore: false,
+            loadingMore: false,
+          },
+        },
+      }),
+      projects: { projects: [], activeProject: null, loading: false, error: null },
+    });
+    renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+
+    expect(screen.queryByText("Load older messages")).not.toBeInTheDocument();
+  });
+
+  test("shows 'Loading...' text when loadingMore=true", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: buildMessagesState({
+        selectedAgent: "developer-1",
+        conversations: {
+          "developer-1": {
+            messages: [{ from: "owner", to: "developer-1", message: "Msg", createdAt: "2026-02-09T10:00:00Z" }],
+            loaded: true,
+            hasMore: true,
+            loadingMore: true,
+          },
+        },
+      }),
+      projects: { projects: [], activeProject: null, loading: false, error: null },
+    });
+    renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+
+    const loadingBtn = screen.getByText("Loading...");
+    expect(loadingBtn).toBeInTheDocument();
+    expect(loadingBtn.closest("button")).toBeDisabled();
+  });
+
+  test("shows empty state when no messages", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: buildMessagesState({
+        selectedAgent: "developer-1",
+        conversations: {
+          "developer-1": {
+            messages: [],
+            loaded: true,
+            hasMore: false,
+            loadingMore: false,
+          },
+        },
+      }),
+      projects: { projects: [], activeProject: null, loading: false, error: null },
+    });
+    renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+
+    expect(screen.getByText(/no messages yet/i)).toBeInTheDocument();
+  });
+});
+
 // ─── CreateCardDialog Component ──────────────────────────────────────────────
 
 describe("CreateCardDialog", () => {

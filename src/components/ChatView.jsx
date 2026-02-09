@@ -4,10 +4,11 @@ import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import TextField from "@mui/material/TextField";
 import Paper from "@mui/material/Paper";
+import Button from "@mui/material/Button";
 import SendIcon from "@mui/icons-material/Send";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useAppDispatch, useAppSelector } from "../store";
-import { sendMessage, loadConversation } from "../store/messagesSlice";
+import { sendMessage, loadConversation, loadMoreMessages } from "../store/messagesSlice";
 
 const AGENT_LABELS = {
   "pm-1": "PM Agent",
@@ -27,6 +28,9 @@ export default function ChatView() {
 
   const convo = selectedAgent ? conversations[selectedAgent] : null;
   const messages = convo ? convo.messages : [];
+  const hasMore = convo?.hasMore ?? false;
+  const loadingMore = convo?.loadingMore ?? false;
+  const isLoadingMoreRef = useRef(false);
 
   // Load conversation when agent is selected
   useEffect(() => {
@@ -35,12 +39,29 @@ export default function ChatView() {
     }
   }, [selectedAgent, convo, dispatch]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom only for new messages (not when loading older ones)
   useEffect(() => {
+    if (isLoadingMoreRef.current) {
+      isLoadingMoreRef.current = false;
+      return;
+    }
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages.length]);
+
+  const handleLoadMore = async () => {
+    if (!selectedAgent || !hasMore || loadingMore) return;
+    const container = scrollContainerRef.current;
+    const prevScrollHeight = container?.scrollHeight || 0;
+    isLoadingMoreRef.current = true;
+    await dispatch(loadMoreMessages(selectedAgent));
+    requestAnimationFrame(() => {
+      if (container) {
+        container.scrollTop = container.scrollHeight - prevScrollHeight;
+      }
+    });
+  };
 
   const handleSend = () => {
     const trimmed = input.trim();
@@ -114,6 +135,14 @@ export default function ChatView() {
           bgcolor: "grey.50",
         }}
       >
+        {hasMore && (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
+            <Button size="small" onClick={handleLoadMore} disabled={loadingMore}>
+              {loadingMore ? "Loading..." : "Load older messages"}
+            </Button>
+          </Box>
+        )}
+
         {messages.length === 0 && (
           <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1 }}>
             <Typography variant="body2" color="text.secondary">

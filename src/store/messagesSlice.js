@@ -7,10 +7,10 @@ const AGENTS = ["pm-1", "senior-dev-1", "developer-1", "qa-1", "devops-1"];
 function buildInitialConversations() {
   const convos = {};
   AGENTS.forEach((agent) => {
-    convos[agent] = { messages: [], loaded: false };
+    convos[agent] = { messages: [], loaded: false, hasMore: true, loadingMore: false };
   });
   // "all" channel for broadcast
-  convos["all"] = { messages: [], loaded: false };
+  convos["all"] = { messages: [], loaded: false, hasMore: false, loadingMore: false };
   return convos;
 }
 
@@ -31,10 +31,10 @@ export const loadConversation = createAsyncThunk(
     if (agent === "all") {
       // For broadcast, we don't have a single conversation to load
       // Just return empty — broadcast messages appear via LiveQuery
-      return { agent, messages: [] };
+      return { agent, messages: [], hasMore: false };
     }
-    const result = await api.getConversation("owner", agent);
-    return { agent, messages: result.messages };
+    const result = await api.getConversation("owner", agent, { limit: 30 });
+    return { agent, messages: result.messages, hasMore: result.hasMore };
   }
 );
 
@@ -43,6 +43,20 @@ export const sendMessage = createAsyncThunk(
   async ({ to, message }) => {
     const result = await api.sendMessage({ from: "owner", to, message });
     return { to, message, result };
+  }
+);
+
+export const loadMoreMessages = createAsyncThunk(
+  "messages/loadMoreMessages",
+  async (agent, { getState }) => {
+    const convo = getState().messages.conversations[agent];
+    if (!convo || convo.messages.length === 0) {
+      return { agent, messages: [], hasMore: false };
+    }
+    const oldestMsg = convo.messages[0];
+    const before = oldestMsg.createdAt?.iso || oldestMsg.createdAt;
+    const result = await api.getConversation("owner", agent, { before });
+    return { agent, messages: result.messages, hasMore: result.hasMore };
   }
 );
 
@@ -127,14 +141,37 @@ const messagesSlice = createSlice({
       state.error = null;
     });
     builder.addCase(loadConversation.fulfilled, (state, action) => {
-      const { agent, messages } = action.payload;
+      const { agent, messages, hasMore } = action.payload;
       if (state.conversations[agent]) {
         state.conversations[agent].messages = messages;
         state.conversations[agent].loaded = true;
+        state.conversations[agent].hasMore = hasMore ?? false;
       }
     });
     builder.addCase(loadConversation.rejected, (state, action) => {
       state.error = action.error.message;
+    });
+
+    // loadMoreMessages
+    builder.addCase(loadMoreMessages.pending, (state, action) => {
+      const agent = action.meta.arg;
+      if (state.conversations[agent]) {
+        state.conversations[agent].loadingMore = true;
+      }
+    });
+    builder.addCase(loadMoreMessages.fulfilled, (state, action) => {
+      const { agent, messages, hasMore } = action.payload;
+      if (state.conversations[agent]) {
+        state.conversations[agent].messages = [...messages, ...state.conversations[agent].messages];
+        state.conversations[agent].hasMore = hasMore ?? false;
+        state.conversations[agent].loadingMore = false;
+      }
+    });
+    builder.addCase(loadMoreMessages.rejected, (state, action) => {
+      const agent = action.meta.arg;
+      if (state.conversations[agent]) {
+        state.conversations[agent].loadingMore = false;
+      }
     });
 
     // sendMessage
