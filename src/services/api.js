@@ -9,6 +9,10 @@ const JS_KEY = process.env.REACT_APP_PARSE_REST_API_KEY || "";
 // Initialize Parse SDK (needed for LiveQuery)
 Parse.initialize(APP_ID, JS_KEY);
 Parse.serverURL = PARSE_URL;
+const LIVEQUERY_URL = process.env.REACT_APP_PARSE_LIVEQUERY_URL;
+if (LIVEQUERY_URL) {
+  Parse.liveQueryServerURL = LIVEQUERY_URL;
+}
 
 // --- Low-level REST call ---
 

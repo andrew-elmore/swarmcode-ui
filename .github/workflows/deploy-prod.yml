@@ -55,6 +55,7 @@ jobs:
           REACT_APP_PARSE_APP_ID: ${{ secrets.PROD_APP_ID }}
           REACT_APP_PARSE_REST_API_KEY: ${{ secrets.PROD_REST_API_KEY }}
           REACT_APP_PARSE_URL: /parse
+          REACT_APP_PARSE_LIVEQUERY_URL: wss://swarmcode-api-616102704370.us-central1.run.app/parse
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0

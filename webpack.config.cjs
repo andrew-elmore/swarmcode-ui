@@ -68,6 +68,9 @@ module.exports = {
       "process.env.REACT_APP_PARSE_REST_API_KEY": JSON.stringify(
         process.env.REACT_APP_PARSE_REST_API_KEY || ""
       ),
+      "process.env.REACT_APP_PARSE_LIVEQUERY_URL": JSON.stringify(
+        process.env.REACT_APP_PARSE_LIVEQUERY_URL || ""
+      ),
     }),
     new CopyPlugin({
       patterns: [
