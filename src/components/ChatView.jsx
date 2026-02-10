@@ -97,7 +97,7 @@ export default function ChatView({ ttsEngineRef }) {
   }
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
       {/* Header */}
       <Box
         sx={{
@@ -109,6 +109,7 @@ export default function ChatView({ ttsEngineRef }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          flexShrink: 0,
         }}
       >
         <Box>
@@ -129,7 +130,8 @@ export default function ChatView({ ttsEngineRef }) {
         ref={scrollContainerRef}
         sx={{
           flex: 1,
-          overflow: "auto",
+          minHeight: 0,
+          overflowY: "auto",
           px: 2,
           py: { xs: 1, md: 2 },
           display: "flex",
@@ -215,6 +217,7 @@ export default function ChatView({ ttsEngineRef }) {
           display: "flex",
           gap: 1,
           alignItems: "flex-end",
+          flexShrink: 0,
         }}
       >
         <TextField

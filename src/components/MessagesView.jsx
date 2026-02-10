@@ -54,7 +54,7 @@ export default function MessagesView() {
   );
 
   return (
-    <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
+    <Box sx={{ display: "flex", height: "100%", minHeight: 0, overflow: "hidden" }}>
       {/* Mobile: Drawer sidebar */}
       {isMobile ? (
         <>
@@ -72,13 +72,13 @@ export default function MessagesView() {
           </Drawer>
 
           {/* Mobile hamburger button - shown in chat header area */}
-          <Box sx={{ display: "flex", flexDirection: "column", width: "100%" }}>
-            <Box sx={{ px: 1, py: 0.5, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center" }}>
+          <Box sx={{ display: "flex", flexDirection: "column", width: "100%", minHeight: 0 }}>
+            <Box sx={{ px: 1, py: 0.5, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", flexShrink: 0 }}>
               <IconButton onClick={() => setDrawerOpen(true)} size="small">
                 <MenuIcon />
               </IconButton>
             </Box>
-            <Box sx={{ flex: 1, overflow: "hidden" }}>
+            <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
               <ChatView ttsEngineRef={ttsEngineRef} />
             </Box>
           </Box>
@@ -100,7 +100,7 @@ export default function MessagesView() {
           </Box>
 
           {/* Chat area */}
-          <Box sx={{ flex: 1, overflow: "hidden" }}>
+          <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
             <ChatView ttsEngineRef={ttsEngineRef} />
           </Box>
         </>
