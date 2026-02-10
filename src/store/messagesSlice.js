@@ -81,6 +81,7 @@ const messagesSlice = createSlice({
   reducers: {
     selectAgent(state, action) {
       state.selectedAgent = action.payload;
+      ensureConvo(state, action.payload);
       state.unreadCounts[action.payload] = 0;
     },
     appendMessage(state, action) {
