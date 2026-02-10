@@ -16,7 +16,7 @@ const SPEED_OPTIONS = [
   { label: "1.5x", value: 1.5 },
 ];
 
-export default function TtsControls({ engine }) {
+export default function TtsControls({ engineRef }) {
   const [enabled, setEnabled] = useState(false);
   const [rate, setRate] = useState(1.0);
   const [volume, setVolume] = useState(1.0);
@@ -25,6 +25,7 @@ export default function TtsControls({ engine }) {
 
   // Load available voices
   useEffect(() => {
+    const engine = engineRef?.current;
     if (!engine) return;
     const loadVoices = () => {
       const v = engine.getVoices();
@@ -38,37 +39,37 @@ export default function TtsControls({ engine }) {
     if (window.speechSynthesis?.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
-  }, [engine, selectedVoice]);
+  }, [engineRef, selectedVoice]);
 
   const handleToggle = useCallback(() => {
     const next = !enabled;
     setEnabled(next);
-    engine?.setEnabled(next);
-  }, [enabled, engine]);
+    engineRef?.current?.setEnabled(next);
+  }, [enabled, engineRef]);
 
   const handleStop = useCallback(() => {
-    engine?.stop();
-  }, [engine]);
+    engineRef?.current?.stop();
+  }, [engineRef]);
 
   const handleRateChange = useCallback((e) => {
     const val = e.target.value;
     setRate(val);
-    engine?.setRate(val);
-  }, [engine]);
+    engineRef?.current?.setRate(val);
+  }, [engineRef]);
 
   const handleVolumeChange = useCallback((_, val) => {
     setVolume(val);
-    engine?.setVolume(val);
-  }, [engine]);
+    engineRef?.current?.setVolume(val);
+  }, [engineRef]);
 
   const handleVoiceChange = useCallback((e) => {
     const name = e.target.value;
     setSelectedVoice(name);
     const voice = voices.find((v) => v.name === name);
-    if (voice) engine?.setVoice(voice);
-  }, [engine, voices]);
+    if (voice) engineRef?.current?.setVoice(voice);
+  }, [engineRef, voices]);
 
-  if (!engine) return null;
+  if (!engineRef) return null;
 
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>

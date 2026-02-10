@@ -11,7 +11,7 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { sendMessage, loadConversation, loadMoreMessages } from "../store/messagesSlice";
 import TtsControls from "./TtsControls";
 
-export default function ChatView({ ttsEngine }) {
+export default function ChatView({ ttsEngineRef }) {
   const dispatch = useAppDispatch();
   const { conversations, selectedAgent, sending } = useAppSelector((s) => s.messages);
   const agents = useAppSelector((s) => s.agents.agents);
@@ -121,7 +121,7 @@ export default function ChatView({ ttsEngine }) {
             </Typography>
           )}
         </Box>
-        <TtsControls engine={ttsEngine} />
+        <TtsControls engineRef={ttsEngineRef} />
       </Box>
 
       {/* Messages area */}

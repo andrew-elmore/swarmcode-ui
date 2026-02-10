@@ -151,7 +151,7 @@ describe("TtsControls", () => {
     const engine = createMockEngine();
     render(
       <ThemeProvider theme={theme}>
-        <TtsControls engine={engine} />
+        <TtsControls engineRef={{ current: engine }} />
       </ThemeProvider>
     );
     expect(screen.getByTestId("VolumeOffIcon")).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe("TtsControls", () => {
   test("TC-31: returns null when engine is null", () => {
     const { container } = render(
       <ThemeProvider theme={theme}>
-        <TtsControls engine={null} />
+        <TtsControls engineRef={null} />
       </ThemeProvider>
     );
     expect(container.firstChild).toBeNull();
@@ -173,7 +173,7 @@ describe("TtsControls", () => {
     const engine = createMockEngine();
     render(
       <ThemeProvider theme={theme}>
-        <TtsControls engine={engine} />
+        <TtsControls engineRef={{ current: engine }} />
       </ThemeProvider>
     );
 
@@ -188,7 +188,7 @@ describe("TtsControls", () => {
     const engine = createMockEngine();
     render(
       <ThemeProvider theme={theme}>
-        <TtsControls engine={engine} />
+        <TtsControls engineRef={{ current: engine }} />
       </ThemeProvider>
     );
 
@@ -208,7 +208,7 @@ describe("TtsControls", () => {
     const engine = createMockEngine();
     render(
       <ThemeProvider theme={theme}>
-        <TtsControls engine={engine} />
+        <TtsControls engineRef={{ current: engine }} />
       </ThemeProvider>
     );
 
@@ -224,7 +224,7 @@ describe("TtsControls", () => {
     const engine = createMockEngine();
     render(
       <ThemeProvider theme={theme}>
-        <TtsControls engine={engine} />
+        <TtsControls engineRef={{ current: engine }} />
       </ThemeProvider>
     );
 

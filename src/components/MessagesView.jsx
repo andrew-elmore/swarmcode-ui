@@ -20,22 +20,19 @@ export default function MessagesView() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const ttsEngineRef = useRef(null);
-  if (!ttsEngineRef.current) {
-    ttsEngineRef.current = new TtsEngine();
-  }
-  const ttsEngine = ttsEngineRef.current;
+  const ttsEngineRef = useRef(new TtsEngine());
 
   // Subscribe to LiveQuery for real-time incoming messages
   useEffect(() => {
+    const engine = ttsEngineRef.current;
     let unsubscribe = null;
 
     subscribeToMessages((msg) => {
       dispatch(appendMessage(msg));
       // Queue incoming messages for TTS (skip owner's own messages)
-      if (msg.from !== "owner" && ttsEngine.enabled) {
+      if (msg.from !== "owner" && engine.enabled) {
         const label = msg.from || "agent";
-        ttsEngine.speak(`${label} says: ${msg.message}`);
+        engine.speak(`${label} says: ${msg.message}`);
       }
     }).then((unsub) => {
       unsubscribe = unsub;
@@ -43,9 +40,9 @@ export default function MessagesView() {
 
     return () => {
       if (unsubscribe) unsubscribe();
-      ttsEngine.stop();
+      engine.stop();
     };
-  }, [dispatch, ttsEngine]);
+  }, [dispatch]);
 
   const handleSelectAgent = (agent) => {
     dispatch(selectAgent(agent));
@@ -82,7 +79,7 @@ export default function MessagesView() {
               </IconButton>
             </Box>
             <Box sx={{ flex: 1, overflow: "hidden" }}>
-              <ChatView ttsEngine={ttsEngine} />
+              <ChatView ttsEngineRef={ttsEngineRef} />
             </Box>
           </Box>
         </>
@@ -104,7 +101,7 @@ export default function MessagesView() {
 
           {/* Chat area */}
           <Box sx={{ flex: 1, overflow: "hidden" }}>
-            <ChatView ttsEngine={ttsEngine} />
+            <ChatView ttsEngineRef={ttsEngineRef} />
           </Box>
         </>
       )}
