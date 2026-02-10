@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -8,6 +8,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "../store";
 import { selectAgent, appendMessage } from "../store/messagesSlice";
 import { subscribeToMessages } from "../services/api";
+import TtsEngine from "../utils/ttsEngine";
 import AgentSidebar from "./AgentSidebar";
 import ChatView from "./ChatView";
 
@@ -19,6 +20,11 @@ export default function MessagesView() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const ttsEngineRef = useRef(null);
+  if (!ttsEngineRef.current) {
+    ttsEngineRef.current = new TtsEngine();
+  }
+  const ttsEngine = ttsEngineRef.current;
 
   // Subscribe to LiveQuery for real-time incoming messages
   useEffect(() => {
@@ -26,14 +32,20 @@ export default function MessagesView() {
 
     subscribeToMessages((msg) => {
       dispatch(appendMessage(msg));
+      // Queue incoming messages for TTS (skip owner's own messages)
+      if (msg.from !== "owner" && ttsEngine.enabled) {
+        const label = msg.from || "agent";
+        ttsEngine.speak(`${label} says: ${msg.message}`);
+      }
     }).then((unsub) => {
       unsubscribe = unsub;
     });
 
     return () => {
       if (unsubscribe) unsubscribe();
+      ttsEngine.stop();
     };
-  }, [dispatch]);
+  }, [dispatch, ttsEngine]);
 
   const handleSelectAgent = (agent) => {
     dispatch(selectAgent(agent));
@@ -45,7 +57,7 @@ export default function MessagesView() {
   );
 
   return (
-    <Box sx={{ display: "flex", height: "calc(100vh - 64px)", overflow: "hidden" }}>
+    <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
       {/* Mobile: Drawer sidebar */}
       {isMobile ? (
         <>
@@ -70,7 +82,7 @@ export default function MessagesView() {
               </IconButton>
             </Box>
             <Box sx={{ flex: 1, overflow: "hidden" }}>
-              <ChatView />
+              <ChatView ttsEngine={ttsEngine} />
             </Box>
           </Box>
         </>
@@ -92,7 +104,7 @@ export default function MessagesView() {
 
           {/* Chat area */}
           <Box sx={{ flex: 1, overflow: "hidden" }}>
-            <ChatView />
+            <ChatView ttsEngine={ttsEngine} />
           </Box>
         </>
       )}

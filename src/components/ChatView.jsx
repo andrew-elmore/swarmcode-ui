@@ -9,8 +9,9 @@ import SendIcon from "@mui/icons-material/Send";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useAppDispatch, useAppSelector } from "../store";
 import { sendMessage, loadConversation, loadMoreMessages } from "../store/messagesSlice";
+import TtsControls from "./TtsControls";
 
-export default function ChatView() {
+export default function ChatView({ ttsEngine }) {
   const dispatch = useAppDispatch();
   const { conversations, selectedAgent, sending } = useAppSelector((s) => s.messages);
   const agents = useAppSelector((s) => s.agents.agents);
@@ -105,16 +106,22 @@ export default function ChatView() {
           borderBottom: 1,
           borderColor: "divider",
           bgcolor: "background.paper",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
         }}
       >
-        <Typography variant="subtitle1" fontWeight={600}>
-          {agentLabels[selectedAgent] || selectedAgent}
-        </Typography>
-        {selectedAgent !== "all" && (
-          <Typography variant="caption" color="text.secondary">
-            {selectedAgent}
+        <Box>
+          <Typography variant="subtitle1" fontWeight={600}>
+            {agentLabels[selectedAgent] || selectedAgent}
           </Typography>
-        )}
+          {selectedAgent !== "all" && (
+            <Typography variant="caption" color="text.secondary">
+              {selectedAgent}
+            </Typography>
+          )}
+        </Box>
+        <TtsControls engine={ttsEngine} />
       </Box>
 
       {/* Messages area */}
