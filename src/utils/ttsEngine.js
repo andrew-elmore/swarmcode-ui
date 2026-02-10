@@ -66,7 +66,7 @@ export function preprocessText(text) {
 
   // 6. Strip special characters (keep speech-cadence punctuation)
   t = t.replace(/---+|===+/g, ".");
-  t = t.replace(/[|~`*_#>\[\]{}<>=]/g, "");
+  t = t.replace(/[|~`*_#>[\]{}<>=]/g, "");
 
   // 7. Custom number reading for 3-4 digit numbers
   t = t.replace(/\b(\d{3,4})\b/g, (match) => readNumber(match));

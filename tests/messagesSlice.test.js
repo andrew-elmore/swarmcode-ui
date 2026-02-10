@@ -6,7 +6,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import * as api from "../src/services/api";
 import boardReducer from "../src/store/boardSlice";
-import messagesReducer, { sendMessage, pollMessages, loadConversation, loadMoreMessages, selectAgent, clearError, clearMessages } from "../src/store/messagesSlice";
+import messagesReducer, { sendMessage, pollMessages, loadConversation, loadMoreMessages, clearError, clearMessages } from "../src/store/messagesSlice";
 
 jest.mock("../src/services/api", () => ({
   getOrCreateBoard: jest.fn(),

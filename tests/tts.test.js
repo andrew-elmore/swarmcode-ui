@@ -167,7 +167,7 @@ describe("preprocessText", () => {
     expect(result).toContain("two oh five");
     expect(result).not.toContain("---");
     // Verify no extra whitespace
-    expect(result).not.toMatch(/  /);
+    expect(result).not.toMatch(/ {2}/);
   });
 
   // TC-21: Empty string

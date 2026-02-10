@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
@@ -11,6 +11,8 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import MailIcon from "@mui/icons-material/Mail";
 import FolderIcon from "@mui/icons-material/Folder";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import { useAppDispatch, useAppSelector } from "./store";
+import { fetchBoard } from "./store/boardSlice";
 import AgentsView from "./components/AgentsView";
 import BoardView from "./components/BoardView";
 import MessagesView from "./components/MessagesView";
@@ -21,6 +23,15 @@ export default function App() {
   const [tab, setTab] = useState(0);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const dispatch = useAppDispatch();
+  const activeProject = useAppSelector((s) => s.projects.activeProject);
+
+  // Load board on startup so projectHash is available for all tabs (including Messages)
+  useEffect(() => {
+    if (activeProject) {
+      dispatch(fetchBoard(activeProject.path));
+    }
+  }, [dispatch, activeProject]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
