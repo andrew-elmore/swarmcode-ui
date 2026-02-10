@@ -19,10 +19,17 @@ export default function MessagesView() {
   const dispatch = useAppDispatch();
   const { selectedAgent, unreadCounts } = useAppSelector((s) => s.messages);
   const tts = useAppSelector((s) => s.tts);
+  const agents = useAppSelector((s) => s.agents.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const ttsEngineRef = useRef(new TtsEngine());
+  const ttsRef = useRef(tts);
+  const agentsRef = useRef(agents);
+
+  // Keep refs in sync so the LiveQuery callback always sees latest state
+  useEffect(() => { ttsRef.current = tts; }, [tts]);
+  useEffect(() => { agentsRef.current = agents; }, [agents]);
 
   // Sync Redux TTS state to the engine
   useEffect(() => {
@@ -42,7 +49,24 @@ export default function MessagesView() {
       dispatch(appendMessage(msg));
       // Queue incoming messages for TTS (skip owner's own messages)
       if (msg.from !== "owner" && engine.enabled) {
-        engine.speak(msg.message);
+        const currentTts = ttsRef.current;
+
+        // Set per-agent voice if configured
+        const voiceName = currentTts.perAgentVoice[msg.from];
+        if (voiceName) {
+          const voice = engine.getVoices().find((v) => v.name === voiceName);
+          if (voice) engine.setVoice(voice);
+        }
+
+        // Optionally prepend agent name
+        let text = msg.message;
+        if (currentTts.speakAgentName) {
+          const agent = agentsRef.current.find((a) => a.name === msg.from);
+          const label = agent?.description || msg.from;
+          text = `${label} says: ${text}`;
+        }
+
+        engine.speak(text);
       }
     }).then((unsub) => {
       unsubscribe = unsub;
