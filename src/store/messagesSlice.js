@@ -73,6 +73,7 @@ const messagesSlice = createSlice({
     selectedAgent: null,
     sending: false,
     error: null,
+    mobileDrawerOpen: false,
     // Legacy fields for backward compat
     messages: [],
     polling: false,
@@ -122,6 +123,9 @@ const messagesSlice = createSlice({
     },
     clearError(state) {
       state.error = null;
+    },
+    setMobileDrawerOpen(state, action) {
+      state.mobileDrawerOpen = action.payload;
     },
     clearMessages(state) {
       state.conversations = { all: emptyConvo(false) };
@@ -201,5 +205,5 @@ const messagesSlice = createSlice({
   },
 });
 
-export const { selectAgent, appendMessage, clearError, clearMessages } = messagesSlice.actions;
+export const { selectAgent, appendMessage, clearError, clearMessages, setMobileDrawerOpen } = messagesSlice.actions;
 export default messagesSlice.reducer;

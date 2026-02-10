@@ -96,32 +96,6 @@ export default function ChatView() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
-      {/* Header */}
-      <Box
-        sx={{
-          px: 2,
-          py: { xs: 0.75, md: 1.5 },
-          borderBottom: 1,
-          borderColor: "divider",
-          bgcolor: "background.paper",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexShrink: 0,
-        }}
-      >
-        <Box>
-          <Typography variant="subtitle1" fontWeight={600}>
-            {agentLabels[selectedAgent] || selectedAgent}
-          </Typography>
-          {selectedAgent !== "all" && (
-            <Typography variant="caption" color="text.secondary">
-              {selectedAgent}
-            </Typography>
-          )}
-        </Box>
-      </Box>
-
       {/* Messages area */}
       <Box
         ref={scrollContainerRef}

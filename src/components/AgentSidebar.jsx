@@ -4,7 +4,6 @@ import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Badge from "@mui/material/Badge";
 import GroupsIcon from "@mui/icons-material/Groups";
@@ -30,11 +29,6 @@ export default function AgentSidebar({ selectedAgent, onSelectAgent, unreadCount
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Box sx={{ px: 2, py: 1.5 }}>
-        <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: "uppercase", letterSpacing: 1, fontSize: "0.7rem" }}>
-          Conversations
-        </Typography>
-      </Box>
       <List disablePadding sx={{ flex: 1, overflow: "auto" }}>
         {/* Broadcast / All Agents */}
         <ListItemButton

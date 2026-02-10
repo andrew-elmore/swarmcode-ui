@@ -1,12 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Box from "@mui/material/Box";
 import Drawer from "@mui/material/Drawer";
-import IconButton from "@mui/material/IconButton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "../store";
-import { selectAgent, appendMessage } from "../store/messagesSlice";
+import { selectAgent, appendMessage, setMobileDrawerOpen } from "../store/messagesSlice";
 import { setError as setTtsError } from "../store/ttsSlice";
 import { subscribeToMessages } from "../services/api";
 import TtsEngine from "../utils/ttsEngine";
@@ -17,12 +15,11 @@ const SIDEBAR_WIDTH = 240;
 
 export default function MessagesView() {
   const dispatch = useAppDispatch();
-  const { selectedAgent, unreadCounts } = useAppSelector((s) => s.messages);
+  const { selectedAgent, unreadCounts, mobileDrawerOpen } = useAppSelector((s) => s.messages);
   const tts = useAppSelector((s) => s.tts);
   const agents = useAppSelector((s) => s.agents.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const ttsEngineRef = useRef(new TtsEngine());
   const ttsRef = useRef(tts);
   const agentsRef = useRef(agents);
@@ -80,7 +77,7 @@ export default function MessagesView() {
 
   const handleSelectAgent = (agent) => {
     dispatch(selectAgent(agent));
-    if (isMobile) setDrawerOpen(false);
+    if (isMobile) dispatch(setMobileDrawerOpen(false));
   };
 
   const sidebarContent = (
@@ -93,8 +90,8 @@ export default function MessagesView() {
       {isMobile ? (
         <>
           <Drawer
-            open={drawerOpen}
-            onClose={() => setDrawerOpen(false)}
+            open={mobileDrawerOpen}
+            onClose={() => dispatch(setMobileDrawerOpen(false))}
             sx={{
               "& .MuiDrawer-paper": {
                 width: SIDEBAR_WIDTH,
@@ -105,16 +102,8 @@ export default function MessagesView() {
             {sidebarContent}
           </Drawer>
 
-          {/* Mobile hamburger button - shown in chat header area */}
-          <Box sx={{ display: "flex", flexDirection: "column", width: "100%", minHeight: 0 }}>
-            <Box sx={{ px: 1, py: 0.5, borderBottom: 1, borderColor: "divider", display: "flex", alignItems: "center", flexShrink: 0 }}>
-              <IconButton onClick={() => setDrawerOpen(true)} size="small">
-                <MenuIcon />
-              </IconButton>
-            </Box>
-            <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-              <ChatView />
-            </Box>
+          <Box sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
+            <ChatView />
           </Box>
         </>
       ) : (
@@ -127,7 +116,7 @@ export default function MessagesView() {
               borderRight: 1,
               borderColor: "divider",
               bgcolor: "background.paper",
-              overflow: "auto",
+              overflow: "hidden",
             }}
           >
             {sidebarContent}

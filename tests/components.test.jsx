@@ -125,7 +125,7 @@ describe("App", () => {
   test("shows MessagesView by default", () => {
     renderWithProviders(<App />);
     // Default tab is Messages → shows AgentSidebar and ChatView placeholder
-    expect(screen.getByText("Conversations")).toBeInTheDocument();
+    expect(screen.getByText("All Agents")).toBeInTheDocument();
     expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
   });
 
@@ -159,7 +159,7 @@ describe("App", () => {
     await user.click(screen.getByRole("tab", { name: /messages/i }));
 
     await waitFor(() => {
-      expect(screen.getByText("Conversations")).toBeInTheDocument();
+      expect(screen.getByText("All Agents")).toBeInTheDocument();
     });
   });
 
@@ -309,9 +309,9 @@ describe("MessagesView", () => {
     return result;
   }
 
-  test("renders Conversations heading in sidebar", async () => {
+  test("renders All Agents entry in sidebar", async () => {
     await renderMessages();
-    expect(screen.getByText("Conversations")).toBeInTheDocument();
+    expect(screen.getByText("All Agents")).toBeInTheDocument();
   });
 
   test("renders agent list in sidebar", async () => {
@@ -367,8 +367,8 @@ describe("MessagesView", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     await renderMessages(store);
-    // "PM Agent" appears in both sidebar and chat header — verify both exist
-    expect(screen.getAllByText("PM Agent").length).toBeGreaterThanOrEqual(2);
+    // "PM Agent" appears in sidebar (chat header was merged into AppBar)
+    expect(screen.getByText("PM Agent")).toBeInTheDocument();
     expect(screen.getByText("No messages yet. Send a message to get started.")).toBeInTheDocument();
   });
 

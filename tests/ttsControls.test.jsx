@@ -301,7 +301,7 @@ describe("Integration: MessagesView + ChatView TTS", () => {
     await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
 
     // Sidebar renders
-    expect(screen.getByText("Conversations")).toBeInTheDocument();
+    expect(screen.getByText("All Agents")).toBeInTheDocument();
     // Placeholder shown when no agent selected
     expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
   });

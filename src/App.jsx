@@ -5,6 +5,7 @@ import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
+import IconButton from "@mui/material/IconButton";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -12,8 +13,10 @@ import MailIcon from "@mui/icons-material/Mail";
 import FolderIcon from "@mui/icons-material/Folder";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
+import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
 import { fetchBoard } from "./store/boardSlice";
+import { setMobileDrawerOpen } from "./store/messagesSlice";
 import AgentsView from "./components/AgentsView";
 import BoardView from "./components/BoardView";
 import MessagesView from "./components/MessagesView";
@@ -27,6 +30,14 @@ export default function App() {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const dispatch = useAppDispatch();
   const activeProject = useAppSelector((s) => s.projects.activeProject);
+  const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
+  const agents = useAppSelector((s) => s.agents.agents);
+
+  // Build label lookup from dynamic agents list
+  const agentLabels = { all: "All Agents" };
+  agents.forEach((a) => { agentLabels[a.name] = a.description || a.name; });
+
+  const isMessagesTab = tab === 0;
 
   // Load board on startup so projectHash is available for all tabs (including Messages)
   useEffect(() => {
@@ -45,6 +56,17 @@ export default function App() {
             py: isMobile ? 0.5 : 0,
           }}
         >
+          {/* Mobile hamburger for Messages drawer */}
+          {isMobile && isMessagesTab && (
+            <IconButton
+              color="inherit"
+              onClick={() => dispatch(setMobileDrawerOpen(true))}
+              size="small"
+              sx={{ mr: 0.5 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          )}
           <Typography
             variant="h6"
             component="div"
@@ -78,6 +100,12 @@ export default function App() {
             )}
           </Tabs>
           {!isMobile && <Box sx={{ flex: 1 }} />}
+          {/* Desktop: show selected agent name in AppBar when on Messages tab */}
+          {!isMobile && isMessagesTab && selectedAgent && (
+            <Typography variant="body2" sx={{ mr: 2, opacity: 0.9 }}>
+              {agentLabels[selectedAgent] || selectedAgent}
+            </Typography>
+          )}
           {!isMobile && <ProjectSelector />}
         </Toolbar>
         {isMobile && (
@@ -89,6 +117,13 @@ export default function App() {
               bgcolor: "primary.dark",
             }}
           >
+            {/* Mobile: show selected agent name in secondary toolbar when on Messages tab */}
+            {isMessagesTab && selectedAgent && (
+              <Typography variant="body2" color="inherit" sx={{ mr: 1, fontWeight: 600 }} noWrap>
+                {agentLabels[selectedAgent] || selectedAgent}
+              </Typography>
+            )}
+            <Box sx={{ flex: 1 }} />
             <ProjectSelector />
           </Toolbar>
         )}
