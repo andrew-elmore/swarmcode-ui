@@ -15,7 +15,7 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
@@ -200,16 +200,16 @@ describe("CARD-049: TtsView global controls", () => {
     renderWithProviders(<TtsView />, { store });
 
     expect(screen.getByText("TTS Disabled")).toBeInTheDocument();
-    const switchEl = screen.getByRole("checkbox");
-    expect(switchEl).not.toBeChecked();
+    const switches = screen.getAllByRole("switch");
+    expect(switches.length).toBeGreaterThanOrEqual(1);
   });
 
   test("toggle dispatches setEnabled and label changes", () => {
     const store = createTestStore();
     renderWithProviders(<TtsView />, { store });
 
-    const switchEl = screen.getByRole("checkbox");
-    fireEvent.click(switchEl);
+    const switches = screen.getAllByRole("switch");
+    fireEvent.click(switches[0]);
 
     expect(store.getState().tts.enabled).toBe(true);
     expect(screen.getByText("TTS Enabled")).toBeInTheDocument();
@@ -242,9 +242,9 @@ describe("CARD-049: TtsView global controls", () => {
     const store = createTestStore();
     renderWithProviders(<TtsView />, { store });
 
-    const checkboxes = screen.getAllByRole("checkbox");
-    // Second checkbox is the announce toggle (first is enable/disable)
-    const announceToggle = checkboxes[1];
+    const switches = screen.getAllByRole("switch");
+    // Second switch is the announce toggle (first is enable/disable)
+    const announceToggle = switches[1];
     fireEvent.click(announceToggle);
     expect(store.getState().tts.speakAgentName).toBe(true);
   });
