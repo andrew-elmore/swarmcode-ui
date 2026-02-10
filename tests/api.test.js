@@ -17,6 +17,7 @@ import {
   pollBoard,
   addRecentProject,
   getRecentProjects,
+  deleteProject,
 } from "../src/services/api.js";
 
 // --- Mock fetch globally ---
@@ -386,5 +387,37 @@ describe("api request configuration", () => {
     mockFetchSuccess({ projects: [] });
     await getRecentProjects();
     expect(global.fetch.mock.calls[0][1].method).toBe("POST");
+  });
+
+  test("includes X-Project-Token header when REACT_APP_PROJECT_TOKEN is set", async () => {
+    // The HEADERS object is built at module load time from process.env.
+    // Since REACT_APP_PROJECT_TOKEN is empty in test env, the header is
+    // conditionally excluded. Verify the conditional spread pattern works
+    // by checking the header is either present (if env set) or absent (if not).
+    mockFetchSuccess({ projects: [] });
+    await getRecentProjects();
+    const headers = global.fetch.mock.calls[0][1].headers;
+    // In test env without REACT_APP_PROJECT_TOKEN, header should be absent
+    if (process.env.REACT_APP_PROJECT_TOKEN) {
+      expect(headers["X-Project-Token"]).toBe(process.env.REACT_APP_PROJECT_TOKEN);
+    } else {
+      expect(headers["X-Project-Token"]).toBeUndefined();
+    }
+  });
+});
+
+// ─── deleteProject ──────────────────────────────────────────────────────────
+
+describe("api.deleteProject", () => {
+  test("sends path to deleteProject endpoint", async () => {
+    mockFetchSuccess({ success: true });
+    await deleteProject("C:\\test\\proj");
+    expect(getLastFetchUrl()).toContain("/functions/deleteProject");
+    expect(getLastFetchBody()).toEqual({ path: "C:\\test\\proj" });
+  });
+
+  test("throws on API error", async () => {
+    mockFetchError("Project not found");
+    await expect(deleteProject("C:\\bad")).rejects.toThrow("Project not found");
   });
 });

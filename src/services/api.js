@@ -5,6 +5,7 @@ import Parse from "parse";
 const PARSE_URL = process.env.REACT_APP_PARSE_URL || "http://localhost:1337/parse";
 const APP_ID = process.env.REACT_APP_PARSE_APP_ID || "swarmcode";
 const JS_KEY = process.env.REACT_APP_PARSE_REST_API_KEY || "";
+const PROJECT_TOKEN = process.env.REACT_APP_PROJECT_TOKEN || "";
 
 // Initialize Parse SDK (needed for LiveQuery)
 Parse.initialize(APP_ID, JS_KEY);
@@ -20,6 +21,7 @@ const HEADERS = {
   "X-Parse-Application-Id": APP_ID,
   "X-Parse-REST-API-Key": JS_KEY,
   "Content-Type": "application/json",
+  ...(PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {}),
 };
 
 async function callFunction(name, params = {}) {

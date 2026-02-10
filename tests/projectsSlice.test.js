@@ -209,4 +209,20 @@ describe("deleteProject thunk", () => {
 
     expect(store.getState().projects.error).toBe("Project not found");
   });
+
+  test("does not remove project from list on rejected (failed delete)", async () => {
+    api.deleteProject.mockRejectedValue(new Error("Server error"));
+
+    const store = createTestStore({
+      projects: [
+        { path: "C:\\proj1", name: "proj1", lastOpened: "2026-02-07" },
+        { path: "C:\\proj2", name: "proj2", lastOpened: "2026-02-06" },
+      ],
+    });
+    await store.dispatch(deleteProject({ path: "C:\\proj1" }));
+
+    const state = store.getState().projects;
+    expect(state.projects).toHaveLength(2);
+    expect(state.error).toBe("Server error");
+  });
 });

@@ -973,6 +973,160 @@ describe("ProjectsView", () => {
     expect(screen.getByRole("button", { name: /^add$/i })).toBeInTheDocument();
   });
 
+  test("delete button shows spinner and 'Deleting...' text while deletion is in progress", async () => {
+    const user = userEvent.setup();
+    // Use a promise that we control to simulate a slow delete
+    let resolveDelete;
+    api.deleteProject.mockImplementation(() => new Promise((resolve) => { resolveDelete = resolve; }));
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+
+    // Open delete dialog and click Delete
+    await user.click(screen.getByTitle("Delete project"));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    // While deleting: button should show "Deleting..." and a spinner
+    await waitFor(() => {
+      expect(screen.getByText("Deleting...")).toBeInTheDocument();
+    });
+    expect(screen.getByRole("progressbar")).toBeInTheDocument();
+
+    // Both buttons (Cancel and Delete) should be disabled during deletion
+    const cancelBtn = screen.getByRole("button", { name: /cancel/i });
+    const deleteBtn = screen.getByText("Deleting...").closest("button");
+    expect(cancelBtn).toBeDisabled();
+    expect(deleteBtn).toBeDisabled();
+
+    // Resolve the delete to clean up
+    const { act } = await import("@testing-library/react");
+    await act(async () => { resolveDelete({ success: true }); });
+  });
+
+  test("shows error Alert banner when delete fails", async () => {
+    const user = userEvent.setup();
+    api.deleteProject.mockRejectedValue(new Error("Server error: delete failed"));
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+
+    // Open delete dialog and click Delete
+    await user.click(screen.getByTitle("Delete project"));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    // Wait for the thunk rejection to propagate to the store and re-render
+    await waitFor(() => {
+      expect(store.getState().projects.error).toBeTruthy();
+    });
+
+    // The error Alert renders in the main Box (aria-hidden while Dialog is open),
+    // so we query by text content instead of role
+    await waitFor(() => {
+      expect(screen.getByText("Server error: delete failed")).toBeInTheDocument();
+    });
+  });
+
+  test("error Alert banner can be dismissed with close button", async () => {
+    const user = userEvent.setup();
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: "Previous error message",
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+
+    // Alert should be visible (no Dialog open so aria-hidden is not set)
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByText("Previous error message")).toBeInTheDocument();
+
+    // Close the alert via its close button
+    const closeBtn = screen.getByRole("alert").querySelector("button");
+    await user.click(closeBtn);
+
+    // Error should be cleared in store
+    await waitFor(() => {
+      expect(store.getState().projects.error).toBeNull();
+    });
+  });
+
+  test("dialog stays open when delete fails (so user can retry)", async () => {
+    const user = userEvent.setup();
+    api.deleteProject.mockRejectedValue(new Error("Network failure"));
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+
+    // Open delete dialog and trigger failed delete
+    await user.click(screen.getByTitle("Delete project"));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    // Wait for the error to be set
+    await waitFor(() => {
+      expect(store.getState().projects.error).toBeTruthy();
+    });
+
+    // Dialog should still be open (title still visible)
+    expect(screen.getByText("Delete Project")).toBeInTheDocument();
+    // Delete button should be re-enabled (not in deleting state anymore)
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /^delete$/i })).toBeEnabled();
+    });
+  });
+
+  test("dialog closes after successful delete", async () => {
+    const user = userEvent.setup();
+    api.deleteProject.mockResolvedValue({ success: true });
+    const store = createTestStore({
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      projects: {
+        projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
+        activeProject: { path: "/proj/alpha", name: "alpha" },
+        loading: false,
+        error: null,
+      },
+    });
+    renderWithProviders(<ProjectsView />, { store });
+
+    // Open delete dialog and confirm
+    await user.click(screen.getByTitle("Delete project"));
+    await user.click(screen.getByRole("button", { name: /^delete$/i }));
+
+    // Dialog should close after successful delete
+    await waitFor(() => {
+      expect(screen.queryByText("Delete Project")).not.toBeInTheDocument();
+    });
+  });
+
   test("clicking a project sets it as active", async () => {
     const user = userEvent.setup();
     api.addRecentProject.mockResolvedValue({ success: true });

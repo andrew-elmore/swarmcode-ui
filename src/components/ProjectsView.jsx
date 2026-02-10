@@ -13,6 +13,8 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
+import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
 import AddIcon from "@mui/icons-material/Add";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppDispatch, useAppSelector } from "../store";
@@ -21,13 +23,15 @@ import {
   addRecentProject,
   setActiveProject,
   deleteProject,
+  clearError,
 } from "../store/projectsSlice";
 
 export default function ProjectsView() {
   const dispatch = useAppDispatch();
-  const { projects, activeProject } = useAppSelector((s) => s.projects);
+  const { projects, activeProject, error } = useAppSelector((s) => s.projects);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [newPath, setNewPath] = useState("");
 
@@ -37,10 +41,14 @@ export default function ProjectsView() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
-    await dispatch(deleteProject({ path: deleteTarget.path }));
-    setDeleteOpen(false);
-    setDeleteTarget(null);
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    const result = await dispatch(deleteProject({ path: deleteTarget.path }));
+    setDeleting(false);
+    if (!result.error) {
+      setDeleteOpen(false);
+      setDeleteTarget(null);
+    }
   };
 
   const handleAddProject = async () => {
@@ -61,6 +69,11 @@ export default function ProjectsView() {
 
   return (
     <Box sx={{ p: 2, maxWidth: 700, mx: "auto" }}>
+      {error && (
+        <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">Projects</Typography>
         <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={() => setAddOpen(true)}>
@@ -107,9 +120,15 @@ export default function ProjectsView() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
-          <Button onClick={handleDeleteConfirm} color="error" variant="contained">
-            Delete
+          <Button onClick={() => setDeleteOpen(false)} disabled={deleting}>Cancel</Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            {deleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogActions>
       </Dialog>

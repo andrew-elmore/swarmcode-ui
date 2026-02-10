@@ -13,7 +13,7 @@ module.exports = {
     path: path.resolve(__dirname, "dist"),
     filename: isProd ? "assets/[name].[contenthash:8].js" : "assets/[name].js",
     publicPath: "/",
-    clean: true,
+    clean: false,
   },
   resolve: {
     extensions: [".js", ".jsx", ".ts", ".tsx", ".json"],
@@ -70,6 +70,9 @@ module.exports = {
       ),
       "process.env.REACT_APP_PARSE_LIVEQUERY_URL": JSON.stringify(
         process.env.REACT_APP_PARSE_LIVEQUERY_URL || ""
+      ),
+      "process.env.REACT_APP_PROJECT_TOKEN": JSON.stringify(
+        process.env.REACT_APP_PROJECT_TOKEN || ""
       ),
     }),
     new CopyPlugin({
