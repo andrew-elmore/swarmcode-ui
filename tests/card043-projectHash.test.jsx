@@ -17,6 +17,7 @@ import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer, { sendMessage, loadConversation, loadMoreMessages } from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
+import ttsReducer from "../src/store/ttsSlice";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
@@ -51,8 +52,12 @@ function createTestStore(preloadedState = {}) {
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,
+      tts: ttsReducer,
     },
-    preloadedState,
+    preloadedState: {
+      tts: { enabled: false, volume: 1.0, rate: 1.0, perAgentVoice: {}, speakAgentName: false, error: null },
+      ...preloadedState,
+    },
   });
 }
 

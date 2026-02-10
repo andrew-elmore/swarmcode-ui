@@ -1,13 +1,17 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import Box from "@mui/material/Box";
 import IconButton from "@mui/material/IconButton";
 import Slider from "@mui/material/Slider";
 import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Tooltip from "@mui/material/Tooltip";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
 import StopIcon from "@mui/icons-material/Stop";
+import { useAppDispatch, useAppSelector } from "../store";
+import { setEnabled, setVolume, setRate, clearError } from "../store/ttsSlice";
 
 const SPEED_OPTIONS = [
   { label: "0.75x", value: 0.75 },
@@ -17,9 +21,8 @@ const SPEED_OPTIONS = [
 ];
 
 export default function TtsControls({ engineRef }) {
-  const [enabled, setEnabled] = useState(false);
-  const [rate, setRate] = useState(1.0);
-  const [volume, setVolume] = useState(1.0);
+  const dispatch = useAppDispatch();
+  const tts = useAppSelector((s) => s.tts);
   const [voices, setVoices] = useState([]);
   const [selectedVoice, setSelectedVoice] = useState("");
 
@@ -35,32 +38,26 @@ export default function TtsControls({ engineRef }) {
       }
     };
     loadVoices();
-    // Some browsers fire voiceschanged async
     if (window.speechSynthesis?.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = loadVoices;
     }
   }, [engineRef, selectedVoice]);
 
   const handleToggle = useCallback(() => {
-    const next = !enabled;
-    setEnabled(next);
-    engineRef?.current?.setEnabled(next);
-  }, [enabled, engineRef]);
+    dispatch(setEnabled(!tts.enabled));
+  }, [tts.enabled, dispatch]);
 
   const handleStop = useCallback(() => {
     engineRef?.current?.stop();
   }, [engineRef]);
 
   const handleRateChange = useCallback((e) => {
-    const val = e.target.value;
-    setRate(val);
-    engineRef?.current?.setRate(val);
-  }, [engineRef]);
+    dispatch(setRate(e.target.value));
+  }, [dispatch]);
 
   const handleVolumeChange = useCallback((_, val) => {
-    setVolume(val);
-    engineRef?.current?.setVolume(val);
-  }, [engineRef]);
+    dispatch(setVolume(val));
+  }, [dispatch]);
 
   const handleVoiceChange = useCallback((e) => {
     const name = e.target.value;
@@ -69,63 +66,80 @@ export default function TtsControls({ engineRef }) {
     if (voice) engineRef?.current?.setVoice(voice);
   }, [engineRef, voices]);
 
+  const handleCloseError = useCallback(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+
   if (!engineRef) return null;
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-      <Tooltip title={enabled ? "Disable TTS" : "Enable TTS"}>
-        <IconButton size="small" onClick={handleToggle} color={enabled ? "primary" : "default"}>
-          {enabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
-        </IconButton>
-      </Tooltip>
+    <>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Tooltip title={tts.enabled ? "Disable TTS" : "Enable TTS"}>
+          <IconButton size="small" onClick={handleToggle} color={tts.enabled ? "primary" : "default"}>
+            {tts.enabled ? <VolumeUpIcon fontSize="small" /> : <VolumeOffIcon fontSize="small" />}
+          </IconButton>
+        </Tooltip>
 
-      {enabled && (
-        <>
-          <Tooltip title="Stop speaking">
-            <IconButton size="small" onClick={handleStop}>
-              <StopIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
+        {tts.enabled && (
+          <>
+            <Tooltip title="Stop speaking">
+              <IconButton size="small" onClick={handleStop}>
+                <StopIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-          <Slider
-            size="small"
-            min={0}
-            max={1}
-            step={0.1}
-            value={volume}
-            onChange={handleVolumeChange}
-            sx={{ width: 60 }}
-            aria-label="Volume"
-          />
+            <Slider
+              size="small"
+              min={0}
+              max={1}
+              step={0.1}
+              value={tts.volume}
+              onChange={handleVolumeChange}
+              sx={{ width: 60 }}
+              aria-label="Volume"
+            />
 
-          <Select
-            size="small"
-            value={rate}
-            onChange={handleRateChange}
-            variant="standard"
-            sx={{ fontSize: "0.75rem", minWidth: 50 }}
-          >
-            {SPEED_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-            ))}
-          </Select>
-
-          {voices.length > 0 && (
             <Select
               size="small"
-              value={selectedVoice}
-              onChange={handleVoiceChange}
+              value={tts.rate}
+              onChange={handleRateChange}
               variant="standard"
-              sx={{ fontSize: "0.75rem", maxWidth: 120 }}
-              displayEmpty
+              sx={{ fontSize: "0.75rem", minWidth: 50 }}
             >
-              {voices.filter((v) => v.lang.startsWith("en")).map((v) => (
-                <MenuItem key={v.name} value={v.name}>{v.name.split(" ").slice(0, 3).join(" ")}</MenuItem>
+              {SPEED_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
               ))}
             </Select>
-          )}
-        </>
-      )}
-    </Box>
+
+            {voices.length > 0 && (
+              <Select
+                size="small"
+                value={selectedVoice}
+                onChange={handleVoiceChange}
+                variant="standard"
+                sx={{ fontSize: "0.75rem", maxWidth: 120 }}
+                displayEmpty
+              >
+                {voices.filter((v) => v.lang.startsWith("en")).map((v) => (
+                  <MenuItem key={v.name} value={v.name}>{v.name.split(" ").slice(0, 3).join(" ")}</MenuItem>
+                ))}
+              </Select>
+            )}
+          </>
+        )}
+      </Box>
+
+      <Snackbar
+        open={!!tts.error}
+        autoHideDuration={5000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={handleCloseError} severity="warning" variant="filled" sx={{ width: "100%" }}>
+          {tts.error}
+        </Alert>
+      </Snackbar>
+    </>
   );
 }

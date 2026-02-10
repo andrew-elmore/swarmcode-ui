@@ -258,12 +258,14 @@ describe("TtsEngine", () => {
   });
 
   // TC-28: speak() preprocesses and queues when enabled
+  // Note: setEnabled(true) calls synth.speak(emptyUtterance) to unlock audio,
+  // so the actual utterance from engine.speak() is the second call.
   test("TC-28: speak() preprocesses text and calls synth.speak when enabled", () => {
     const engine = new TtsEngine();
     engine.setEnabled(true);
     engine.speak("Hello world");
-    expect(synthMock.speak).toHaveBeenCalledTimes(1);
-    const utterance = synthMock.speak.mock.calls[0][0];
+    expect(synthMock.speak).toHaveBeenCalledTimes(2);
+    const utterance = synthMock.speak.mock.calls[1][0];
     expect(utterance).toBeInstanceOf(MockUtterance);
     expect(utterance.text).toBe("Hello world");
   });

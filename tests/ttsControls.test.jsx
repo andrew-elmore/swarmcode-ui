@@ -16,6 +16,7 @@ import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
+import ttsReducer from "../src/store/ttsSlice";
 import TtsControls from "../src/components/TtsControls";
 import MessagesView from "../src/components/MessagesView";
 
@@ -65,8 +66,12 @@ function createTestStore(preloadedState = {}) {
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,
+      tts: ttsReducer,
     },
-    preloadedState,
+    preloadedState: {
+      tts: { enabled: false, volume: 1.0, rate: 1.0, perAgentVoice: {}, speakAgentName: false, error: null },
+      ...preloadedState,
+    },
   });
 }
 
@@ -149,36 +154,25 @@ describe("TtsControls", () => {
   // TC-30: Renders toggle button when engine provided
   test("TC-30: renders toggle button with VolumeOff icon when engine provided", () => {
     const engine = createMockEngine();
-    render(
-      <ThemeProvider theme={theme}>
-        <TtsControls engineRef={{ current: engine }} />
-      </ThemeProvider>
-    );
+    renderWithProviders(<TtsControls engineRef={{ current: engine }} />);
     expect(screen.getByTestId("VolumeOffIcon")).toBeInTheDocument();
   });
 
   // TC-31: Returns null when engine is null
   test("TC-31: returns null when engine is null", () => {
-    const { container } = render(
-      <ThemeProvider theme={theme}>
-        <TtsControls engineRef={null} />
-      </ThemeProvider>
-    );
-    expect(container.firstChild).toBeNull();
+    const { container } = renderWithProviders(<TtsControls engineRef={null} />);
+    // The Snackbar still renders even when engineRef is null, so check the first meaningful child
+    expect(container.querySelector("[data-testid='VolumeOffIcon']")).toBeNull();
+    expect(container.querySelector("[data-testid='VolumeUpIcon']")).toBeNull();
   });
 
   // TC-32: Click toggle enables TTS
   test("TC-32: click toggle enables TTS, shows VolumeUp icon", async () => {
     const user = userEvent.setup();
     const engine = createMockEngine();
-    render(
-      <ThemeProvider theme={theme}>
-        <TtsControls engineRef={{ current: engine }} />
-      </ThemeProvider>
-    );
+    renderWithProviders(<TtsControls engineRef={{ current: engine }} />);
 
     await user.click(screen.getByTestId("VolumeOffIcon").closest("button"));
-    expect(engine.setEnabled).toHaveBeenCalledWith(true);
     expect(screen.getByTestId("VolumeUpIcon")).toBeInTheDocument();
   });
 
@@ -186,11 +180,7 @@ describe("TtsControls", () => {
   test("TC-33: shows stop button, volume slider, speed selector when enabled", async () => {
     const user = userEvent.setup();
     const engine = createMockEngine();
-    render(
-      <ThemeProvider theme={theme}>
-        <TtsControls engineRef={{ current: engine }} />
-      </ThemeProvider>
-    );
+    renderWithProviders(<TtsControls engineRef={{ current: engine }} />);
 
     // Enable TTS
     await user.click(screen.getByTestId("VolumeOffIcon").closest("button"));
@@ -206,11 +196,7 @@ describe("TtsControls", () => {
   // TC-34: Hides controls when disabled
   test("TC-34: hides controls when disabled (only toggle visible)", () => {
     const engine = createMockEngine();
-    render(
-      <ThemeProvider theme={theme}>
-        <TtsControls engineRef={{ current: engine }} />
-      </ThemeProvider>
-    );
+    renderWithProviders(<TtsControls engineRef={{ current: engine }} />);
 
     // Only toggle button visible, no stop/slider/speed
     expect(screen.getByTestId("VolumeOffIcon")).toBeInTheDocument();
@@ -222,11 +208,7 @@ describe("TtsControls", () => {
   test("TC-35: speed selector has all four speed options", async () => {
     const user = userEvent.setup();
     const engine = createMockEngine();
-    render(
-      <ThemeProvider theme={theme}>
-        <TtsControls engineRef={{ current: engine }} />
-      </ThemeProvider>
-    );
+    renderWithProviders(<TtsControls engineRef={{ current: engine }} />);
 
     // Enable TTS to reveal speed selector
     await user.click(screen.getByTestId("VolumeOffIcon").closest("button"));
@@ -268,8 +250,8 @@ describe("Integration: MessagesView + ChatView TTS", () => {
     }
   });
 
-  // TC-36: ChatView receives ttsEngine prop — TtsControls rendered in header
-  test("TC-36: ChatView renders TtsControls in header when agent is selected", async () => {
+  // TC-36: ChatView header no longer has TtsControls (moved to TTS tab in CARD-049)
+  test("TC-36: ChatView header does NOT render TtsControls (moved to TTS tab)", async () => {
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
@@ -291,8 +273,9 @@ describe("Integration: MessagesView + ChatView TTS", () => {
     renderWithProviders(<MessagesView />, { store });
     await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
 
-    // TtsControls renders a VolumeOff toggle button in the ChatView header
-    expect(screen.getByTestId("VolumeOffIcon")).toBeInTheDocument();
+    // TtsControls was removed from ChatView header in CARD-049
+    expect(screen.queryByTestId("VolumeOffIcon")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("VolumeUpIcon")).not.toBeInTheDocument();
   });
 
   // TC-37: Existing MessagesView tests still pass (regression check)

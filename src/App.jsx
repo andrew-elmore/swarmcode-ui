@@ -11,6 +11,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import MailIcon from "@mui/icons-material/Mail";
 import FolderIcon from "@mui/icons-material/Folder";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
+import RecordVoiceOverIcon from "@mui/icons-material/RecordVoiceOver";
 import { useAppDispatch, useAppSelector } from "./store";
 import { fetchBoard } from "./store/boardSlice";
 import AgentsView from "./components/AgentsView";
@@ -18,6 +19,7 @@ import BoardView from "./components/BoardView";
 import MessagesView from "./components/MessagesView";
 import ProjectsView from "./components/ProjectsView";
 import ProjectSelector from "./components/ProjectSelector";
+import TtsView from "./components/TtsView";
 
 export default function App() {
   const [tab, setTab] = useState(0);
@@ -62,6 +64,7 @@ export default function App() {
                 <Tab key="messages" icon={<MailIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="agents" icon={<SmartToyIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="tts" icon={<RecordVoiceOverIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="projects" icon={<FolderIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
               ]
             ) : (
@@ -69,6 +72,7 @@ export default function App() {
                 <Tab key="messages" icon={<MailIcon />} iconPosition="start" label="Messages" />,
                 <Tab key="board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
                 <Tab key="agents" icon={<SmartToyIcon />} iconPosition="start" label="Agents" />,
+                <Tab key="tts" icon={<RecordVoiceOverIcon />} iconPosition="start" label="TTS" />,
                 <Tab key="projects" icon={<FolderIcon />} iconPosition="start" label="Projects" />,
               ]
             )}
@@ -94,7 +98,8 @@ export default function App() {
         {tab === 0 && <MessagesView />}
         {tab === 1 && <BoardView />}
         {tab === 2 && <AgentsView />}
-        {tab === 3 && <ProjectsView />}
+        {tab === 3 && <TtsView />}
+        {tab === 4 && <ProjectsView />}
       </Box>
     </Box>
   );

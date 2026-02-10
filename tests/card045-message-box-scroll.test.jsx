@@ -19,6 +19,7 @@ import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
+import ttsReducer from "../src/store/ttsSlice";
 import App from "../src/App";
 import MessagesView from "../src/components/MessagesView";
 
@@ -59,8 +60,10 @@ function createTestStore(overrides = {}) {
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,
+      tts: ttsReducer,
     },
     preloadedState: {
+      tts: { enabled: false, volume: 1.0, rate: 1.0, perAgentVoice: {}, speakAgentName: false, error: null },
       agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {

@@ -14,6 +14,7 @@ import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
+import ttsReducer from "../src/store/ttsSlice";
 import App from "../src/App";
 import BoardView from "../src/components/BoardView";
 import MessagesView from "../src/components/MessagesView";
@@ -57,8 +58,12 @@ function createTestStore(preloadedState = {}) {
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,
+      tts: ttsReducer,
     },
-    preloadedState,
+    preloadedState: {
+      tts: { enabled: false, volume: 1.0, rate: 1.0, perAgentVoice: {}, speakAgentName: false, error: null },
+      ...preloadedState,
+    },
   });
 }
 

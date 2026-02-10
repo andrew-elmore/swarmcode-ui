@@ -9,9 +9,7 @@ import SendIcon from "@mui/icons-material/Send";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useAppDispatch, useAppSelector } from "../store";
 import { sendMessage, loadConversation, loadMoreMessages } from "../store/messagesSlice";
-import TtsControls from "./TtsControls";
-
-export default function ChatView({ ttsEngineRef }) {
+export default function ChatView() {
   const dispatch = useAppDispatch();
   const { conversations, selectedAgent, sending } = useAppSelector((s) => s.messages);
   const agents = useAppSelector((s) => s.agents.agents);
@@ -122,7 +120,6 @@ export default function ChatView({ ttsEngineRef }) {
             </Typography>
           )}
         </Box>
-        <TtsControls engineRef={ttsEngineRef} />
       </Box>
 
       {/* Messages area */}

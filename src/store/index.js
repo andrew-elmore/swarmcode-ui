@@ -4,6 +4,7 @@ import agentsReducer from "./agentsSlice";
 import boardReducer from "./boardSlice";
 import messagesReducer from "./messagesSlice";
 import projectsReducer from "./projectsSlice";
+import ttsReducer from "./ttsSlice";
 
 const store = configureStore({
   reducer: {
@@ -11,6 +12,7 @@ const store = configureStore({
     board: boardReducer,
     messages: messagesReducer,
     projects: projectsReducer,
+    tts: ttsReducer,
   },
 });
 

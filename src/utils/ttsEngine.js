@@ -106,6 +106,8 @@ export default class TtsEngine {
     this._voice = null;
     this._queue = [];
     this._speaking = false;
+    this._onError = null;
+    this._resumeTimer = null;
 
     // Voices load async in some browsers
     if (this._synth && this._synth.onvoiceschanged !== undefined) {
@@ -145,9 +147,43 @@ export default class TtsEngine {
     return this._synth ? this._synth.getVoices() : [];
   }
 
+  setOnError(cb) { this._onError = cb; }
+
   setEnabled(val) {
     this._enabled = val;
-    if (!val) this.stop();
+    if (val) {
+      // Unlock audio context with an empty utterance (required by autoplay policy)
+      if (this._synth) {
+        try {
+          const unlock = new SpeechSynthesisUtterance("");
+          this._synth.speak(unlock);
+        } catch (e) {
+          if (this._onError) this._onError("Failed to unlock audio: " + e.message);
+        }
+      }
+      this._startResumeTimer();
+    } else {
+      this.stop();
+      this._stopResumeTimer();
+    }
+  }
+
+  // Chrome workaround: speech stops after ~15s. Periodic pause/resume keeps it alive.
+  _startResumeTimer() {
+    this._stopResumeTimer();
+    this._resumeTimer = setInterval(() => {
+      if (this._synth && this._synth.speaking) {
+        this._synth.pause();
+        this._synth.resume();
+      }
+    }, 10000);
+  }
+
+  _stopResumeTimer() {
+    if (this._resumeTimer) {
+      clearInterval(this._resumeTimer);
+      this._resumeTimer = null;
+    }
   }
 
   setRate(rate) { this._rate = Math.max(0.5, Math.min(2.0, rate)); }
@@ -187,7 +223,12 @@ export default class TtsEngine {
     utterance.rate = this._rate;
     utterance.volume = this._volume;
     utterance.onend = () => this._processQueue();
-    utterance.onerror = () => this._processQueue();
+    utterance.onerror = (e) => {
+      if (e.error !== "canceled" && this._onError) {
+        this._onError("Speech error: " + e.error);
+      }
+      this._processQueue();
+    };
     this._synth.speak(utterance);
   }
 }
