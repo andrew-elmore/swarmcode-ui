@@ -10,6 +10,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
+import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
@@ -39,6 +40,10 @@ jest.mock("../src/services/api", () => ({
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
+  getAgents: jest.fn(),
+  createAgent: jest.fn(),
+  updateAgent: jest.fn(),
+  deleteAgent: jest.fn(),
 }));
 
 const theme = createTheme({
@@ -48,6 +53,7 @@ const theme = createTheme({
 function createTestStore(preloadedState = {}) {
   return configureStore({
     reducer: {
+      agents: agentsReducer,
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,
@@ -83,6 +89,15 @@ beforeEach(() => {
   api.subscribeToMessages.mockResolvedValue(jest.fn()); // returns unsubscribe function
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
+  api.getAgents.mockResolvedValue({
+    agents: [
+      { name: "pm-1", description: "PM Agent", isActive: true, sortOrder: 0 },
+      { name: "senior-dev-1", description: "Senior Dev", isActive: true, sortOrder: 1 },
+      { name: "developer-1", description: "Developer", isActive: true, sortOrder: 2 },
+      { name: "qa-1", description: "QA Agent", isActive: true, sortOrder: 3 },
+      { name: "devops-1", description: "DevOps Agent", isActive: true, sortOrder: 4 },
+    ],
+  });
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -263,6 +278,19 @@ describe("BoardView", () => {
   });
 });
 
+// Default agents state for tests that need agent labels
+const DEFAULT_AGENTS_STATE = {
+  agents: [
+    { name: "pm-1", description: "PM Agent", isActive: true, sortOrder: 0 },
+    { name: "senior-dev-1", description: "Senior Dev", isActive: true, sortOrder: 1 },
+    { name: "developer-1", description: "Developer", isActive: true, sortOrder: 2 },
+    { name: "qa-1", description: "QA Agent", isActive: true, sortOrder: 3 },
+    { name: "devops-1", description: "DevOps Agent", isActive: true, sortOrder: 4 },
+  ],
+  loading: false,
+  error: null,
+};
+
 // ─── MessagesView Component ──────────────────────────────────────────────────
 
 describe("MessagesView", () => {
@@ -282,7 +310,20 @@ describe("MessagesView", () => {
   });
 
   test("renders agent list in sidebar", async () => {
-    await renderMessages();
+    const store = createTestStore({
+      agents: {
+        agents: [
+          { name: "pm-1", description: "PM Agent", isActive: true, sortOrder: 0 },
+          { name: "senior-dev-1", description: "Senior Dev", isActive: true, sortOrder: 1 },
+          { name: "developer-1", description: "Developer", isActive: true, sortOrder: 2 },
+          { name: "qa-1", description: "QA Agent", isActive: true, sortOrder: 3 },
+          { name: "devops-1", description: "DevOps Agent", isActive: true, sortOrder: 4 },
+        ],
+        loading: false,
+        error: null,
+      },
+    });
+    await renderMessages(store);
     expect(screen.getByText("All Agents")).toBeInTheDocument();
     expect(screen.getByText("PM Agent")).toBeInTheDocument();
     expect(screen.getByText("Senior Dev")).toBeInTheDocument();
@@ -303,16 +344,14 @@ describe("MessagesView", () => {
 
   test("shows chat view with empty state when agent is selected", async () => {
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
-          "senior-dev-1": { messages: [], loaded: false },
-          "developer-1": { messages: [], loaded: false },
-          "qa-1": { messages: [], loaded: false },
-          "devops-1": { messages: [], loaded: false },
           all: { messages: [], loaded: false },
         },
+        unreadCounts: { all: 0 },
         selectedAgent: "pm-1",
         sending: false,
         error: null,
@@ -330,6 +369,7 @@ describe("MessagesView", () => {
 
   test("renders messages in chat view when conversation has messages", async () => {
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
@@ -339,12 +379,9 @@ describe("MessagesView", () => {
             ],
             loaded: true,
           },
-          "senior-dev-1": { messages: [], loaded: false },
-          "developer-1": { messages: [], loaded: false },
-          "qa-1": { messages: [], loaded: false },
-          "devops-1": { messages: [], loaded: false },
           all: { messages: [], loaded: false },
         },
+        unreadCounts: { all: 0 },
         selectedAgent: "pm-1",
         sending: false,
         error: null,
@@ -360,16 +397,14 @@ describe("MessagesView", () => {
 
   test("send button is disabled when input is empty", async () => {
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
-          "senior-dev-1": { messages: [], loaded: false },
-          "developer-1": { messages: [], loaded: false },
-          "qa-1": { messages: [], loaded: false },
-          "devops-1": { messages: [], loaded: false },
           all: { messages: [], loaded: false },
         },
+        unreadCounts: { all: 0 },
         selectedAgent: "pm-1",
         sending: false,
         error: null,
@@ -390,16 +425,14 @@ describe("MessagesView", () => {
 
   test("renders message input placeholder with agent name", async () => {
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
-          "senior-dev-1": { messages: [], loaded: false },
-          "developer-1": { messages: [], loaded: false },
-          "qa-1": { messages: [], loaded: false },
-          "devops-1": { messages: [], loaded: false },
           all: { messages: [], loaded: false },
         },
+        unreadCounts: { all: 0 },
         selectedAgent: "pm-1",
         sending: false,
         error: null,
@@ -438,16 +471,14 @@ describe("MessagesView", () => {
     });
 
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
-          "senior-dev-1": { messages: [], loaded: false },
-          "developer-1": { messages: [], loaded: false },
-          "qa-1": { messages: [], loaded: false },
-          "devops-1": { messages: [], loaded: false },
           all: { messages: [], loaded: false },
         },
+        unreadCounts: { all: 0 },
         selectedAgent: "pm-1",
         sending: false,
         error: null,
@@ -487,18 +518,18 @@ describe("MessagesView", () => {
 
 describe("ChatView — lazy loading", () => {
   function buildConversations(agentOverrides = {}) {
-    const defaults = { messages: [], loaded: false, hasMore: true, loadingMore: false };
-    const agents = ["pm-1", "senior-dev-1", "developer-1", "qa-1", "devops-1"];
-    const convos = {};
-    agents.forEach((a) => { convos[a] = { ...defaults, ...agentOverrides[a] }; });
-    convos["all"] = { messages: [], loaded: false, hasMore: false, loadingMore: false };
+    const convos = { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } };
+    for (const [agent, override] of Object.entries(agentOverrides)) {
+      const defaults = { messages: [], loaded: false, hasMore: true, loadingMore: false };
+      convos[agent] = { ...defaults, ...override };
+    }
     return convos;
   }
 
   function buildMessagesState(overrides = {}) {
     return {
       conversations: buildConversations(overrides.conversations),
-      unreadCounts: { "pm-1": 0, "senior-dev-1": 0, "developer-1": 0, "qa-1": 0, "devops-1": 0, all: 0 },
+      unreadCounts: { all: 0 },
       selectedAgent: overrides.selectedAgent || "developer-1",
       sending: false,
       error: null,
@@ -512,6 +543,7 @@ describe("ChatView — lazy loading", () => {
     api.subscribeToMessages.mockResolvedValue(jest.fn());
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",
@@ -536,6 +568,7 @@ describe("ChatView — lazy loading", () => {
     api.subscribeToMessages.mockResolvedValue(jest.fn());
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",
@@ -560,6 +593,7 @@ describe("ChatView — lazy loading", () => {
     api.subscribeToMessages.mockResolvedValue(jest.fn());
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",
@@ -586,6 +620,7 @@ describe("ChatView — lazy loading", () => {
     api.subscribeToMessages.mockResolvedValue(jest.fn());
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
+      agents: DEFAULT_AGENTS_STATE,
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",

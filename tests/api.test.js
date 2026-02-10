@@ -57,12 +57,14 @@ describe("api.sendMessage", () => {
   test("calls sendMessage endpoint with correct params", async () => {
     mockFetchSuccess({ success: true, messageId: "abc123" });
     const result = await sendMessage({
+      projectHash: "test-hash",
       from: "qa-1",
       to: "developer-1",
       message: "Hello",
     });
     expect(getLastFetchUrl()).toContain("/functions/sendMessage");
     expect(getLastFetchBody()).toEqual({
+      projectHash: "test-hash",
       from: "qa-1",
       to: "developer-1",
       message: "Hello",
@@ -73,7 +75,7 @@ describe("api.sendMessage", () => {
   test("throws on API error", async () => {
     mockFetchError("Unknown sender 'bad-agent'");
     await expect(
-      sendMessage({ from: "bad-agent", to: "qa-1", message: "Y" })
+      sendMessage({ projectHash: "test-hash", from: "bad-agent", to: "qa-1", message: "Y" })
     ).rejects.toThrow("Unknown sender 'bad-agent'");
   });
 });
@@ -105,11 +107,11 @@ describe("api.pollMessages", () => {
 // ─── getConversation ─────────────────────────────────────────────────────────
 
 describe("api.getConversation", () => {
-  test("calls getConversation with userA and userB", async () => {
+  test("calls getConversation with projectHash, userA and userB", async () => {
     mockFetchSuccess({ messages: [] });
-    await getConversation("owner", "pm-1");
+    await getConversation("test-hash", "owner", "pm-1");
     expect(getLastFetchUrl()).toContain("/functions/getConversation");
-    expect(getLastFetchBody()).toEqual({ userA: "owner", userB: "pm-1" });
+    expect(getLastFetchBody()).toEqual({ projectHash: "test-hash", userA: "owner", userB: "pm-1" });
   });
 
   test("returns messages array", async () => {
@@ -117,7 +119,7 @@ describe("api.getConversation", () => {
       { from: "owner", to: "pm-1", message: "Hello", createdAt: "2026-01-01T00:00:00Z" },
     ];
     mockFetchSuccess({ messages: msgs });
-    const result = await getConversation("owner", "pm-1");
+    const result = await getConversation("test-hash", "owner", "pm-1");
     expect(result.messages).toEqual(msgs);
   });
 });

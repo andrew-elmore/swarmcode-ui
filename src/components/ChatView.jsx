@@ -10,18 +10,14 @@ import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useAppDispatch, useAppSelector } from "../store";
 import { sendMessage, loadConversation, loadMoreMessages } from "../store/messagesSlice";
 
-const AGENT_LABELS = {
-  "pm-1": "PM Agent",
-  "senior-dev-1": "Senior Dev",
-  "developer-1": "Developer",
-  "qa-1": "QA Agent",
-  "devops-1": "DevOps Agent",
-  all: "All Agents",
-};
-
 export default function ChatView() {
   const dispatch = useAppDispatch();
   const { conversations, selectedAgent, sending } = useAppSelector((s) => s.messages);
+  const agents = useAppSelector((s) => s.agents.agents);
+
+  // Build label lookup from dynamic agents list
+  const agentLabels = { all: "All Agents" };
+  agents.forEach((a) => { agentLabels[a.name] = a.description || a.name; });
   const [input, setInput] = useState("");
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -112,7 +108,7 @@ export default function ChatView() {
         }}
       >
         <Typography variant="subtitle1" fontWeight={600}>
-          {AGENT_LABELS[selectedAgent] || selectedAgent}
+          {agentLabels[selectedAgent] || selectedAgent}
         </Typography>
         {selectedAgent !== "all" && (
           <Typography variant="caption" color="text.secondary">
@@ -177,7 +173,7 @@ export default function ChatView() {
               >
                 {!isOwner && (
                   <Typography variant="caption" color={isOwner ? "inherit" : "text.secondary"} sx={{ display: "block", mb: 0.25, fontWeight: 600 }}>
-                    {AGENT_LABELS[msg.from] || msg.from}
+                    {agentLabels[msg.from] || msg.from}
                   </Typography>
                 )}
                 <Typography variant="body2" sx={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
@@ -219,7 +215,7 @@ export default function ChatView() {
           multiline
           maxRows={4}
           size="small"
-          placeholder={selectedAgent === "all" ? "Broadcast to all agents..." : `Message ${AGENT_LABELS[selectedAgent] || selectedAgent}...`}
+          placeholder={selectedAgent === "all" ? "Broadcast to all agents..." : `Message ${agentLabels[selectedAgent] || selectedAgent}...`}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}

@@ -42,8 +42,8 @@ async function callFunction(name, params = {}) {
 
 // --- Messaging ---
 
-export async function sendMessage({ from, to, message }) {
-  return callFunction("sendMessage", { from, to, message });
+export async function sendMessage({ projectHash, from, to, message }) {
+  return callFunction("sendMessage", { projectHash, from, to, message });
 }
 
 export async function pollMessages(since) {
@@ -51,8 +51,8 @@ export async function pollMessages(since) {
   return callFunction("pollMessages", params);
 }
 
-export async function getConversation(userA, userB, { limit, before } = {}) {
-  const params = { userA, userB };
+export async function getConversation(projectHash, userA, userB, { limit, before } = {}) {
+  const params = { projectHash, userA, userB };
   if (limit) params.limit = limit;
   if (before) params.before = before;
   return callFunction("getConversation", params);

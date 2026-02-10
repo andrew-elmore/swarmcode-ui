@@ -5,6 +5,7 @@
 
 import { configureStore } from "@reduxjs/toolkit";
 import * as api from "../src/services/api";
+import boardReducer from "../src/store/boardSlice";
 import messagesReducer, { sendMessage, pollMessages, loadConversation, loadMoreMessages, selectAgent, clearError, clearMessages } from "../src/store/messagesSlice";
 
 jest.mock("../src/services/api", () => ({
@@ -23,12 +24,25 @@ jest.mock("../src/services/api", () => ({
   deleteProject: jest.fn(),
 }));
 
+const TEST_PROJECT_HASH = "test-hash-abc";
+
 function createTestStore(preloadedState) {
+  const boardState = {
+    board: { projectHash: TEST_PROJECT_HASH },
+    cards: [],
+    selectedCard: null,
+    loading: false,
+    error: null,
+    lastPoll: null,
+  };
   return configureStore({
-    reducer: { messages: messagesReducer },
+    reducer: { board: boardReducer, messages: messagesReducer },
     preloadedState: preloadedState
-      ? { messages: { ...messagesReducer(undefined, { type: "@@INIT" }), ...preloadedState } }
-      : undefined,
+      ? {
+          board: boardState,
+          messages: { ...messagesReducer(undefined, { type: "@@INIT" }), ...preloadedState },
+        }
+      : { board: boardState },
   });
 }
 
@@ -47,18 +61,12 @@ describe("messagesSlice initial state", () => {
     expect(state.lastPoll).toBeNull();
   });
 
-  test("has per-agent conversation state with lazy loading fields", () => {
+  test("has lazy conversation state (only 'all' channel pre-created)", () => {
     const store = createTestStore();
     const state = store.getState().messages;
     expect(state.conversations).toBeDefined();
-    const agents = ["pm-1", "senior-dev-1", "developer-1", "qa-1", "devops-1"];
-    for (const agent of agents) {
-      const convo = state.conversations[agent];
-      expect(convo.messages).toEqual([]);
-      expect(convo.loaded).toBe(false);
-      expect(convo.hasMore).toBe(true);
-      expect(convo.loadingMore).toBe(false);
-    }
+    // Only the 'all' broadcast channel exists by default; agent conversations are created lazily
+    expect(Object.keys(state.conversations)).toEqual(["all"]);
   });
 
   test("broadcast 'all' channel has hasMore=false by default", () => {
@@ -287,8 +295,8 @@ describe("loadMoreMessages thunk", () => {
     api.getConversation.mockResolvedValueOnce({ messages: [], hasMore: false });
     await store.dispatch(loadMoreMessages("developer-1"));
 
-    // Should pass the oldest message's createdAt as the 'before' cursor
-    expect(api.getConversation).toHaveBeenLastCalledWith("owner", "developer-1", {
+    // Should pass projectHash, userA, userB, and the 'before' cursor
+    expect(api.getConversation).toHaveBeenLastCalledWith(TEST_PROJECT_HASH, "owner", "developer-1", {
       before: "2026-02-09T09:00:00Z",
     });
   });

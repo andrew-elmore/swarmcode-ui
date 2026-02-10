@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import Box from "@mui/material/Box";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -8,16 +9,21 @@ import Divider from "@mui/material/Divider";
 import Badge from "@mui/material/Badge";
 import GroupsIcon from "@mui/icons-material/Groups";
 import PersonIcon from "@mui/icons-material/Person";
-
-const AGENTS = [
-  { id: "pm-1", label: "PM Agent" },
-  { id: "senior-dev-1", label: "Senior Dev" },
-  { id: "developer-1", label: "Developer" },
-  { id: "qa-1", label: "QA Agent" },
-  { id: "devops-1", label: "DevOps Agent" },
-];
+import { useAppDispatch, useAppSelector } from "../store";
+import { fetchAgents } from "../store/agentsSlice";
 
 export default function AgentSidebar({ selectedAgent, onSelectAgent, unreadCounts }) {
+  const dispatch = useAppDispatch();
+  const agents = useAppSelector((s) => s.agents.agents);
+  const projectHash = useAppSelector((s) => s.board.board?.projectHash);
+
+  // Load agents from DB when projectHash is available
+  useEffect(() => {
+    if (projectHash && agents.length === 0) {
+      dispatch(fetchAgents(projectHash));
+    }
+  }, [dispatch, projectHash, agents.length]);
+
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <Box sx={{ px: 2, py: 1.5 }}>
@@ -45,23 +51,23 @@ export default function AgentSidebar({ selectedAgent, onSelectAgent, unreadCount
 
         <Divider sx={{ my: 0.5 }} />
 
-        {/* Individual agents */}
-        {AGENTS.map((agent) => (
+        {/* Individual agents — loaded dynamically from DB */}
+        {agents.filter((a) => a.isActive).map((agent) => (
           <ListItemButton
-            key={agent.id}
-            selected={selectedAgent === agent.id}
-            onClick={() => onSelectAgent(agent.id)}
+            key={agent.name}
+            selected={selectedAgent === agent.name}
+            onClick={() => onSelectAgent(agent.name)}
             sx={{ py: 1.25, px: 2 }}
           >
             <ListItemIcon sx={{ minWidth: 36 }}>
-              <Badge badgeContent={unreadCounts?.[agent.id] || 0} color="error" max={99}>
-                <PersonIcon color={selectedAgent === agent.id ? "primary" : "action"} />
+              <Badge badgeContent={unreadCounts?.[agent.name] || 0} color="error" max={99}>
+                <PersonIcon color={selectedAgent === agent.name ? "primary" : "action"} />
               </Badge>
             </ListItemIcon>
             <ListItemText
-              primary={agent.label}
-              secondary={agent.id}
-              primaryTypographyProps={{ variant: "body2", fontWeight: selectedAgent === agent.id ? 600 : 400 }}
+              primary={agent.description || agent.name}
+              secondary={agent.name}
+              primaryTypographyProps={{ variant: "body2", fontWeight: selectedAgent === agent.name ? 600 : 400 }}
               secondaryTypographyProps={{ variant: "caption", sx: { fontSize: "0.65rem" } }}
             />
           </ListItemButton>
