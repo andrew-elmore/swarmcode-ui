@@ -159,3 +159,34 @@ export async function getRecentProjects() {
 export async function deleteProject(path) {
   return callFunction("deleteProject", { path });
 }
+
+// --- Agents ---
+
+export async function getAgents(projectHash) {
+  return callFunction("getAgents", { projectHash });
+}
+
+export async function createAgent({ projectHash, name, description, openingInstructions, permanentMemory, permissions, isActive, sortOrder }) {
+  return callFunction("createAgent", {
+    projectHash,
+    name,
+    description,
+    openingInstructions,
+    permanentMemory,
+    permissions,
+    isActive,
+    sortOrder,
+  });
+}
+
+export async function updateAgent({ projectHash, name, ...updates }) {
+  const params = { projectHash, name };
+  for (const key of ["description", "openingInstructions", "permanentMemory", "permissions", "isActive", "sortOrder"]) {
+    if (updates[key] !== undefined) params[key] = updates[key];
+  }
+  return callFunction("updateAgent", params);
+}
+
+export async function deleteAgent(projectHash, name) {
+  return callFunction("deleteAgent", { projectHash, name });
+}
