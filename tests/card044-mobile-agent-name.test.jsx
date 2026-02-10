@@ -10,7 +10,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import { ThemeProvider, createTheme, useMediaQuery } from "@mui/material";
+import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
@@ -93,7 +93,6 @@ afterEach(() => jest.restoreAllMocks());
 describe("CARD-044: Mobile agent list shows name only", () => {
   beforeEach(() => {
     // Simulate mobile viewport — breakpoints.down("md") returns true
-    const realUseMediaQuery = jest.requireActual("@mui/material/useMediaQuery").default;
     require("@mui/material/useMediaQuery").default.mockImplementation((query) => {
       // down("md") query matches mobile screens
       if (typeof query === "string" && query.includes("max-width")) return true;
@@ -127,10 +126,7 @@ describe("CARD-044: Mobile agent list shows name only", () => {
   test("does NOT show secondary text on mobile", () => {
     renderSidebar();
 
-    // There should be no secondary Typography elements for agent rows
-    // On desktop, secondary shows agent.name — on mobile it should be undefined
-    const listItems = screen.getAllByRole("button");
-    // Each agent list item should only have primary text
+    // Each agent list item should only have primary text (name appears once, not twice)
     for (const agent of TEST_AGENTS) {
       // The name appears exactly once (as primary text), not twice
       const matches = screen.getAllByText(agent.name);

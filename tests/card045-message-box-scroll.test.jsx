@@ -110,10 +110,8 @@ describe("CARD-045: App uses fixed height (100vh) instead of minHeight", () => {
 
     // The root Box rendered by App
     const rootBox = container.firstChild;
-    const style = rootBox.style;
 
     // Should use height (capping at viewport) not minHeight (allowing infinite growth)
-    // In jsdom, MUI's sx prop computes inline styles
     // We verify via the rendered output that the component structure is correct
     expect(rootBox).toBeInTheDocument();
     // The root container should have flex column layout
