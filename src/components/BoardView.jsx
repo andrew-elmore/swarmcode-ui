@@ -176,7 +176,7 @@ export default function BoardView() {
                 minWidth: isMobile ? "100%" : 240,
                 maxWidth: isMobile ? "100%" : 280,
                 flex: isMobile ? "1 1 100%" : "1 0 240px",
-                bgcolor: "grey.100",
+                bgcolor: "background.paper",
                 p: 1,
                 display: "flex",
                 flexDirection: "column",
