@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
@@ -10,10 +10,13 @@ import Alert from "@mui/material/Alert";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
+import Divider from "@mui/material/Divider";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
+import MicIcon from "@mui/icons-material/Mic";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useAppDispatch, useAppSelector } from "../store";
 import {
   setEnabled,
@@ -25,7 +28,15 @@ import {
   skipToMessage,
   clearQueue,
 } from "../store/ttsSlice";
+import { sendMessage } from "../store/messagesSlice";
 import { ttsPreprocess } from "../utils/ttsPreprocess";
+import { parseVoiceCommand } from "../utils/voiceCommandParser";
+
+// Resolved at call time (not module level) so test mocks on window are picked up
+function getSpeechRecognition() {
+  if (typeof window === "undefined") return null;
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+}
 
 /* CARD-090: Commented out — replaced by browser speechSynthesis
 import AudioStreamManager from "../utils/audioStreamManager";
@@ -60,6 +71,14 @@ export default function StreamView() {
   const utteranceRef = useRef(null);
   const chromeTimerRef = useRef(null);
   const queueListRef = useRef(null);
+
+  // CARD-094: Push-to-talk state
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [micError, setMicError] = useState("");
+  const [sentConfirmation, setSentConfirmation] = useState("");
+  const recognitionRef = useRef(null);
+  const sentTimerRef = useRef(null);
 
   // Resolve a browser SpeechSynthesisVoice by name
   const resolveVoice = useCallback((agentName) => {
@@ -156,6 +175,94 @@ export default function StreamView() {
       stopChromeWorkaround();
     };
   }, [stopChromeWorkaround]);
+
+  // CARD-094: Push-to-talk handlers
+  const handleMicDown = useCallback(() => {
+    const SR = getSpeechRecognition();
+    if (!SR) {
+      setMicError("Voice commands not supported in this browser");
+      return;
+    }
+
+    setMicError("");
+    setTranscript("");
+    setSentConfirmation("");
+
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      let interim = "";
+      let final = "";
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          final += event.results[i][0].transcript;
+        } else {
+          interim += event.results[i][0].transcript;
+        }
+      }
+      setTranscript(final || interim);
+    };
+
+    recognition.onerror = (event) => {
+      const errorMessages = {
+        "not-allowed": "Microphone access denied",
+        "no-speech": "No speech detected, try again",
+        "network": "Speech recognition unavailable",
+      };
+      setMicError(errorMessages[event.error] || `Speech error: ${event.error}`);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, []);
+
+  const handleMicUp = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+  }, []);
+
+  // Process transcript after recognition ends and transcript is finalized
+  useEffect(() => {
+    if (isListening || !transcript) return;
+
+    const parsed = parseVoiceCommand(transcript);
+    if (!parsed) {
+      setMicError("Couldn't identify agent. Try: \"pm one, create a login page\"");
+      return;
+    }
+    if (!parsed.message) {
+      setMicError("Please include a message after the agent name");
+      return;
+    }
+
+    dispatch(sendMessage({ to: parsed.agent, message: parsed.message }));
+    setSentConfirmation(
+      parsed.agent === "all" ? "Sent to all agents" : `Sent to ${parsed.agent}`
+    );
+
+    setTranscript("");
+
+    // Clear confirmation after 2 seconds
+    if (sentTimerRef.current) clearTimeout(sentTimerRef.current);
+    sentTimerRef.current = setTimeout(() => setSentConfirmation(""), 2000);
+  }, [isListening, transcript, dispatch]);
+
+  // Cleanup sent timer on unmount
+  useEffect(() => {
+    return () => {
+      if (sentTimerRef.current) clearTimeout(sentTimerRef.current);
+    };
+  }, []);
 
   const handleToggle = useCallback(() => {
     if (tts.enabled) {
@@ -344,6 +451,53 @@ export default function StreamView() {
           ))}
         </Select>
       </Box>
+
+      {/* CARD-094: Push-to-talk mic button */}
+      <Divider sx={{ width: "100%", maxWidth: 300, my: 1 }} />
+      <Typography variant="subtitle2" color="text.secondary">
+        Voice Command
+      </Typography>
+      <IconButton
+        onPointerDown={handleMicDown}
+        onPointerUp={handleMicUp}
+        onPointerLeave={isListening ? handleMicUp : undefined}
+        color={isListening ? "error" : "default"}
+        sx={{
+          width: 64,
+          height: 64,
+          border: 2,
+          borderColor: isListening ? "error.main" : "grey.400",
+          ...(isListening && {
+            animation: "pulse 1s ease-in-out infinite",
+            "@keyframes pulse": {
+              "0%": { boxShadow: "0 0 0 0 rgba(211,47,47,0.4)" },
+              "70%": { boxShadow: "0 0 0 12px rgba(211,47,47,0)" },
+              "100%": { boxShadow: "0 0 0 0 rgba(211,47,47,0)" },
+            },
+          }),
+        }}
+        aria-label={isListening ? "Listening..." : "Hold to speak"}
+        data-testid="mic-button"
+      >
+        {sentConfirmation ? (
+          <CheckCircleIcon sx={{ fontSize: 32, color: "success.main" }} />
+        ) : (
+          <MicIcon sx={{ fontSize: 32 }} />
+        )}
+      </IconButton>
+
+      {/* Live transcript / status */}
+      <Typography
+        variant="body2"
+        color={micError ? "error" : sentConfirmation ? "success.main" : "text.secondary"}
+        sx={{ minHeight: 24, textAlign: "center", maxWidth: 340 }}
+      >
+        {micError
+          || sentConfirmation
+          || (isListening
+            ? (transcript || "Listening...")
+            : "Hold mic to speak a command")}
+      </Typography>
 
       {/* Error snackbar */}
       <Snackbar
