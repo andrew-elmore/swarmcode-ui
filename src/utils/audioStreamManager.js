@@ -129,6 +129,7 @@ export default class AudioStreamManager {
       this._speechAudio.removeEventListener("error", this._handleError);
       try { this._speechAudio.pause(); } catch { /* jsdom */ }
       this._speechAudio.removeAttribute("src");
+      try { this._speechAudio.parentNode?.removeChild(this._speechAudio); } catch { /* ok */ }
       this._speechAudio = null;
     }
     this._revokeBlobUrl();
@@ -138,6 +139,7 @@ export default class AudioStreamManager {
     if (this._noiseAudio) {
       try { this._noiseAudio.pause(); } catch { /* jsdom */ }
       this._noiseAudio.removeAttribute("src");
+      try { this._noiseAudio.parentNode?.removeChild(this._noiseAudio); } catch { /* ok */ }
       this._noiseAudio = null;
     }
     if (this._noiseBlobUrl) {
@@ -238,6 +240,11 @@ export default class AudioStreamManager {
     this._speechAudio.addEventListener("ended", this._handleEnded);
     this._speechAudio.addEventListener("error", this._handleError);
 
+    // Append to DOM — mobile browsers require <audio> elements to be in the
+    // document for reliable playback via createMediaElementSource.
+    this._speechAudio.style.display = "none";
+    document.body.appendChild(this._speechAudio);
+
     // Connect to AudioContext for waveform visualization and gain control.
     // createMediaElementSource can only be called once per element.
     try {
@@ -288,7 +295,13 @@ export default class AudioStreamManager {
 
     this._noiseAudio = document.createElement("audio");
     this._noiseAudio.loop = true;
+    this._noiseAudio.preload = "auto";
     this._noiseAudio.src = this._noiseBlobUrl;
+
+    // Append to DOM — mobile browsers require <audio> elements to be in the
+    // document for reliable playback via createMediaElementSource.
+    this._noiseAudio.style.display = "none";
+    document.body.appendChild(this._noiseAudio);
 
     // Connect to AudioContext through noiseGain for ducking and volume control
     try {

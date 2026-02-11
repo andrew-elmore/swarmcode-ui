@@ -39,6 +39,8 @@ function createMockAudioElement() {
     preload: "",
     paused: false,
     playbackRate: 1,
+    style: {},
+    parentNode: null,
     play: jest.fn(() => Promise.resolve()),
     pause: jest.fn(),
     removeAttribute: jest.fn(),
@@ -72,6 +74,15 @@ beforeEach(() => {
       return createMockAudioElement();
     }
     return origCreateElement(tag);
+  });
+
+  jest.spyOn(document.body, "appendChild").mockImplementation((el) => {
+    if (el && el.play) el.parentNode = document.body;
+    return el;
+  });
+  jest.spyOn(document.body, "removeChild").mockImplementation((el) => {
+    if (el) el.parentNode = null;
+    return el;
   });
 });
 

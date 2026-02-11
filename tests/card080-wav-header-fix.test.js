@@ -161,6 +161,8 @@ describe("CARD-080: _processQueue calls _fixWavHeader", () => {
       preload: "",
       paused: false,
       playbackRate: 1,
+      style: {},
+      parentNode: null,
       play: jest.fn(() => Promise.resolve()),
       pause: jest.fn(),
       removeAttribute: jest.fn(),
@@ -190,6 +192,15 @@ describe("CARD-080: _processQueue calls _fixWavHeader", () => {
     jest.spyOn(document, "createElement").mockImplementation((tag) => {
       if (tag === "audio") return createMockAudioElement();
       return origCreateElement(tag);
+    });
+
+    jest.spyOn(document.body, "appendChild").mockImplementation((el) => {
+      if (el && el.play) el.parentNode = document.body;
+      return el;
+    });
+    jest.spyOn(document.body, "removeChild").mockImplementation((el) => {
+      if (el) el.parentNode = null;
+      return el;
     });
   });
 

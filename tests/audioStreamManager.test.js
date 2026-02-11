@@ -38,18 +38,21 @@ function createMockMediaElementSource() {
 }
 
 function createMockAudioElement() {
-  return {
+  const el = {
     loop: false,
     src: "",
     preload: "",
     paused: false,
     playbackRate: 1,
+    style: {},
+    parentNode: null,
     play: jest.fn(() => Promise.resolve()),
     pause: jest.fn(),
     removeAttribute: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
   };
+  return el;
 }
 
 function createMockAudioContext() {
@@ -83,6 +86,18 @@ beforeEach(() => {
       return el;
     }
     return origCreateElement(tag);
+  });
+
+  // Mock document.body.appendChild to set parentNode on mock audio elements
+  jest.spyOn(document.body, "appendChild").mockImplementation((el) => {
+    if (el && el.style !== undefined && el.play) {
+      el.parentNode = document.body;
+    }
+    return el;
+  });
+  jest.spyOn(document.body, "removeChild").mockImplementation((el) => {
+    if (el) el.parentNode = null;
+    return el;
   });
 });
 
@@ -135,6 +150,14 @@ describe("AudioStreamManager", () => {
       // noise audio + speech audio = 2 elements
       expect(document.createElement).toHaveBeenCalledWith("audio");
       expect(mockAudioElements.length).toBe(2);
+    });
+
+    test("appends both <audio> elements to document.body", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      // Both noise and speech audio elements should be in the DOM
+      expect(document.body.appendChild).toHaveBeenCalledWith(mgr._noiseAudio);
+      expect(document.body.appendChild).toHaveBeenCalledWith(mgr._speechAudio);
     });
 
     test("noise <audio> element is set to loop", () => {
@@ -210,23 +233,25 @@ describe("AudioStreamManager", () => {
       expect(mockCtx.close).toHaveBeenCalled();
     });
 
-    test("pauses and cleans up noise audio", () => {
+    test("pauses, removes from DOM, and cleans up noise audio", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
       const noiseAudio = mgr._noiseAudio;
       mgr.stop();
       expect(noiseAudio.pause).toHaveBeenCalled();
       expect(noiseAudio.removeAttribute).toHaveBeenCalledWith("src");
+      expect(noiseAudio.parentNode).toBeNull();
       expect(mgr._noiseAudio).toBeNull();
     });
 
-    test("pauses and cleans up speech audio", () => {
+    test("pauses, removes from DOM, and cleans up speech audio", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
       const speechAudio = mgr._speechAudio;
       mgr.stop();
       expect(speechAudio.pause).toHaveBeenCalled();
       expect(speechAudio.removeAttribute).toHaveBeenCalledWith("src");
+      expect(speechAudio.parentNode).toBeNull();
       expect(mgr._speechAudio).toBeNull();
     });
 
