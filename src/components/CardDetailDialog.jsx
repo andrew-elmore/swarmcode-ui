@@ -15,7 +15,7 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import { useAppDispatch } from "../store";
+import { useAppDispatch, useAppSelector } from "../store";
 import { updateCard, addComment } from "../store/boardSlice";
 
 const STATUSES = ["backlog", "todo", "in_progress", "review", "qa", "done"];
@@ -30,11 +30,13 @@ const PRIORITY_COLORS = {
 
 export default function CardDetailDialog({ open, onClose, card, projectHash }) {
   const dispatch = useAppDispatch();
+  const { sprints } = useAppSelector((s) => s.board);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [newComment, setNewComment] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPriority, setEditPriority] = useState("");
+  const [editSprint, setEditSprint] = useState("");
 
   if (!card) return null;
 
@@ -57,6 +59,18 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
         projectHash,
         cardId: card.cardId,
         priority: newPriority,
+        author: "human",
+      })
+    );
+  };
+
+  const handleSprintChange = async (newSprint) => {
+    setEditSprint(newSprint);
+    await dispatch(
+      updateCard({
+        projectHash,
+        cardId: card.cardId,
+        sprint: newSprint || null,
         author: "human",
       })
     );
@@ -119,9 +133,24 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
               </MenuItem>
             ))}
           </TextField>
+          <TextField
+            label="Sprint"
+            value={editSprint || card.sprint || ""}
+            onChange={(e) => handleSprintChange(e.target.value)}
+            select
+            size="small"
+            sx={{ minWidth: 140, flex: isMobile ? "1 1 100%" : undefined }}
+          >
+            <MenuItem value="">No Sprint</MenuItem>
+            {sprints.map((s) => (
+              <MenuItem key={s.objectId} value={s.name}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </TextField>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 0.5, mb: 2 }}>
+        <Box sx={{ display: "flex", gap: 0.5, mb: 2, flexWrap: "wrap" }}>
           {card.assignee && (
             <Chip label={`Assignee: ${card.assignee}`} size="small" />
           )}
@@ -130,6 +159,14 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
             size="small"
             color={PRIORITY_COLORS[card.priority] || "default"}
           />
+          {card.sprint && (
+            <Chip
+              label={`Sprint: ${card.sprint}`}
+              size="small"
+              color="secondary"
+              variant="outlined"
+            />
+          )}
         </Box>
 
         <Divider sx={{ mb: 2 }} />

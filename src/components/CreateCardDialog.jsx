@@ -8,7 +8,7 @@ import Button from "@mui/material/Button";
 import MenuItem from "@mui/material/MenuItem";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import { useAppDispatch } from "../store";
+import { useAppDispatch, useAppSelector } from "../store";
 import { createCard } from "../store/boardSlice";
 
 const STATUSES = ["backlog", "todo", "in_progress", "review", "qa", "done"];
@@ -17,6 +17,7 @@ const AGENTS = ["pm-1", "senior-dev-1", "developer-1", "qa-1", "devops-1"];
 
 export default function CreateCardDialog({ open, onClose, projectHash }) {
   const dispatch = useAppDispatch();
+  const { sprints } = useAppSelector((s) => s.board);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [title, setTitle] = useState("");
@@ -24,6 +25,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
   const [status, setStatus] = useState("backlog");
   const [priority, setPriority] = useState("medium");
   const [assignee, setAssignee] = useState("");
+  const [sprint, setSprint] = useState("");
 
   const handleSubmit = async () => {
     if (!title.trim() || !projectHash) return;
@@ -35,6 +37,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
         status,
         priority,
         assignee: assignee || null,
+        sprint: sprint || null,
         author: "human",
       })
     );
@@ -43,6 +46,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
     setStatus("backlog");
     setPriority("medium");
     setAssignee("");
+    setSprint("");
     onClose();
   };
 
@@ -104,6 +108,20 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
           {AGENTS.map((a) => (
             <MenuItem key={a} value={a}>
               {a}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          label="Sprint"
+          value={sprint}
+          onChange={(e) => setSprint(e.target.value)}
+          select
+          fullWidth
+        >
+          <MenuItem value="">No Sprint</MenuItem>
+          {sprints.map((s) => (
+            <MenuItem key={s.objectId} value={s.name}>
+              {s.name}
             </MenuItem>
           ))}
         </TextField>

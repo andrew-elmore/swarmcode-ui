@@ -15,9 +15,10 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../store";
-import { fetchBoard } from "../store/boardSlice";
+import { fetchBoard, setSprintFilter } from "../store/boardSlice";
 import CreateCardDialog from "./CreateCardDialog";
 import CardDetailDialog from "./CardDetailDialog";
+import SprintManagerDialog from "./SprintManagerDialog";
 
 const COLUMNS = [
   { key: "backlog", label: "Backlog" },
@@ -37,7 +38,7 @@ const PRIORITY_COLORS = {
 
 export default function BoardView() {
   const dispatch = useAppDispatch();
-  const { board, cards, loading, error } = useAppSelector((s) => s.board);
+  const { board, cards, sprints, sprintFilter, loading, error } = useAppSelector((s) => s.board);
   const { activeProject } = useAppSelector((s) => s.projects);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -45,6 +46,7 @@ export default function BoardView() {
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState(null);
   const [selectedColumn, setSelectedColumn] = useState("backlog");
+  const [sprintManagerOpen, setSprintManagerOpen] = useState(false);
 
   useEffect(() => {
     if (activeProject) {
@@ -82,6 +84,11 @@ export default function BoardView() {
     ? cards.find((c) => c.cardId === selectedCardId) || null
     : null;
 
+  // Filter cards by selected sprint
+  const filteredCards = sprintFilter
+    ? cards.filter((c) => c.sprint === sprintFilter)
+    : cards;
+
   // For mobile: filter to the selected column only
   const visibleColumns = isMobile
     ? COLUMNS.filter((col) => col.key === selectedColumn)
@@ -93,14 +100,40 @@ export default function BoardView() {
         <Typography variant="h5" sx={{ fontSize: isMobile ? "1.2rem" : undefined }}>
           Board
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => setCreateOpen(true)}
-          size={isMobile ? "small" : "medium"}
-        >
-          New Card
-        </Button>
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          {sprints.length > 0 && (
+            <TextField
+              select
+              size="small"
+              value={sprintFilter || ""}
+              onChange={(e) => dispatch(setSprintFilter(e.target.value || null))}
+              sx={{ minWidth: 160 }}
+              label="Sprint"
+            >
+              <MenuItem value="">All Sprints</MenuItem>
+              {sprints.map((s) => (
+                <MenuItem key={s.objectId} value={s.name}>
+                  {s.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
+          <Button
+            variant="outlined"
+            onClick={() => setSprintManagerOpen(true)}
+            size={isMobile ? "small" : "medium"}
+          >
+            Manage Sprints
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => setCreateOpen(true)}
+            size={isMobile ? "small" : "medium"}
+          >
+            New Card
+          </Button>
+        </Box>
       </Box>
 
       {/* Mobile column selector */}
@@ -115,7 +148,7 @@ export default function BoardView() {
           label="Column"
         >
           {COLUMNS.map((col) => {
-            const count = cards.filter((c) => c.status === col.key).length;
+            const count = filteredCards.filter((c) => c.status === col.key).length;
             return (
               <MenuItem key={col.key} value={col.key}>
                 {col.label} ({count})
@@ -135,7 +168,7 @@ export default function BoardView() {
         }}
       >
         {visibleColumns.map((col) => {
-          const colCards = cards.filter((c) => c.status === col.key);
+          const colCards = filteredCards.filter((c) => c.status === col.key);
           return (
             <Paper
               key={col.key}
@@ -193,6 +226,14 @@ export default function BoardView() {
                               variant="outlined"
                             />
                           )}
+                          {card.sprint && (
+                            <Chip
+                              label={card.sprint}
+                              size="small"
+                              color="secondary"
+                              variant="outlined"
+                            />
+                          )}
                         </Box>
                         <Typography
                           variant="caption"
@@ -221,6 +262,12 @@ export default function BoardView() {
         open={!!selectedCard}
         onClose={() => setSelectedCardId(null)}
         card={selectedCard}
+        projectHash={board?.projectHash}
+      />
+
+      <SprintManagerDialog
+        open={sprintManagerOpen}
+        onClose={() => setSprintManagerOpen(false)}
         projectHash={board?.projectHash}
       />
     </Box>

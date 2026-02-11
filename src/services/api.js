@@ -104,25 +104,20 @@ export async function getOrCreateBoard(projectPath) {
   return callFunction("getOrCreateBoard", { projectPath });
 }
 
-export async function createCard({ projectHash, title, description, status, assignee, priority, author }) {
-  return callFunction("createCard", {
-    projectHash,
-    title,
-    description,
-    status,
-    assignee,
-    priority,
-    author,
-  });
+export async function createCard({ projectHash, title, description, status, assignee, priority, sprint, author }) {
+  const params = { projectHash, title, description, status, assignee, priority, author };
+  if (sprint !== undefined) params.sprint = sprint;
+  return callFunction("createCard", params);
 }
 
-export async function updateCard({ projectHash, cardId, status, assignee, priority, title, description, author }) {
+export async function updateCard({ projectHash, cardId, status, assignee, priority, title, description, sprint, author }) {
   const params = { projectHash, cardId, author };
   if (status !== undefined) params.status = status;
   if (assignee !== undefined) params.assignee = assignee;
   if (priority !== undefined) params.priority = priority;
   if (title !== undefined) params.title = title;
   if (description !== undefined) params.description = description;
+  if (sprint !== undefined) params.sprint = sprint;
   return callFunction("updateCard", params);
 }
 
@@ -130,9 +125,10 @@ export async function addComment({ projectHash, cardId, message, author }) {
   return callFunction("addComment", { projectHash, cardId, message, author });
 }
 
-export async function listCards(projectHash, status) {
+export async function listCards(projectHash, status, sprint) {
   const params = { projectHash };
   if (status) params.status = status;
+  if (sprint) params.sprint = sprint;
   return callFunction("listCards", params);
 }
 
@@ -189,4 +185,25 @@ export async function updateAgent({ projectHash, name, ...updates }) {
 
 export async function deleteAgent(projectHash, name) {
   return callFunction("deleteAgent", { projectHash, name });
+}
+
+// --- Sprints ---
+
+export async function createSprint({ projectHash, name, order }) {
+  return callFunction("createSprint", { projectHash, name, order });
+}
+
+export async function getSprints(projectHash) {
+  return callFunction("getSprints", { projectHash });
+}
+
+export async function updateSprint({ projectHash, sprintId, name, order }) {
+  const params = { projectHash, sprintId };
+  if (name !== undefined) params.name = name;
+  if (order !== undefined) params.order = order;
+  return callFunction("updateSprint", params);
+}
+
+export async function deleteSprint(projectHash, sprintId) {
+  return callFunction("deleteSprint", { projectHash, sprintId });
 }
