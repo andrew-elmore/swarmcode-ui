@@ -8,11 +8,15 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormGroup from "@mui/material/FormGroup";
+import IconButton from "@mui/material/IconButton";
+import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import { getVoices, synthesizeSpeech } from "../services/api";
 
 const ALL_TOOLS = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"];
 
@@ -28,7 +32,19 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
   const [permanentMemory, setPermanentMemory] = useState("");
   const [allowedTools, setAllowedTools] = useState([...ALL_TOOLS]);
   const [sortOrder, setSortOrder] = useState(0);
+  const [voice, setVoice] = useState("");
+  const [voices, setVoices] = useState([]);
+  const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Fetch available voices when dialog opens
+  useEffect(() => {
+    if (open) {
+      getVoices()
+        .then((v) => setVoices(v))
+        .catch(() => setVoices([]));
+    }
+  }, [open]);
 
   useEffect(() => {
     if (agent) {
@@ -38,6 +54,7 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
       setPermanentMemory(agent.permanentMemory || "");
       setAllowedTools(agent.permissions?.allowedTools || [...ALL_TOOLS]);
       setSortOrder(agent.sortOrder || 0);
+      setVoice(agent.voice || "");
     } else {
       setName("");
       setDescription("");
@@ -45,6 +62,7 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
       setPermanentMemory("");
       setAllowedTools([...ALL_TOOLS]);
       setSortOrder(0);
+      setVoice("");
     }
   }, [agent, open]);
 
@@ -52,6 +70,30 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
     setAllowedTools((prev) =>
       prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]
     );
+  };
+
+  const handlePreviewVoice = async () => {
+    if (!voice || previewing) return;
+    setPreviewing(true);
+    try {
+      const audioData = await synthesizeSpeech({
+        text: `Hello, I am ${description || name}.`,
+        voice,
+        speed: 1.0,
+      });
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new AudioCtx();
+      const buffer = await ctx.decodeAudioData(audioData);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.onended = () => ctx.close();
+      source.start();
+    } catch {
+      // Preview failed silently — API may not be running
+    } finally {
+      setPreviewing(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -65,6 +107,7 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
         permanentMemory,
         permissions: { allowedTools },
         sortOrder: Number(sortOrder) || 0,
+        voice: voice || null,
       });
       onClose();
     } catch {
@@ -128,6 +171,34 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
           type="number"
           inputProps={{ min: 0 }}
         />
+
+        <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end", mt: 1 }}>
+          <TextField
+            label="Voice"
+            value={voice}
+            onChange={(e) => setVoice(e.target.value)}
+            select
+            fullWidth
+            margin="dense"
+          >
+            <MenuItem value="">
+              <em>Default</em>
+            </MenuItem>
+            {voices.map((v) => (
+              <MenuItem key={v.id} value={v.id}>
+                {v.name} ({v.language}, {v.quality})
+              </MenuItem>
+            ))}
+          </TextField>
+          <IconButton
+            onClick={handlePreviewVoice}
+            disabled={!voice || previewing}
+            title="Preview voice"
+            sx={{ mb: 0.5 }}
+          >
+            {previewing ? <CircularProgress size={20} /> : <PlayArrowIcon />}
+          </IconButton>
+        </Box>
 
         <Box sx={{ mt: 2 }}>
           <Typography variant="subtitle2" color="text.secondary">

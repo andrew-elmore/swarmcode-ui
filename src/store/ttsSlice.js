@@ -18,8 +18,6 @@ function saveToStorage(state) {
       enabled: state.enabled,
       volume: state.volume,
       rate: state.rate,
-      perAgentVoice: state.perAgentVoice,
-      speakAgentName: state.speakAgentName,
     }));
   } catch {
     // ignore
@@ -34,8 +32,6 @@ const ttsSlice = createSlice({
     enabled: saved?.enabled ?? false,
     volume: saved?.volume ?? 1.0,
     rate: saved?.rate ?? 1.0,
-    perAgentVoice: saved?.perAgentVoice ?? {},
-    speakAgentName: saved?.speakAgentName ?? false,
     error: null,
   },
   reducers: {
@@ -51,15 +47,6 @@ const ttsSlice = createSlice({
       state.rate = Math.max(0.5, Math.min(2.0, action.payload));
       saveToStorage(state);
     },
-    setAgentVoice(state, action) {
-      const { agent, voiceName } = action.payload;
-      state.perAgentVoice[agent] = voiceName;
-      saveToStorage(state);
-    },
-    setSpeakAgentName(state, action) {
-      state.speakAgentName = action.payload;
-      saveToStorage(state);
-    },
     setError(state, action) {
       state.error = action.payload;
     },
@@ -73,8 +60,6 @@ export const {
   setEnabled,
   setVolume,
   setRate,
-  setAgentVoice,
-  setSpeakAgentName,
   setError,
   clearError,
 } = ttsSlice.actions;

@@ -6,12 +6,13 @@ import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
 import { selectAgent, appendMessage, setMobileDrawerOpen } from "../store/messagesSlice";
 import { setError as setTtsError } from "../store/ttsSlice";
-import { subscribeToMessages } from "../services/api";
-import TtsEngine from "../utils/ttsEngine";
+import { subscribeToMessages, synthesizeSpeech } from "../services/api";
+import { getStreamManager } from "./StreamView";
 import AgentSidebar from "./AgentSidebar";
 import ChatView from "./ChatView";
 
 const SIDEBAR_WIDTH = 240;
+const DEFAULT_VOICE = "en_US-amy-medium";
 
 export default function MessagesView() {
   const dispatch = useAppDispatch();
@@ -20,7 +21,6 @@ export default function MessagesView() {
   const agents = useAppSelector((s) => s.agents.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const ttsEngineRef = useRef(new TtsEngine());
   const ttsRef = useRef(tts);
   const agentsRef = useRef(agents);
 
@@ -28,42 +28,26 @@ export default function MessagesView() {
   useEffect(() => { ttsRef.current = tts; }, [tts]);
   useEffect(() => { agentsRef.current = agents; }, [agents]);
 
-  // Sync Redux TTS state to the engine
-  useEffect(() => {
-    const engine = ttsEngineRef.current;
-    engine.setEnabled(tts.enabled);
-    engine.setRate(tts.rate);
-    engine.setVolume(tts.volume);
-    engine.setOnError((msg) => dispatch(setTtsError(msg)));
-  }, [tts.enabled, tts.rate, tts.volume, dispatch]);
-
   // Subscribe to LiveQuery for real-time incoming messages
   useEffect(() => {
-    const engine = ttsEngineRef.current;
     let unsubscribe = null;
 
     subscribeToMessages((msg) => {
       dispatch(appendMessage(msg));
-      // Queue incoming messages for TTS (skip owner's own messages)
-      if (msg.from !== "owner" && engine.enabled) {
-        const currentTts = ttsRef.current;
 
-        // Set per-agent voice if configured
-        const voiceName = currentTts.perAgentVoice[msg.from];
-        if (voiceName) {
-          const voice = engine.getVoices().find((v) => v.name === voiceName);
-          if (voice) engine.setVoice(voice);
-        }
+      // Queue incoming agent messages for server-side TTS via AudioStreamManager
+      const currentTts = ttsRef.current;
+      if (msg.from !== "owner" && currentTts.enabled) {
+        const mgr = getStreamManager();
+        if (!mgr.active) return;
 
-        // Optionally prepend agent name
-        let text = msg.message;
-        if (currentTts.speakAgentName) {
-          const agent = agentsRef.current.find((a) => a.name === msg.from);
-          const label = agent?.description || msg.from;
-          text = `${label} says: ${text}`;
-        }
+        // Look up agent voice from DB (agents store)
+        const agent = agentsRef.current.find((a) => a.name === msg.from);
+        const voice = agent?.voice || DEFAULT_VOICE;
 
-        engine.speak(text);
+        synthesizeSpeech({ text: msg.message, voice, speed: currentTts.rate })
+          .then((audioData) => mgr.queueSpeech(audioData))
+          .catch(() => dispatch(setTtsError("TTS synthesis failed")));
       }
     }).then((unsub) => {
       unsubscribe = unsub;
@@ -71,7 +55,6 @@ export default function MessagesView() {
 
     return () => {
       if (unsubscribe) unsubscribe();
-      engine.stop();
     };
   }, [dispatch]);
 

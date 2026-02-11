@@ -177,7 +177,7 @@ export async function createAgent({ projectHash, name, description, openingInstr
 
 export async function updateAgent({ projectHash, name, ...updates }) {
   const params = { projectHash, name };
-  for (const key of ["description", "openingInstructions", "permanentMemory", "permissions", "isActive", "sortOrder"]) {
+  for (const key of ["description", "openingInstructions", "permanentMemory", "permissions", "isActive", "sortOrder", "voice"]) {
     if (updates[key] !== undefined) params[key] = updates[key];
   }
   return callFunction("updateAgent", params);
@@ -206,4 +206,29 @@ export async function updateSprint({ projectHash, sprintId, name, order }) {
 
 export async function deleteSprint(projectHash, sprintId) {
   return callFunction("deleteSprint", { projectHash, sprintId });
+}
+
+// --- TTS ---
+
+const BASE_URL = PARSE_URL.replace("/parse", "");
+
+export async function getVoices() {
+  const res = await fetch(`${BASE_URL}/tts/voices`, {
+    headers: PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {},
+  });
+  if (!res.ok) throw new Error("Failed to fetch voices");
+  return res.json();
+}
+
+export async function synthesizeSpeech({ text, voice, speed }) {
+  const res = await fetch(`${BASE_URL}/tts/synthesize`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {}),
+    },
+    body: JSON.stringify({ text, voice, speed }),
+  });
+  if (!res.ok) throw new Error("TTS synthesis failed");
+  return res.arrayBuffer();
 }

@@ -1,47 +1,53 @@
 /**
- * CARD-051 QA Tests — TTS should speak message content only, no agent name prefix.
+ * CARD-051 QA Tests — TTS speaks message content only, no agent name prefix.
  *
- * Verifies that the LiveQuery callback in MessagesView.jsx calls
- * engine.speak(msg.message) — NOT engine.speak(`${label} says: ${msg.message}`).
+ * Updated for CARD-073: Now tests that synthesizeSpeech is called with
+ * raw msg.message (no prefix), using server-side Piper TTS via AudioStreamManager.
+ * Author: developer-1
+ * Updated: 2026-02-11 (CARD-073: replaced TtsEngine with AudioStreamManager)
  */
 
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { render, waitFor, act } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
-import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
-import TtsEngine from "../src/utils/ttsEngine";
-import MessagesView from "../src/components/MessagesView";
 
-jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
-  createCard: jest.fn(),
-  updateCard: jest.fn(),
-  addComment: jest.fn(),
-  listCards: jest.fn(),
-  showCard: jest.fn(),
-  pollBoard: jest.fn(),
-  sendMessage: jest.fn(),
-  pollMessages: jest.fn(),
-  getConversation: jest.fn(),
-  subscribeToMessages: jest.fn(),
-  addRecentProject: jest.fn(),
-  getRecentProjects: jest.fn(),
-  deleteProject: jest.fn(),
-  getAgents: jest.fn(),
-  createAgent: jest.fn(),
-  updateAgent: jest.fn(),
-  deleteAgent: jest.fn(),
+// Mock StreamView.getStreamManager
+const mockQueueSpeech = jest.fn();
+const mockStreamManager = {
+  active: true,
+  start: jest.fn(),
+  stop: jest.fn(),
+  setVolume: jest.fn(),
+  setSpeed: jest.fn(),
+  setOnError: jest.fn(),
+  getAnalyserNode: jest.fn(() => null),
+  queueSpeech: mockQueueSpeech,
+};
+
+jest.mock("../src/components/StreamView", () => ({
+  getStreamManager: () => mockStreamManager,
 }));
 
-// Spy on TtsEngine.prototype.speak to capture what text is spoken
-let speakSpy;
+// Mock API
+const mockSynthesizeSpeech = jest.fn(() => Promise.resolve(new ArrayBuffer(100)));
+let capturedOnMessage = null;
+
+jest.mock("../src/services/api", () => ({
+  subscribeToMessages: jest.fn((cb) => {
+    capturedOnMessage = cb;
+    return Promise.resolve(jest.fn());
+  }),
+  synthesizeSpeech: (...args) => mockSynthesizeSpeech(...args),
+}));
+
+import MessagesView from "../src/components/MessagesView";
 
 const theme = createTheme({
   palette: { primary: { main: "#1976d2" }, secondary: { main: "#9c27b0" } },
@@ -62,12 +68,13 @@ function createTestStore(ttsOverrides = {}) {
       tts: { ...DEFAULT_TTS_STATE, ...ttsOverrides },
       agents: {
         agents: [
-          { name: "pm-1", description: "PM Agent", isActive: true, sortOrder: 0 },
-          { name: "developer-1", description: "Developer", isActive: true, sortOrder: 1 },
+          { name: "pm-1", description: "PM Agent", voice: "en_US-amy-medium", isActive: true, sortOrder: 0 },
+          { name: "developer-1", description: "Developer", voice: "en_US-joe-medium", isActive: true, sortOrder: 1 },
         ],
         loading: false,
         error: null,
       },
+      board: { board: null, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
     },
   });
 }
@@ -85,40 +92,21 @@ function renderWithProviders(ui, store) {
 }
 
 beforeEach(() => {
-  speakSpy = jest.spyOn(TtsEngine.prototype, "speak");
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [] });
-  api.subscribeToMessages.mockResolvedValue(jest.fn());
-  api.getAgents.mockResolvedValue({
-    agents: [
-      { name: "pm-1", description: "PM Agent", isActive: true, sortOrder: 0 },
-      { name: "developer-1", description: "Developer", isActive: true, sortOrder: 1 },
-    ],
-  });
+  jest.clearAllMocks();
+  capturedOnMessage = null;
+  mockStreamManager.active = true;
+  mockSynthesizeSpeech.mockResolvedValue(new ArrayBuffer(100));
 });
 
-afterEach(() => jest.restoreAllMocks());
-
 describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
-  test("TTS speak receives only message content when engine is enabled", async () => {
-    let liveQueryCallback = null;
-    api.subscribeToMessages.mockImplementation((cb) => {
-      liveQueryCallback = cb;
-      return Promise.resolve(jest.fn());
-    });
-
-    // Create store with TTS enabled so the engine.enabled check passes
+  test("TTS synthesizeSpeech receives only message content when TTS is enabled", async () => {
     const store = createTestStore({ enabled: true });
     renderWithProviders(<MessagesView />, store);
 
-    await waitFor(() => {
-      expect(liveQueryCallback).not.toBeNull();
-    });
+    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    speakSpy.mockClear();
-
-    const { act } = await import("@testing-library/react");
     await act(async () => {
-      liveQueryCallback({
+      capturedOnMessage({
         id: "msg-1",
         from: "developer-1",
         to: "owner",
@@ -128,36 +116,26 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
       });
     });
 
-    // speak should have been called with raw message only
-    expect(speakSpy).toHaveBeenCalledWith("Bug fix complete");
+    // synthesizeSpeech should have been called with raw message only
+    await waitFor(() => {
+      expect(mockSynthesizeSpeech).toHaveBeenCalledWith(
+        expect.objectContaining({ text: "Bug fix complete" })
+      );
+    });
     // Verify it was NOT called with any agent name prefix
-    expect(speakSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("says:")
-    );
-    expect(speakSpy).not.toHaveBeenCalledWith(
-      expect.stringContaining("developer-1")
+    expect(mockSynthesizeSpeech).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining("says:") })
     );
   });
 
-  test("agent name prefix is NOT prepended to spoken text", async () => {
-    let liveQueryCallback = null;
-    api.subscribeToMessages.mockImplementation((cb) => {
-      liveQueryCallback = cb;
-      return Promise.resolve(jest.fn());
-    });
-
+  test("agent name prefix is NOT prepended to synthesized text", async () => {
     const store = createTestStore({ enabled: true });
     renderWithProviders(<MessagesView />, store);
 
-    await waitFor(() => {
-      expect(liveQueryCallback).not.toBeNull();
-    });
+    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    speakSpy.mockClear();
-
-    const { act } = await import("@testing-library/react");
     await act(async () => {
-      liveQueryCallback({
+      capturedOnMessage({
         id: "msg-2",
         from: "pm-1",
         to: "owner",
@@ -167,33 +145,23 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
       });
     });
 
-    // Spoken text should be the raw message, not "pm-1 says: Task assigned..."
-    expect(speakSpy).toHaveBeenCalledTimes(1);
-    const spokenText = speakSpy.mock.calls[0][0];
-    expect(spokenText).toBe("Task assigned to developer-1");
-    expect(spokenText).not.toMatch(/^pm-1 says:/);
-    expect(spokenText).not.toMatch(/^PM Agent says:/);
+    await waitFor(() => {
+      expect(mockSynthesizeSpeech).toHaveBeenCalledTimes(1);
+    });
+    const calledText = mockSynthesizeSpeech.mock.calls[0][0].text;
+    expect(calledText).toBe("Task assigned to developer-1");
+    expect(calledText).not.toMatch(/^pm-1 says:/);
+    expect(calledText).not.toMatch(/^PM Agent says:/);
   });
 
-  test("owner messages are NOT spoken (only incoming agent messages)", async () => {
-    let liveQueryCallback = null;
-    api.subscribeToMessages.mockImplementation((cb) => {
-      liveQueryCallback = cb;
-      return Promise.resolve(jest.fn());
-    });
-
+  test("owner messages are NOT synthesized (only incoming agent messages)", async () => {
     const store = createTestStore({ enabled: true });
     renderWithProviders(<MessagesView />, store);
 
-    await waitFor(() => {
-      expect(liveQueryCallback).not.toBeNull();
-    });
+    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    speakSpy.mockClear();
-
-    const { act } = await import("@testing-library/react");
     await act(async () => {
-      liveQueryCallback({
+      capturedOnMessage({
         id: "msg-3",
         from: "owner",
         to: "pm-1",
@@ -203,30 +171,18 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
       });
     });
 
-    // Owner messages should NOT be spoken
-    expect(speakSpy).not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
   });
 
-  test("TTS does not speak when engine is disabled", async () => {
-    let liveQueryCallback = null;
-    api.subscribeToMessages.mockImplementation((cb) => {
-      liveQueryCallback = cb;
-      return Promise.resolve(jest.fn());
-    });
-
-    // TTS disabled (default)
+  test("TTS does not synthesize when TTS is disabled", async () => {
     const store = createTestStore({ enabled: false });
     renderWithProviders(<MessagesView />, store);
 
-    await waitFor(() => {
-      expect(liveQueryCallback).not.toBeNull();
-    });
+    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    speakSpy.mockClear();
-
-    const { act } = await import("@testing-library/react");
     await act(async () => {
-      liveQueryCallback({
+      capturedOnMessage({
         id: "msg-4",
         from: "pm-1",
         to: "owner",
@@ -236,7 +192,7 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
       });
     });
 
-    // When disabled, speak should not be called at all
-    expect(speakSpy).not.toHaveBeenCalled();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
   });
 });

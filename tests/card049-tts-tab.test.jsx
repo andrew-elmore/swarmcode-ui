@@ -47,6 +47,10 @@ jest.mock("../src/services/api", () => ({
   createAgent: jest.fn(),
   updateAgent: jest.fn(),
   deleteAgent: jest.fn(),
+  createSprint: jest.fn(),
+  getSprints: jest.fn(),
+  updateSprint: jest.fn(),
+  deleteSprint: jest.fn(),
 }));
 
 const theme = createTheme({
@@ -80,7 +84,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: { ...DEFAULT_TTS_STATE, ...(overrides.tts || {}) },
       agents: overrides.agents || { agents: DEFAULT_AGENTS, loading: false, error: null },
-      board: overrides.board || { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      board: overrides.board || { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: overrides.messages || {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
@@ -90,6 +94,7 @@ function createTestStore(overrides = {}) {
         messages: [],
         polling: false,
         lastPoll: null,
+        mobileDrawerOpen: false,
       },
       projects: overrides.projects || { projects: [], activeProject: null, loading: false, error: null },
     },
@@ -109,7 +114,7 @@ function renderWithProviders(ui, { store, ...options } = {}) {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [] });
+  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [], sprints: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn());
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
@@ -148,7 +153,7 @@ afterEach(() => jest.restoreAllMocks());
 // ─── App.jsx Tab Structure ──────────────────────────────────────────────────
 
 describe("CARD-049: TTS tab in App.jsx", () => {
-  test("App renders 5 tabs: Messages, Board, Agents, TTS, Projects", () => {
+  test("App renders 5 tabs: Messages, Board, Agents, Stream, Projects", () => {
     const store = createTestStore();
     renderWithProviders(<App />, { store });
 
@@ -159,28 +164,28 @@ describe("CARD-049: TTS tab in App.jsx", () => {
     expect(screen.getByText("Messages")).toBeInTheDocument();
     expect(screen.getByText("Board")).toBeInTheDocument();
     expect(screen.getByText("Agents")).toBeInTheDocument();
-    expect(screen.getByText("TTS")).toBeInTheDocument();
+    expect(screen.getByText("Stream")).toBeInTheDocument();
     expect(screen.getByText("Projects")).toBeInTheDocument();
   });
 
-  test("TTS tab is the 4th tab (index 3)", () => {
+  test("Stream tab is the 4th tab (index 3)", () => {
     const store = createTestStore();
     renderWithProviders(<App />, { store });
 
     const tabs = screen.getAllByRole("tab");
-    // tabs[3] should be TTS
-    expect(tabs[3]).toHaveTextContent("TTS");
+    // tabs[3] should be Stream
+    expect(tabs[3]).toHaveTextContent("Stream");
   });
 
-  test("clicking TTS tab renders TtsView", async () => {
+  test("clicking Stream tab renders StreamView", async () => {
     const store = createTestStore();
     renderWithProviders(<App />, { store });
 
     const tabs = screen.getAllByRole("tab");
-    fireEvent.click(tabs[3]); // click TTS tab
+    fireEvent.click(tabs[3]); // click Stream tab
 
     await waitFor(() => {
-      expect(screen.getByText("Text-to-Speech")).toBeInTheDocument();
+      expect(screen.getByText("Audio Stream")).toBeInTheDocument();
     });
   });
 });
