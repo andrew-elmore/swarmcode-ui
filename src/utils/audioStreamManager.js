@@ -184,6 +184,32 @@ export default class AudioStreamManager {
 
   // --------------- Internal ---------------
 
+  /**
+   * Fix WAV header sizes when the server used 0xFFFFFFFF (streaming/unknown length).
+   * decodeAudioData requires correct sizes, so patch them from the actual buffer length.
+   */
+  _fixWavHeader(arrayBuffer) {
+    if (arrayBuffer.byteLength < 44) return arrayBuffer;
+
+    const view = new DataView(arrayBuffer);
+
+    // Check RIFF magic
+    const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
+    if (riff !== "RIFF") return arrayBuffer;
+
+    const riffSize = view.getUint32(4, true);
+    const dataSize = view.getUint32(40, true);
+
+    // Only patch if sizes are 0xFFFFFFFF (streaming placeholder)
+    if (riffSize === 0xFFFFFFFF || dataSize === 0xFFFFFFFF) {
+      const totalBytes = arrayBuffer.byteLength;
+      view.setUint32(4, totalBytes - 8, true);   // RIFF chunk size = file size - 8
+      view.setUint32(40, totalBytes - 44, true);  // data chunk size = file size - 44
+    }
+
+    return arrayBuffer;
+  }
+
   _emitError(msg) {
     if (this._onError) this._onError(msg);
   }
@@ -233,7 +259,8 @@ export default class AudioStreamManager {
     const audioData = this._queue.shift();
 
     try {
-      const audioBuffer = await this._ctx.decodeAudioData(audioData.slice(0));
+      const fixed = this._fixWavHeader(audioData.slice(0));
+      const audioBuffer = await this._ctx.decodeAudioData(fixed);
       this._duckNoise();
 
       const source = this._ctx.createBufferSource();
