@@ -455,11 +455,14 @@ describe("MessagesView", () => {
     expect(screen.getByPlaceholderText("Message PM Agent...")).toBeInTheDocument();
   });
 
+  // CARD-092: LiveQuery subscription moved from MessagesView to App.jsx.
+  // These tests now render App to test subscription lifecycle.
+
   test("calls unsubscribe on unmount", async () => {
     const unsubscribeFn = jest.fn();
     api.subscribeToMessages.mockResolvedValue(unsubscribeFn);
 
-    const { unmount } = renderWithProviders(<MessagesView />);
+    const { unmount } = renderWithProviders(<App />);
     await waitFor(() => {
       expect(api.subscribeToMessages).toHaveBeenCalled();
     });
@@ -498,7 +501,11 @@ describe("MessagesView", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
 
-    await renderMessages(store);
+    renderWithProviders(<App />, { store });
+
+    await waitFor(() => {
+      expect(liveQueryCallback).toBeTruthy();
+    });
 
     // Simulate a LiveQuery message arriving
     const incomingMsg = {

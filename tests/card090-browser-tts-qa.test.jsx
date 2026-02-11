@@ -395,6 +395,10 @@ describe("CARD-090 QA: source code verification", () => {
   const streamViewSrc = fs.readFileSync(
     path.resolve(__dirname, "../src/components/StreamView.jsx"), "utf8"
   );
+  // CARD-092: LiveQuery subscription + enqueueMessage moved from MessagesView to App.jsx
+  const appSrc = fs.readFileSync(
+    path.resolve(__dirname, "../src/App.jsx"), "utf8"
+  );
   const messagesViewSrc = fs.readFileSync(
     path.resolve(__dirname, "../src/components/MessagesView.jsx"), "utf8"
   );
@@ -422,8 +426,9 @@ describe("CARD-090 QA: source code verification", () => {
     expect(streamViewSrc).toMatch(/speechSynthesis\.resume\(\)/);
   });
 
-  test("MessagesView dispatches enqueueMessage (not synthesizeSpeech)", () => {
-    expect(messagesViewSrc).toMatch(/dispatch\s*\(\s*enqueueMessage/);
+  test("App.jsx dispatches enqueueMessage (CARD-092: moved from MessagesView)", () => {
+    // CARD-092: LiveQuery subscription + enqueueMessage dispatch moved to App.jsx
+    expect(appSrc).toMatch(/dispatch\s*\(\s*enqueueMessage/);
     // synthesizeSpeech only appears inside block comments, not in active code
     const activeCode = messagesViewSrc.replace(/\/\*[\s\S]*?\*\//g, "");
     expect(activeCode).not.toMatch(/synthesizeSpeech/);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Toolbar from "@mui/material/Toolbar";
@@ -16,7 +16,9 @@ import HeadphonesIcon from "@mui/icons-material/Headphones";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
 import { fetchBoard } from "./store/boardSlice";
-import { setMobileDrawerOpen } from "./store/messagesSlice";
+import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
+import { enqueueMessage } from "./store/ttsSlice";
+import { subscribeToMessages } from "./services/api";
 import AgentsView from "./components/AgentsView";
 import BoardView from "./components/BoardView";
 import MessagesView from "./components/MessagesView";
@@ -32,6 +34,11 @@ export default function App() {
   const activeProject = useAppSelector((s) => s.projects.activeProject);
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
+  const tts = useAppSelector((s) => s.tts);
+  const ttsRef = useRef(tts);
+
+  // Keep ref in sync so the LiveQuery callback always sees latest TTS state
+  useEffect(() => { ttsRef.current = tts; }, [tts]);
 
   // Build label lookup from dynamic agents list
   const agentLabels = { all: "All Agents" };
@@ -45,6 +52,28 @@ export default function App() {
       dispatch(fetchBoard(activeProject.path));
     }
   }, [dispatch, activeProject]);
+
+  // CARD-092: LiveQuery subscription lives in App so it stays active across all tabs.
+  // Previously in MessagesView, which unmounted when switching to Stream tab.
+  useEffect(() => {
+    let unsubscribe = null;
+
+    subscribeToMessages((msg) => {
+      dispatch(appendMessage(msg));
+
+      // Enqueue incoming agent messages for browser speechSynthesis (CARD-090)
+      const currentTts = ttsRef.current;
+      if (msg.from !== "owner" && currentTts.enabled) {
+        dispatch(enqueueMessage({ from: msg.from, message: msg.message }));
+      }
+    }).then((unsub) => {
+      unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [dispatch]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>

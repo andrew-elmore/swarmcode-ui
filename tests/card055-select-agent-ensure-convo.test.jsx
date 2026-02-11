@@ -351,10 +351,7 @@ describe("CARD-055: MessagesView triggers loadConversation on agent select", () 
 
     renderWithProviders(<MessagesView />, { store });
 
-    await waitFor(() => {
-      expect(api.subscribeToMessages).toHaveBeenCalled();
-    });
-
+    // CARD-092: LiveQuery subscription moved to App.jsx; MessagesView no longer subscribes.
     // loadConversation should have been called for pm-1
     await waitFor(() => {
       expect(api.getConversation).toHaveBeenCalledWith(
@@ -395,10 +392,7 @@ describe("CARD-055: MessagesView triggers loadConversation on agent select", () 
 
     renderWithProviders(<MessagesView />, { store });
 
-    await waitFor(() => {
-      expect(api.subscribeToMessages).toHaveBeenCalled();
-    });
-
+    // CARD-092: LiveQuery subscription moved to App.jsx; MessagesView no longer subscribes.
     // Existing message should be displayed
     expect(screen.getByText("Existing")).toBeInTheDocument();
 

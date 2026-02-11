@@ -5,6 +5,8 @@
  * Messages are enqueued to Redux queue with from field for voice lookup.
  * StreamView's speechSynthesis engine resolves voice at speak time.
  *
+ * Updated for CARD-092: LiveQuery subscription moved from MessagesView to App.jsx.
+ *
  * Verifies:
  * 1. Agent messages are enqueued with correct from field
  * 2. Owner messages are never enqueued
@@ -12,7 +14,7 @@
  * 4. Multiple agents enqueue correctly
  *
  * Author: developer-1
- * Updated: 2026-02-11 (CARD-090: replaced synthesizeSpeech with enqueueMessage)
+ * Updated: 2026-02-11 (CARD-092: renders App to capture LiveQuery callback)
  */
 
 import React from "react";
@@ -26,17 +28,53 @@ import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer, { setRate } from "../src/store/ttsSlice";
 
+// Mock speechSynthesis API for jsdom
+window.speechSynthesis = {
+  cancel: jest.fn(),
+  speak: jest.fn(),
+  getVoices: jest.fn(() => []),
+  speaking: false,
+  paused: false,
+  pause: jest.fn(),
+  resume: jest.fn(),
+};
+global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
+  constructor(text) { this.text = text; this.rate = 1; this.volume = 1; this.voice = null; this.onend = null; this.onerror = null; }
+};
+
 // Mock API
 let capturedOnMessage = null;
 
 jest.mock("../src/services/api", () => ({
+  getOrCreateBoard: jest.fn(),
+  createCard: jest.fn(),
+  updateCard: jest.fn(),
+  addComment: jest.fn(),
+  listCards: jest.fn(),
+  showCard: jest.fn(),
+  pollBoard: jest.fn(),
+  sendMessage: jest.fn(),
+  pollMessages: jest.fn(),
+  getConversation: jest.fn(),
   subscribeToMessages: jest.fn((cb) => {
     capturedOnMessage = cb;
     return Promise.resolve(jest.fn());
   }),
+  addRecentProject: jest.fn(),
+  getRecentProjects: jest.fn(),
+  deleteProject: jest.fn(),
+  getAgents: jest.fn(),
+  createAgent: jest.fn(),
+  updateAgent: jest.fn(),
+  deleteAgent: jest.fn(),
+  createSprint: jest.fn(),
+  getSprints: jest.fn(),
+  updateSprint: jest.fn(),
+  deleteSprint: jest.fn(),
 }));
 
-import MessagesView from "../src/components/MessagesView";
+import * as api from "../src/services/api";
+import App from "../src/App";
 
 const theme = createTheme({
   palette: { primary: { main: "#1976d2" }, secondary: { main: "#9c27b0" } },
@@ -85,20 +123,25 @@ function createTestStore(overrides = {}) {
   });
 }
 
-function renderWithProviders(ui, store) {
-  function Wrapper({ children }) {
-    return (
+function renderWithProviders(store) {
+  return {
+    ...render(
       <Provider store={store}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+        <ThemeProvider theme={theme}>
+          <App />
+        </ThemeProvider>
       </Provider>
-    );
-  }
-  return { ...render(ui, { wrapper: Wrapper }), store };
+    ),
+    store,
+  };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnMessage = null;
+  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [], sprints: [] });
+  api.getRecentProjects.mockResolvedValue({ projects: [] });
+  api.getAgents.mockResolvedValue({ agents: [] });
 });
 
 function makeMsg(from, message, id) {
@@ -117,7 +160,7 @@ function makeMsg(from, message, id) {
 describe("CARD-054: Per-agent voice wiring (DB-based, CARD-090)", () => {
   test("agent message is enqueued with correct from field for voice lookup", async () => {
     const store = createTestStore();
-    renderWithProviders(<MessagesView />, store);
+    renderWithProviders(store);
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -133,7 +176,7 @@ describe("CARD-054: Per-agent voice wiring (DB-based, CARD-090)", () => {
 
   test("agent without voice in DB: still enqueued with from field", async () => {
     const store = createTestStore();
-    renderWithProviders(<MessagesView />, store);
+    renderWithProviders(store);
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -148,7 +191,7 @@ describe("CARD-054: Per-agent voice wiring (DB-based, CARD-090)", () => {
 
   test("different agents enqueue with their respective from fields", async () => {
     const store = createTestStore();
-    renderWithProviders(<MessagesView />, store);
+    renderWithProviders(store);
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -168,7 +211,7 @@ describe("CARD-054: Per-agent voice wiring (DB-based, CARD-090)", () => {
 
   test("qa-1 message enqueued with correct from", async () => {
     const store = createTestStore();
-    renderWithProviders(<MessagesView />, store);
+    renderWithProviders(store);
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -186,7 +229,7 @@ describe("CARD-054: Per-agent voice wiring (DB-based, CARD-090)", () => {
 describe("CARD-054: Owner messages not enqueued", () => {
   test("owner messages are not sent to TTS queue", async () => {
     const store = createTestStore();
-    renderWithProviders(<MessagesView />, store);
+    renderWithProviders(store);
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -211,7 +254,7 @@ describe("CARD-054: Owner messages not enqueued", () => {
 describe("CARD-054: Settings changes mid-session via refs", () => {
   test("messages still enqueue after TTS rate change mid-session", async () => {
     const store = createTestStore({ tts: { ...DEFAULT_TTS_STATE, rate: 1.0 } });
-    renderWithProviders(<MessagesView />, store);
+    renderWithProviders(store);
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -240,7 +283,7 @@ describe("CARD-054: Settings changes mid-session via refs", () => {
 describe("CARD-054: Queue management", () => {
   test("first enqueued message auto-starts as speaking", async () => {
     const store = createTestStore();
-    renderWithProviders(<MessagesView />, store);
+    renderWithProviders(store);
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 

@@ -3,8 +3,9 @@
  *
  * Updated for CARD-090: Now tests that enqueueMessage is dispatched with
  * raw msg.message (no prefix), using browser speechSynthesis via Redux queue.
+ * Updated for CARD-092: LiveQuery subscription moved from MessagesView to App.jsx.
  * Author: developer-1
- * Updated: 2026-02-11 (CARD-090: replaced synthesizeSpeech with enqueueMessage)
+ * Updated: 2026-02-11 (CARD-092: renders App to capture LiveQuery callback)
  */
 
 import React from "react";
@@ -18,17 +19,53 @@ import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 
-// Mock API
+// Mock speechSynthesis API for jsdom
+window.speechSynthesis = {
+  cancel: jest.fn(),
+  speak: jest.fn(),
+  getVoices: jest.fn(() => []),
+  speaking: false,
+  paused: false,
+  pause: jest.fn(),
+  resume: jest.fn(),
+};
+global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
+  constructor(text) { this.text = text; this.rate = 1; this.volume = 1; this.voice = null; this.onend = null; this.onerror = null; }
+};
+
+// Mock API — full mock required since App.jsx renders all views
 let capturedOnMessage = null;
 
 jest.mock("../src/services/api", () => ({
+  getOrCreateBoard: jest.fn(),
+  createCard: jest.fn(),
+  updateCard: jest.fn(),
+  addComment: jest.fn(),
+  listCards: jest.fn(),
+  showCard: jest.fn(),
+  pollBoard: jest.fn(),
+  sendMessage: jest.fn(),
+  pollMessages: jest.fn(),
+  getConversation: jest.fn(),
   subscribeToMessages: jest.fn((cb) => {
     capturedOnMessage = cb;
     return Promise.resolve(jest.fn());
   }),
+  addRecentProject: jest.fn(),
+  getRecentProjects: jest.fn(),
+  deleteProject: jest.fn(),
+  getAgents: jest.fn(),
+  createAgent: jest.fn(),
+  updateAgent: jest.fn(),
+  deleteAgent: jest.fn(),
+  createSprint: jest.fn(),
+  getSprints: jest.fn(),
+  updateSprint: jest.fn(),
+  deleteSprint: jest.fn(),
 }));
 
-import MessagesView from "../src/components/MessagesView";
+import * as api from "../src/services/api";
+import App from "../src/App";
 
 const theme = createTheme({
   palette: { primary: { main: "#1976d2" }, secondary: { main: "#9c27b0" } },
@@ -64,31 +101,34 @@ function createTestStore(ttsOverrides = {}) {
         error: null,
       },
       board: { board: null, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
+      projects: { projects: [], activeProject: null, loading: false, error: null },
     },
   });
 }
 
-function renderWithProviders(ui, store) {
-  const testStore = store || createTestStore();
-  function Wrapper({ children }) {
-    return (
-      <Provider store={testStore}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
-      </Provider>
-    );
-  }
-  return { ...render(ui, { wrapper: Wrapper }), store: testStore };
+function renderApp(ttsOverrides = {}) {
+  const store = createTestStore(ttsOverrides);
+  const result = render(
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        <App />
+      </ThemeProvider>
+    </Provider>
+  );
+  return { ...result, store };
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnMessage = null;
+  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [], sprints: [] });
+  api.getRecentProjects.mockResolvedValue({ projects: [] });
+  api.getAgents.mockResolvedValue({ agents: [] });
 });
 
 describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
   test("enqueueMessage receives only message content when TTS is enabled", async () => {
-    const store = createTestStore({ enabled: true });
-    renderWithProviders(<MessagesView />, store);
+    const { store } = renderApp({ enabled: true });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -111,8 +151,7 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
   });
 
   test("agent name prefix is NOT prepended to enqueued message", async () => {
-    const store = createTestStore({ enabled: true });
-    renderWithProviders(<MessagesView />, store);
+    const { store } = renderApp({ enabled: true });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -135,8 +174,7 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
   });
 
   test("owner messages are NOT enqueued (only incoming agent messages)", async () => {
-    const store = createTestStore({ enabled: true });
-    renderWithProviders(<MessagesView />, store);
+    const { store } = renderApp({ enabled: true });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -156,8 +194,7 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
   });
 
   test("TTS does not enqueue when TTS is disabled", async () => {
-    const store = createTestStore({ enabled: false });
-    renderWithProviders(<MessagesView />, store);
+    const { store } = renderApp({ enabled: false });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 

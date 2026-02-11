@@ -2,8 +2,9 @@
  * CARD-073: Wire LiveQuery to browser speechSynthesis TTS queue
  * Updated for CARD-090: Tests that incoming LiveQuery messages enqueue to Redux
  * queue instead of calling server-side synthesizeSpeech.
+ * Updated for CARD-092: LiveQuery subscription moved from MessagesView to App.jsx.
  * Author: developer-1
- * Updated: 2026-02-11 (CARD-090: browser TTS replaces AudioStreamManager)
+ * Updated: 2026-02-11 (CARD-092: renders App to capture LiveQuery callback)
  */
 
 import React from "react";
@@ -14,20 +15,57 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import messagesReducer from "../src/store/messagesSlice";
 import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
+import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+
+// Mock speechSynthesis API for jsdom
+window.speechSynthesis = {
+  cancel: jest.fn(),
+  speak: jest.fn(),
+  getVoices: jest.fn(() => []),
+  speaking: false,
+  paused: false,
+  pause: jest.fn(),
+  resume: jest.fn(),
+};
+global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
+  constructor(text) { this.text = text; this.rate = 1; this.volume = 1; this.voice = null; this.onend = null; this.onerror = null; }
+};
 
 // --- Mock API ---
 
 let capturedOnMessage = null;
 
 jest.mock("../src/services/api", () => ({
+  getOrCreateBoard: jest.fn(),
+  createCard: jest.fn(),
+  updateCard: jest.fn(),
+  addComment: jest.fn(),
+  listCards: jest.fn(),
+  showCard: jest.fn(),
+  pollBoard: jest.fn(),
+  sendMessage: jest.fn(),
+  pollMessages: jest.fn(),
+  getConversation: jest.fn(),
   subscribeToMessages: jest.fn((onMessage) => {
     capturedOnMessage = onMessage;
     return Promise.resolve(() => {});
   }),
+  addRecentProject: jest.fn(),
+  getRecentProjects: jest.fn(),
+  deleteProject: jest.fn(),
+  getAgents: jest.fn(),
+  createAgent: jest.fn(),
+  updateAgent: jest.fn(),
+  deleteAgent: jest.fn(),
+  createSprint: jest.fn(),
+  getSprints: jest.fn(),
+  updateSprint: jest.fn(),
+  deleteSprint: jest.fn(),
 }));
 
-import MessagesView from "../src/components/MessagesView";
+import * as api from "../src/services/api";
+import App from "../src/App";
 
 const theme = createTheme();
 
@@ -54,6 +92,7 @@ function createTestStore(overrides = {}) {
       messages: messagesReducer,
       agents: agentsReducer,
       board: boardReducer,
+      projects: projectsReducer,
       tts: ttsReducer,
     },
     preloadedState: {
@@ -78,17 +117,18 @@ function createTestStore(overrides = {}) {
         sprints: [],
         sprintFilter: "",
       },
+      projects: { projects: [], activeProject: null, loading: false, error: null },
       tts: { ...DEFAULT_TTS, ...overrides.tts },
     },
   });
 }
 
-function renderMessagesView(overrides = {}) {
+function renderApp(overrides = {}) {
   const store = createTestStore(overrides);
   const result = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <MessagesView />
+        <App />
       </ThemeProvider>
     </Provider>
   );
@@ -98,15 +138,20 @@ function renderMessagesView(overrides = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnMessage = null;
+  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [], sprints: [] });
+  api.getRecentProjects.mockResolvedValue({ projects: [] });
+  api.getAgents.mockResolvedValue({ agents: [] });
 });
 
 // ─── LiveQuery subscription ──────────────────────────────────────────────────
 
 describe("CARD-073: LiveQuery subscription", () => {
-  test("subscribes to LiveQuery on mount", async () => {
+  test("subscribes to LiveQuery on mount (via App.jsx)", async () => {
     const { subscribeToMessages } = require("../src/services/api");
-    renderMessagesView();
-    expect(subscribeToMessages).toHaveBeenCalledTimes(1);
+    renderApp();
+    await waitFor(() => {
+      expect(subscribeToMessages).toHaveBeenCalledTimes(1);
+    });
     expect(typeof capturedOnMessage).toBe("function");
   });
 });
@@ -115,7 +160,7 @@ describe("CARD-073: LiveQuery subscription", () => {
 
 describe("CARD-073: TTS enqueue on incoming messages (CARD-090)", () => {
   test("enqueues message when TTS enabled and agent message arrives", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -136,7 +181,7 @@ describe("CARD-073: TTS enqueue on incoming messages (CARD-090)", () => {
   });
 
   test("enqueues message with correct from field for agent voice lookup", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -155,7 +200,7 @@ describe("CARD-073: TTS enqueue on incoming messages (CARD-090)", () => {
   });
 
   test("auto-starts speaking first enqueued message when idle", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -175,7 +220,7 @@ describe("CARD-073: TTS enqueue on incoming messages (CARD-090)", () => {
   });
 
   test("subsequent messages queue as pending", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -211,7 +256,7 @@ describe("CARD-073: TTS enqueue on incoming messages (CARD-090)", () => {
 
 describe("CARD-073: TTS skip conditions", () => {
   test("does NOT enqueue when TTS is disabled", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: false } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: false } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -230,7 +275,7 @@ describe("CARD-073: TTS skip conditions", () => {
   });
 
   test("does NOT enqueue for owner messages", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -253,7 +298,7 @@ describe("CARD-073: TTS skip conditions", () => {
 
 describe("CARD-073: Message dispatch still works", () => {
   test("always dispatches appendMessage regardless of TTS state", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: false } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: false } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
@@ -281,7 +326,7 @@ describe("CARD-073: Message dispatch still works", () => {
 
 describe("CARD-073: Unknown agent handling", () => {
   test("enqueues message for unknown agent with correct from field", async () => {
-    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+    const { store } = renderApp({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
