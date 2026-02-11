@@ -89,7 +89,7 @@ describe("CARD-071: Voice dropdown", () => {
     });
   });
 
-  test("handles getVoices failure gracefully", async () => {
+  test("handles getVoices failure gracefully with fallback voices", async () => {
     api.getVoices.mockRejectedValue(new Error("Network error"));
     renderDialog();
     await waitFor(() => {
@@ -97,6 +97,10 @@ describe("CARD-071: Voice dropdown", () => {
     });
     // Should still render without crashing
     expect(screen.getByLabelText("Voice")).toBeInTheDocument();
+    // Should show helper text about fallback
+    await waitFor(() => {
+      expect(screen.getByText(/Could not reach TTS server/)).toBeInTheDocument();
+    });
   });
 });
 

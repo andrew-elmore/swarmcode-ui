@@ -8,6 +8,7 @@
  * 4. Error state (setError, clearError) is managed correctly and NOT persisted
  *
  * Updated: 2026-02-11 (CARD-074: removed deprecated setAgentVoice, setSpeakAgentName, TtsControls)
+ * Updated: 2026-02-11 (CARD-078: enabled no longer persisted — AudioContext requires user gesture)
  */
 
 import { configureStore } from "@reduxjs/toolkit";
@@ -100,13 +101,19 @@ describe("CARD-048: ttsSlice reducer actions", () => {
 // ─── localStorage Persistence Tests ─────────────────────────────────────────
 
 describe("CARD-048: TTS state persists to localStorage", () => {
-  test("setEnabled saves to localStorage", () => {
+  test("setEnabled triggers localStorage save (volume + rate only)", () => {
     const store = createTestStore();
     store.dispatch(setEnabled(true));
+    // enabled is NOT persisted (AudioContext must be started by user gesture)
+    // but setEnabled still calls saveToStorage which writes volume + rate
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
       "swarmcode_tts",
-      expect.stringContaining('"enabled":true')
+      expect.not.stringContaining('"enabled"')
     );
+    const saved = JSON.parse(localStorageMock.setItem.mock.calls[0][1]);
+    expect(saved).toHaveProperty("volume");
+    expect(saved).toHaveProperty("rate");
+    expect(saved).not.toHaveProperty("enabled");
   });
 
   test("setVolume saves to localStorage", () => {
@@ -137,16 +144,16 @@ describe("CARD-048: TTS state persists to localStorage", () => {
     expect(ttsCalls).toHaveLength(0);
   });
 
-  test("localStorage stores correct shape (enabled, volume, rate only)", () => {
+  test("localStorage stores correct shape (volume, rate only — no enabled)", () => {
     const store = createTestStore();
-    store.dispatch(setEnabled(true));
+    store.dispatch(setVolume(0.8));
     const lastCall = localStorageMock.setItem.mock.calls.find(
       (c) => c[0] === "swarmcode_tts"
     );
     const saved = JSON.parse(lastCall[1]);
-    expect(saved).toHaveProperty("enabled");
     expect(saved).toHaveProperty("volume");
     expect(saved).toHaveProperty("rate");
+    expect(saved).not.toHaveProperty("enabled");
     expect(saved).not.toHaveProperty("error");
     expect(saved).not.toHaveProperty("perAgentVoice");
     expect(saved).not.toHaveProperty("speakAgentName");

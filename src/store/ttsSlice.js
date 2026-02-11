@@ -15,7 +15,6 @@ function loadFromStorage() {
 function saveToStorage(state) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      enabled: state.enabled,
       volume: state.volume,
       rate: state.rate,
     }));
@@ -29,7 +28,7 @@ const saved = loadFromStorage();
 const ttsSlice = createSlice({
   name: "tts",
   initialState: {
-    enabled: saved?.enabled ?? false,
+    enabled: false, // Always start stopped — AudioContext requires user gesture
     volume: saved?.volume ?? 1.0,
     rate: saved?.rate ?? 1.0,
     error: null,

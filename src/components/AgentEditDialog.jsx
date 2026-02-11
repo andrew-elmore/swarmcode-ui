@@ -20,6 +20,15 @@ import { getVoices, synthesizeSpeech } from "../services/api";
 
 const ALL_TOOLS = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"];
 
+// Fallback voices when the TTS server is unreachable — matches installed Piper models
+const FALLBACK_VOICES = [
+  { id: "en_US-amy-medium", name: "Amy", language: "en-US", quality: "medium" },
+  { id: "en_US-ryan-medium", name: "Ryan", language: "en-US", quality: "medium" },
+  { id: "en_US-joe-medium", name: "Joe", language: "en-US", quality: "medium" },
+  { id: "en_GB-alba-medium", name: "Alba", language: "en-GB", quality: "medium" },
+  { id: "en_US-danny-low", name: "Danny", language: "en-US", quality: "low" },
+];
+
 export default function AgentEditDialog({ open, onClose, agent, onSave }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -34,15 +43,20 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
   const [sortOrder, setSortOrder] = useState(0);
   const [voice, setVoice] = useState("");
   const [voices, setVoices] = useState([]);
+  const [voiceError, setVoiceError] = useState(false);
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Fetch available voices when dialog opens
   useEffect(() => {
     if (open) {
+      setVoiceError(false);
       getVoices()
         .then((v) => setVoices(v))
-        .catch(() => setVoices([]));
+        .catch(() => {
+          setVoices(FALLBACK_VOICES);
+          setVoiceError(true);
+        });
     }
   }, [open]);
 
@@ -180,6 +194,7 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
             select
             fullWidth
             margin="dense"
+            helperText={voiceError ? "Could not reach TTS server — showing default voices" : undefined}
           >
             <MenuItem value="">
               <em>Default</em>

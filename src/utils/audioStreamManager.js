@@ -1,16 +1,25 @@
 // audioStreamManager.js — Continuous Web Audio stream with white noise + speech mixing
 //
 // Architecture (from arch_tts_streaming.txt v2):
-//   [Static Noise Generator] --> [GainNode: 0.02] --+
-//                                                     +--> [GainNode: master vol] --> destination
-//   [Speech AudioBuffer]     --> [GainNode: 1.0]  --+
+//   [Silent <audio> element] --> [MediaElementSource] --> [GainNode: 0] --+
+//   [Static Noise Generator] --> [GainNode: 0.02] -----------------------+
+//                                                                          +--> [GainNode: master vol] --> destination
+//   [Speech AudioBuffer]     --> [GainNode: 1.0]  -----------------------+
 //
-// Keeps a single AudioContext alive so AirPods/Bluetooth stay connected.
+// The silent <audio> element grants background playback privileges from the
+// HTMLMediaElement to the entire AudioContext, preventing the OS from suspending
+// audio when the phone screen is locked (iOS Safari + Chrome Android).
+// Media Session API registers metadata so the OS shows lock screen controls.
 
 const NOISE_GAIN_ACTIVE = 0.02;
 const NOISE_GAIN_DUCKED = 0.005;
 const NOISE_BUFFER_SECONDS = 2;
 const DUCK_FADE_TIME = 0.15; // seconds for gain ramp
+
+// Minimal silent MP3 (~200 bytes) — enough for a looping silent audio element.
+// This keeps the HTMLMediaElement "playing" so the OS won't suspend the AudioContext.
+const SILENT_MP3_BASE64 =
+  "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwBHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwBHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 export default class AudioStreamManager {
   constructor() {
@@ -20,12 +29,16 @@ export default class AudioStreamManager {
     this._speechGain = null;
     this._masterGain = null;
     this._analyser = null;
+    this._silentAudio = null;
+    this._silentSource = null;
+    this._silentGain = null;
     this._queue = [];
     this._playing = false;
     this._active = false;
     this._speed = 1.0;
     this._volume = 1.0;
     this._onError = null;
+    this._handleVisibilityChange = this._handleVisibilityChange.bind(this);
   }
 
   get active() {
@@ -85,6 +98,18 @@ export default class AudioStreamManager {
 
     // Generate and start looping white noise
     this._startNoise();
+
+    // Silent <audio> element keeps the AudioContext alive when the phone is locked.
+    // HTMLMediaElement has OS-level background playback privileges that extend to
+    // any AudioContext it's connected to via createMediaElementSource().
+    this._startSilentAudio();
+
+    // Media Session API tells the OS this is a media player, enabling lock screen
+    // controls and preventing aggressive audio suspension on iOS/Android.
+    this._setupMediaSession();
+
+    // Resume AudioContext if the page becomes visible again after suspension
+    document.addEventListener("visibilitychange", this._handleVisibilityChange);
   }
 
   /**
@@ -95,6 +120,16 @@ export default class AudioStreamManager {
     this._active = false;
     this._queue = [];
     this._playing = false;
+
+    document.removeEventListener("visibilitychange", this._handleVisibilityChange);
+
+    if (this._silentAudio) {
+      try { this._silentAudio.pause(); } catch { /* jsdom */ }
+      this._silentAudio.removeAttribute("src");
+      this._silentAudio = null;
+    }
+    this._silentSource = null;
+    this._silentGain = null;
 
     if (this._noiseSource) {
       try {
@@ -216,6 +251,69 @@ export default class AudioStreamManager {
       this._emitError("Audio decode error: " + err.message);
       this._unduckNoise();
       this._processQueue();
+    }
+  }
+
+  _startSilentAudio() {
+    if (!this._ctx || typeof document === "undefined") return;
+
+    this._silentAudio = document.createElement("audio");
+    this._silentAudio.loop = true;
+    // Volume must be > 0 for iOS to grant background privileges; route through
+    // a zero-gain node instead so no actual sound is produced.
+    this._silentAudio.volume = 1.0;
+    this._silentAudio.src = "data:audio/mp3;base64," + SILENT_MP3_BASE64;
+
+    try {
+      this._silentSource = this._ctx.createMediaElementSource(this._silentAudio);
+      this._silentGain = this._ctx.createGain();
+      this._silentGain.gain.value = 0;
+      this._silentSource.connect(this._silentGain);
+      this._silentGain.connect(this._masterGain);
+    } catch {
+      // createMediaElementSource not available (e.g. test env) — fall back to
+      // noise-only keep-alive which still works on desktop browsers.
+      return;
+    }
+
+    this._silentAudio.play().catch(() => {
+      // Autoplay blocked — the user gesture that called start() should have
+      // already unlocked playback, but some browsers are stricter.
+    });
+  }
+
+  _setupMediaSession() {
+    if (typeof navigator === "undefined" || !navigator.mediaSession) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: "SwarmCode Audio Stream",
+      artist: "SwarmCode",
+    });
+
+    navigator.mediaSession.setActionHandler("play", () => {
+      if (this._silentAudio && this._silentAudio.paused) {
+        this._silentAudio.play().catch(() => {});
+      }
+      if (this._ctx && this._ctx.state === "suspended") {
+        this._ctx.resume().catch(() => {});
+      }
+    });
+
+    navigator.mediaSession.setActionHandler("pause", () => {
+      // Intentionally empty — prevent the OS from pausing our stream.
+      // The user stops playback via the in-app Stop button.
+    });
+  }
+
+  _handleVisibilityChange() {
+    if (document.visibilityState !== "visible" || !this._active) return;
+
+    // Page became visible again — resume AudioContext if the OS suspended it
+    if (this._ctx && this._ctx.state === "suspended") {
+      this._ctx.resume().catch(() => {});
+    }
+    if (this._silentAudio && this._silentAudio.paused) {
+      this._silentAudio.play().catch(() => {});
     }
   }
 }
