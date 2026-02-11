@@ -161,6 +161,7 @@ describe("CARD-080: _processQueue calls _fixWavHeader", () => {
       preload: "",
       paused: false,
       playbackRate: 1,
+      volume: 1,
       style: {},
       parentNode: null,
       play: jest.fn(() => Promise.resolve()),

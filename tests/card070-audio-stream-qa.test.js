@@ -39,6 +39,7 @@ function createMockAudioElement() {
     preload: "",
     paused: false,
     playbackRate: 1,
+    volume: 1,
     style: {},
     parentNode: null,
     play: jest.fn(() => Promise.resolve()),

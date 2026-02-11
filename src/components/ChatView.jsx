@@ -5,13 +5,15 @@ import IconButton from "@mui/material/IconButton";
 import TextField from "@mui/material/TextField";
 import Paper from "@mui/material/Paper";
 import Button from "@mui/material/Button";
+import Snackbar from "@mui/material/Snackbar";
+import Alert from "@mui/material/Alert";
 import SendIcon from "@mui/icons-material/Send";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useAppDispatch, useAppSelector } from "../store";
-import { sendMessage, loadConversation, loadMoreMessages } from "../store/messagesSlice";
+import { sendMessage, loadConversation, loadMoreMessages, clearError } from "../store/messagesSlice";
 export default function ChatView() {
   const dispatch = useAppDispatch();
-  const { conversations, selectedAgent, sending } = useAppSelector((s) => s.messages);
+  const { conversations, selectedAgent, sending, error } = useAppSelector((s) => s.messages);
   const agents = useAppSelector((s) => s.agents.agents);
 
   // Build label lookup from dynamic agents list
@@ -58,11 +60,13 @@ export default function ChatView() {
     });
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = input.trim();
     if (!trimmed || !selectedAgent || sending) return;
-    dispatch(sendMessage({ to: selectedAgent, message: trimmed }));
-    setInput("");
+    const result = await dispatch(sendMessage({ to: selectedAgent, message: trimmed }));
+    if (!result.error) {
+      setInput("");
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -223,6 +227,12 @@ export default function ChatView() {
           <SendIcon fontSize="small" />
         </IconButton>
       </Box>
+
+      <Snackbar open={!!error} autoHideDuration={6000} onClose={() => dispatch(clearError())}>
+        <Alert severity="error" onClose={() => dispatch(clearError())} variant="filled">
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

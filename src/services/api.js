@@ -31,6 +31,15 @@ async function callFunction(name, params = {}) {
     body: JSON.stringify(params),
   });
 
+  if (!res.ok) {
+    let msg = `API error ${res.status}`;
+    try {
+      const body = await res.json();
+      if (body.error) msg = body.error;
+    } catch { /* non-JSON response */ }
+    throw new Error(msg);
+  }
+
   const data = await res.json();
 
   if (data.error) {

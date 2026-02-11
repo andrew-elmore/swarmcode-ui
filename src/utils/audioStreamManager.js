@@ -1,32 +1,31 @@
 // audioStreamManager.js — Continuous audio stream with white noise + TTS speech
 //
-// Architecture (CARD-082 rewrite):
-//   [Noise <audio> element] --> [MediaElementSource] --> [noiseGain: 0.02] --+
+// Architecture (CARD-082 + CARD-087):
+//   [Noise <audio> element] --> plays DIRECTLY through speakers (no AudioContext)
+//                               Volume controlled via element.volume property
+//                               Keeps OS audio session alive on lock screen
+//
 //   [TTS <audio> element]   --> [MediaElementSource] --> [speechGain: 1.0] --+
 //                                                                             +--> [masterGain] --> destination
 //                                                                                      |
 //                                                                                 [analyser]
 //
-// BOTH noise and speech play through HTMLAudioElements so the OS recognizes
-// them as real media playback. This prevents iOS Safari and Chrome Android
-// from suspending audio when the screen is locked.
-//
-// The white noise <audio> element loops continuously, keeping the audio session
-// alive even between speech clips. This is critical for lock screen: without an
-// actively playing HTMLMediaElement, the OS suspends the entire AudioContext.
+// CRITICAL: The noise element must NOT use createMediaElementSource(). When an
+// <audio> element is captured by createMediaElementSource(), its output goes
+// exclusively through the AudioContext graph. When the OS suspends the
+// AudioContext on lock screen, the captured element also stops — defeating the
+// purpose. By keeping noise as a standalone <audio> element, the OS recognizes
+// it as real media playback and keeps the audio session alive.
 
 const NOISE_GAIN_ACTIVE = 0.02;
 const NOISE_GAIN_DUCKED = 0.005;
 const NOISE_BUFFER_SECONDS = 2;
-const DUCK_FADE_TIME = 0.15; // seconds for gain ramp
 
 export default class AudioStreamManager {
   constructor() {
     this._ctx = null;
-    this._noiseAudio = null;     // HTMLAudioElement for looping white noise
-    this._noiseSource = null;    // MediaElementSourceNode for noise
+    this._noiseAudio = null;     // HTMLAudioElement for looping white noise (standalone, no AudioContext)
     this._noiseBlobUrl = null;
-    this._noiseGain = null;
     this._masterGain = null;
     this._analyser = null;
     this._speechAudio = null;    // HTMLAudioElement for TTS playback
@@ -94,12 +93,7 @@ export default class AudioStreamManager {
     this._speechGain.gain.value = 1.0;
     this._speechGain.connect(this._masterGain);
 
-    // Noise gain
-    this._noiseGain = this._ctx.createGain();
-    this._noiseGain.gain.value = NOISE_GAIN_ACTIVE;
-    this._noiseGain.connect(this._masterGain);
-
-    // Generate and start looping white noise
+    // Generate and start looping white noise (standalone <audio>, no AudioContext)
     this._startNoise();
 
     // Create the speech <audio> element and connect to AudioContext.
@@ -146,14 +140,12 @@ export default class AudioStreamManager {
       try { URL.revokeObjectURL(this._noiseBlobUrl); } catch { /* ok */ }
       this._noiseBlobUrl = null;
     }
-    this._noiseSource = null;
 
     if (this._ctx) {
       this._ctx.close().catch(() => {});
       this._ctx = null;
     }
 
-    this._noiseGain = null;
     this._masterGain = null;
     this._analyser = null;
   }
@@ -298,37 +290,27 @@ export default class AudioStreamManager {
     this._noiseAudio.preload = "auto";
     this._noiseAudio.src = this._noiseBlobUrl;
 
-    // Append to DOM — mobile browsers require <audio> elements to be in the
-    // document for reliable playback via createMediaElementSource.
+    // Set noise volume directly on the element (not through AudioContext).
+    // This is intentional: the noise element must NOT use createMediaElementSource()
+    // because captured elements stop when the OS suspends the AudioContext on lock
+    // screen. A standalone <audio> element keeps the OS audio session alive.
+    this._noiseAudio.volume = NOISE_GAIN_ACTIVE;
+
+    // Append to DOM — mobile browsers require <audio> elements in the document.
     this._noiseAudio.style.display = "none";
     document.body.appendChild(this._noiseAudio);
-
-    // Connect to AudioContext through noiseGain for ducking and volume control
-    try {
-      this._noiseSource = this._ctx.createMediaElementSource(this._noiseAudio);
-      this._noiseSource.connect(this._noiseGain);
-    } catch {
-      // createMediaElementSource not available (test env)
-      return;
-    }
 
     this._noiseAudio.play().catch(() => {});
   }
 
   _duckNoise() {
-    if (!this._noiseGain || !this._ctx) return;
-    this._noiseGain.gain.linearRampToValueAtTime(
-      NOISE_GAIN_DUCKED,
-      this._ctx.currentTime + DUCK_FADE_TIME
-    );
+    if (!this._noiseAudio) return;
+    this._noiseAudio.volume = NOISE_GAIN_DUCKED;
   }
 
   _unduckNoise() {
-    if (!this._noiseGain || !this._ctx) return;
-    this._noiseGain.gain.linearRampToValueAtTime(
-      NOISE_GAIN_ACTIVE,
-      this._ctx.currentTime + DUCK_FADE_TIME
-    );
+    if (!this._noiseAudio) return;
+    this._noiseAudio.volume = NOISE_GAIN_ACTIVE;
   }
 
   _handleEnded() {

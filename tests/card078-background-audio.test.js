@@ -37,6 +37,7 @@ function createMockAudioElement() {
     preload: "",
     paused: false,
     playbackRate: 1,
+    volume: 1,
     style: {},
     parentNode: null,
     play: jest.fn(() => Promise.resolve()),
@@ -126,21 +127,20 @@ describe("CARD-078/082: Noise audio element for lock screen", () => {
     expect(mgr._noiseAudio.play).toHaveBeenCalled();
   });
 
-  test("createMediaElementSource connects noise audio to AudioContext", () => {
+  test("noise audio plays directly — NOT captured by createMediaElementSource", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    expect(mockCtx.createMediaElementSource).toHaveBeenCalledWith(
-      mgr._noiseAudio
-    );
+    // Noise must NOT be captured by createMediaElementSource — captured elements
+    // stop when the OS suspends the AudioContext on lock screen (CARD-087).
+    const sourceArgs = mockCtx.createMediaElementSource.mock.calls.map((c) => c[0]);
+    expect(sourceArgs).not.toContain(mgr._noiseAudio);
   });
 
-  test("noise routes through noiseGain (0.02) to master", () => {
+  test("noise volume set to 0.02 directly on the <audio> element", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    // createGain calls: master(0), speech(1), noise(2)
-    expect(mockCtx.createGain).toHaveBeenCalledTimes(3);
-    const noiseGain = mockCtx.createGain.mock.results[2].value;
-    expect(noiseGain.gain.value).toBe(0.02);
+    // Volume is controlled via element.volume (not AudioContext gain)
+    expect(mgr._noiseAudio.volume).toBe(0.02);
   });
 
   test("stop() pauses and cleans up the noise audio element", () => {

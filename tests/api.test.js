@@ -32,12 +32,15 @@ afterEach(() => {
 
 function mockFetchSuccess(result) {
   global.fetch.mockResolvedValueOnce({
+    ok: true,
     json: async () => ({ result }),
   });
 }
 
 function mockFetchError(errorMessage) {
   global.fetch.mockResolvedValueOnce({
+    ok: false,
+    status: 400,
     json: async () => ({ error: errorMessage }),
   });
 }

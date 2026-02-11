@@ -35,6 +35,7 @@ function createMockAudioElement() {
     preload: "",
     paused: false,
     playbackRate: 1,
+    volume: 1,
     style: {},
     parentNode: null,
     play: jest.fn(() => Promise.resolve()),
@@ -226,51 +227,39 @@ describe("CARD-082 QA: speech via HTMLAudioElement", () => {
 // Noise ducking during speech
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("CARD-082 QA: noise ducking", () => {
-  test("noise gain ducks to 0.005 when speech plays", () => {
+describe("CARD-082 QA: noise ducking (CARD-087: via element.volume)", () => {
+  test("noise volume ducks to 0.005 when speech plays", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    // noise gain is the third createGain call (master=0, speech=1, noise=2)
-    const noiseGain = mockCtx.createGain.mock.results[2].value;
 
     mgr.queueSpeech(new ArrayBuffer(100));
 
-    expect(noiseGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
-      0.005, // NOISE_GAIN_DUCKED
-      expect.any(Number)
-    );
+    // CARD-087: ducking now uses element.volume (not AudioContext gain)
+    expect(mgr._noiseAudio.volume).toBe(0.005);
   });
 
-  test("noise gain unducks to 0.02 when speech ends", () => {
+  test("noise volume unducks to 0.02 when speech ends", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    const noiseGain = mockCtx.createGain.mock.results[2].value;
 
     mgr.queueSpeech(new ArrayBuffer(100));
-    noiseGain.gain.linearRampToValueAtTime.mockClear();
+    expect(mgr._noiseAudio.volume).toBe(0.005); // ducked
 
     mgr._handleEnded();
 
-    expect(noiseGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
-      0.02, // NOISE_GAIN_ACTIVE
-      expect.any(Number)
-    );
+    expect(mgr._noiseAudio.volume).toBe(0.02); // unducked
   });
 
-  test("noise gain unducks on playback error", () => {
+  test("noise volume unducks on playback error", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    const noiseGain = mockCtx.createGain.mock.results[2].value;
 
     mgr.queueSpeech(new ArrayBuffer(100));
-    noiseGain.gain.linearRampToValueAtTime.mockClear();
+    expect(mgr._noiseAudio.volume).toBe(0.005); // ducked
 
     mgr._handleError();
 
-    expect(noiseGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
-      0.02,
-      expect.any(Number)
-    );
+    expect(mgr._noiseAudio.volume).toBe(0.02); // unducked
   });
 });
 
@@ -312,10 +301,8 @@ describe("CARD-082 QA: cleanup and resource management", () => {
 
     expect(mgr._noiseAudio).toBeNull();
     expect(mgr._speechAudio).toBeNull();
-    expect(mgr._noiseSource).toBeNull();
     expect(mgr._speechSource).toBeNull();
     expect(mgr._speechGain).toBeNull();
-    expect(mgr._noiseGain).toBeNull();
     expect(mgr._masterGain).toBeNull();
     expect(mgr._analyser).toBeNull();
     expect(mgr._ctx).toBeNull();
