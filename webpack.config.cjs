@@ -60,7 +60,7 @@ module.exports = {
     }),
     new webpack.DefinePlugin({
       "process.env.REACT_APP_PARSE_URL": JSON.stringify(
-        process.env.REACT_APP_PARSE_URL || ""
+        process.env.REACT_APP_PARSE_URL || (isProd ? "/parse" : "")
       ),
       "process.env.REACT_APP_PARSE_APP_ID": JSON.stringify(
         process.env.REACT_APP_PARSE_APP_ID || ""
