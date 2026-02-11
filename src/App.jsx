@@ -129,7 +129,7 @@ export default function App() {
         )}
       </AppBar>
 
-      <Box component="main" sx={{ flex: 1, overflow: "hidden" }}>
+      <Box component="main" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         {tab === 0 && <MessagesView />}
         {tab === 1 && <BoardView />}
         {tab === 2 && <AgentsView />}
