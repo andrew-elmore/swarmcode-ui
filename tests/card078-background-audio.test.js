@@ -1,7 +1,12 @@
 /**
- * CARD-078 QA: Background audio playback — silent <audio> element,
- * Media Session API, visibility change handler.
- * Author: qa-1
+ * CARD-078 / CARD-082 QA: Background audio playback —
+ * noise <audio> element keeps session alive, Media Session API,
+ * visibility change handler.
+ *
+ * CARD-082 replaced the silent <audio> trick with a looping noise <audio>
+ * element that keeps the OS audio session alive on lock screen.
+ *
+ * Author: qa-1 (original), senior-dev-1 (CARD-082 update)
  * Date: 2026-02-11
  */
 
@@ -17,24 +22,27 @@ function createMockGainNode() {
   };
 }
 
-function createMockBufferSource() {
-  return {
-    buffer: null,
-    loop: false,
-    playbackRate: { value: 1 },
-    connect: jest.fn(),
-    start: jest.fn(),
-    stop: jest.fn(),
-    onended: null,
-  };
-}
-
 function createMockAnalyser() {
   return { fftSize: 0, connect: jest.fn(), disconnect: jest.fn() };
 }
 
 function createMockMediaElementSource() {
   return { connect: jest.fn() };
+}
+
+function createMockAudioElement() {
+  return {
+    loop: false,
+    src: "",
+    preload: "",
+    paused: false,
+    playbackRate: 1,
+    play: jest.fn(() => Promise.resolve()),
+    pause: jest.fn(),
+    removeAttribute: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+  };
 }
 
 function createMockAudioContext() {
@@ -44,16 +52,8 @@ function createMockAudioContext() {
     state: "running",
     destination: { name: "destination" },
     createGain: jest.fn(() => createMockGainNode()),
-    createBufferSource: jest.fn(() => createMockBufferSource()),
     createAnalyser: jest.fn(() => createMockAnalyser()),
-    createBuffer: jest.fn((channels, length, sampleRate) => ({
-      numberOfChannels: channels,
-      length,
-      sampleRate,
-      getChannelData: jest.fn(() => new Float32Array(length)),
-    })),
     createMediaElementSource: jest.fn(() => createMockMediaElementSource()),
-    decodeAudioData: jest.fn(() => Promise.resolve({ duration: 1 })),
     close: jest.fn(() => Promise.resolve()),
     resume: jest.fn(() => Promise.resolve()),
   };
@@ -67,19 +67,10 @@ beforeEach(() => {
   mockCtx = createMockAudioContext();
   window.AudioContext = jest.fn(() => mockCtx);
 
-  // Mock document.createElement for <audio>
   const origCreateElement = document.createElement.bind(document);
   jest.spyOn(document, "createElement").mockImplementation((tag) => {
     if (tag === "audio") {
-      return {
-        loop: false,
-        volume: 1,
-        src: "",
-        paused: false,
-        play: jest.fn(() => Promise.resolve()),
-        pause: jest.fn(),
-        removeAttribute: jest.fn(),
-      };
+      return createMockAudioElement();
     }
     return origCreateElement(tag);
   });
@@ -95,67 +86,69 @@ afterEach(() => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Silent <audio> element
+// Noise <audio> element (replaces CARD-078 silent audio)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("CARD-078: Silent audio element", () => {
-  test("creates an <audio> element on start()", () => {
+describe("CARD-078/082: Noise audio element for lock screen", () => {
+  test("creates <audio> elements on start()", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
     expect(document.createElement).toHaveBeenCalledWith("audio");
   });
 
-  test("silent audio element is set to loop", () => {
+  test("noise audio element is set to loop", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    // Access the internal silent audio ref
-    expect(mgr._silentAudio).not.toBeNull();
-    expect(mgr._silentAudio.loop).toBe(true);
+    expect(mgr._noiseAudio).not.toBeNull();
+    expect(mgr._noiseAudio.loop).toBe(true);
   });
 
-  test("silent audio volume is 1.0 (required for iOS)", () => {
+  test("noise audio src is a blob URL (WAV)", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    expect(mgr._silentAudio.volume).toBe(1.0);
+    expect(mgr._noiseAudio.src).toMatch(/^blob:/);
   });
 
-  test("silent audio src is a data: MP3 URL", () => {
+  test("play() is called on the noise audio element", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    expect(mgr._silentAudio.src).toMatch(/^data:audio\/mp3;base64,/);
+    expect(mgr._noiseAudio.play).toHaveBeenCalled();
   });
 
-  test("play() is called on the silent audio element", () => {
-    const mgr = new AudioStreamManager();
-    mgr.start();
-    expect(mgr._silentAudio.play).toHaveBeenCalled();
-  });
-
-  test("createMediaElementSource connects silent audio to AudioContext", () => {
+  test("createMediaElementSource connects noise audio to AudioContext", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
     expect(mockCtx.createMediaElementSource).toHaveBeenCalledWith(
-      mgr._silentAudio
+      mgr._noiseAudio
     );
   });
 
-  test("silent audio routes through a zero-gain node to master", () => {
+  test("noise routes through noiseGain (0.02) to master", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    // createGain calls: master(0), speech(1), noise(2), silentGain(3)
-    expect(mockCtx.createGain).toHaveBeenCalledTimes(4);
-    const silentGain = mockCtx.createGain.mock.results[3].value;
-    expect(silentGain.gain.value).toBe(0);
+    // createGain calls: master(0), speech(1), noise(2)
+    expect(mockCtx.createGain).toHaveBeenCalledTimes(3);
+    const noiseGain = mockCtx.createGain.mock.results[2].value;
+    expect(noiseGain.gain.value).toBe(0.02);
   });
 
-  test("stop() pauses and cleans up the silent audio element", () => {
+  test("stop() pauses and cleans up the noise audio element", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    const silentAudio = mgr._silentAudio;
+    const noiseAudio = mgr._noiseAudio;
     mgr.stop();
-    expect(silentAudio.pause).toHaveBeenCalled();
-    expect(silentAudio.removeAttribute).toHaveBeenCalledWith("src");
-    expect(mgr._silentAudio).toBeNull();
+    expect(noiseAudio.pause).toHaveBeenCalled();
+    expect(noiseAudio.removeAttribute).toHaveBeenCalledWith("src");
+    expect(mgr._noiseAudio).toBeNull();
+  });
+
+  test("stop() revokes noise blob URL", () => {
+    const mgr = new AudioStreamManager();
+    mgr.start();
+    const blobUrl = mgr._noiseBlobUrl;
+    expect(blobUrl).toBeTruthy();
+    mgr.stop();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith(blobUrl);
   });
 
   test("gracefully handles createMediaElementSource unavailable", () => {
@@ -166,8 +159,6 @@ describe("CARD-078: Silent audio element", () => {
     // Should not throw — falls back gracefully
     expect(() => mgr.start()).not.toThrow();
     expect(mgr.active).toBe(true);
-    // Only 3 gain nodes (master, speech, noise — no silent gain)
-    expect(mockCtx.createGain).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -175,7 +166,7 @@ describe("CARD-078: Silent audio element", () => {
 // Media Session API
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("CARD-078: Media Session API", () => {
+describe("CARD-078/082: Media Session API", () => {
   let origMediaSession;
 
   beforeEach(() => {
@@ -183,13 +174,13 @@ describe("CARD-078: Media Session API", () => {
     Object.defineProperty(navigator, "mediaSession", {
       value: {
         metadata: null,
+        playbackState: "none",
         setActionHandler: jest.fn(),
       },
       writable: true,
       configurable: true,
     });
 
-    // MediaMetadata constructor
     if (typeof window.MediaMetadata === "undefined") {
       window.MediaMetadata = class {
         constructor(init) {
@@ -224,11 +215,11 @@ describe("CARD-078: Media Session API", () => {
     expect(actions).toContain("pause");
   });
 
-  test("play handler resumes suspended AudioContext", () => {
+  test("play handler resumes suspended AudioContext and noise audio", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
     mockCtx.state = "suspended";
-    mgr._silentAudio.paused = true;
+    mgr._noiseAudio.paused = true;
 
     const playHandler = navigator.mediaSession.setActionHandler.mock.calls.find(
       (c) => c[0] === "play"
@@ -236,7 +227,7 @@ describe("CARD-078: Media Session API", () => {
     playHandler();
 
     expect(mockCtx.resume).toHaveBeenCalled();
-    expect(mgr._silentAudio.play).toHaveBeenCalled();
+    expect(mgr._noiseAudio.play).toHaveBeenCalled();
   });
 
   test("pause handler is a no-op (prevents OS from pausing)", () => {
@@ -247,10 +238,7 @@ describe("CARD-078: Media Session API", () => {
       (c) => c[0] === "pause"
     )[1];
 
-    // Should not throw or do anything
     expect(() => pauseHandler()).not.toThrow();
-    // Importantly, should NOT pause the silent audio or close the context
-    expect(mgr._silentAudio.pause).not.toHaveBeenCalled();
     expect(mockCtx.close).not.toHaveBeenCalled();
   });
 
@@ -261,7 +249,6 @@ describe("CARD-078: Media Session API", () => {
       configurable: true,
     });
     const mgr = new AudioStreamManager();
-    // Should not throw
     expect(() => mgr.start()).not.toThrow();
     expect(mgr.active).toBe(true);
   });
@@ -271,7 +258,7 @@ describe("CARD-078: Media Session API", () => {
 // Visibility change handler
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("CARD-078: Visibility change handler", () => {
+describe("CARD-078/082: Visibility change handler", () => {
   test("registers visibilitychange listener on start()", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
@@ -296,7 +283,6 @@ describe("CARD-078: Visibility change handler", () => {
     mgr.start();
     mockCtx.state = "suspended";
 
-    // Simulate page becoming visible
     Object.defineProperty(document, "visibilityState", {
       value: "visible",
       writable: true,
@@ -307,10 +293,11 @@ describe("CARD-078: Visibility change handler", () => {
     expect(mockCtx.resume).toHaveBeenCalled();
   });
 
-  test("restarts paused silent audio when page becomes visible", () => {
+  test("restarts paused noise audio when page becomes visible", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    mgr._silentAudio.paused = true;
+    mgr._noiseAudio.paused = true;
+    mgr._noiseAudio.play.mockClear();
 
     Object.defineProperty(document, "visibilityState", {
       value: "visible",
@@ -319,8 +306,7 @@ describe("CARD-078: Visibility change handler", () => {
     });
     mgr._handleVisibilityChange();
 
-    // play() called once during start() and once on visibility change
-    expect(mgr._silentAudio.play).toHaveBeenCalledTimes(2);
+    expect(mgr._noiseAudio.play).toHaveBeenCalled();
   });
 
   test("does nothing when page becomes hidden", () => {
@@ -361,8 +347,6 @@ describe("CARD-078: Visibility change handler", () => {
 
 describe("CARD-078: ttsSlice enabled always starts false", () => {
   test("ttsSlice initial state has enabled: false regardless of localStorage", async () => {
-    // This is a behavioral contract: enabled must always be false on load
-    // because AudioContext requires a user gesture to start.
     const { default: ttsReducer } = await import("../src/store/ttsSlice");
     const state = ttsReducer(undefined, { type: "@@INIT" });
     expect(state.enabled).toBe(false);

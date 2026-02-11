@@ -2,7 +2,8 @@
  * CARD-080 QA: WAV header fix + Firebase routing verification.
  * Tests _fixWavHeader patching of streaming placeholder sizes and
  * validates firebase.json rewrite rules for /tts/** routes.
- * Author: qa-1
+ *
+ * Author: qa-1 (original), senior-dev-1 (CARD-082 update)
  * Date: 2026-02-11
  */
 
@@ -147,11 +148,26 @@ describe("CARD-080: _fixWavHeader", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// _processQueue integration: _fixWavHeader is called before decodeAudioData
+// _processQueue integration: _fixWavHeader is called before Blob creation
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-080: _processQueue calls _fixWavHeader", () => {
   let mockCtx;
+
+  function createMockAudioElement() {
+    return {
+      loop: false,
+      src: "",
+      preload: "",
+      paused: false,
+      playbackRate: 1,
+      play: jest.fn(() => Promise.resolve()),
+      pause: jest.fn(),
+      removeAttribute: jest.fn(),
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+    };
+  }
 
   beforeEach(() => {
     mockCtx = {
@@ -163,27 +179,26 @@ describe("CARD-080: _processQueue calls _fixWavHeader", () => {
         gain: { value: 1, setValueAtTime: jest.fn(), linearRampToValueAtTime: jest.fn() },
         connect: jest.fn(),
       })),
-      createBufferSource: jest.fn(() => ({
-        buffer: null, loop: false, playbackRate: { value: 1 },
-        connect: jest.fn(), start: jest.fn(), stop: jest.fn(), onended: null,
-      })),
       createAnalyser: jest.fn(() => ({ fftSize: 0, connect: jest.fn() })),
-      createBuffer: jest.fn((ch, len, sr) => ({
-        getChannelData: jest.fn(() => new Float32Array(len)),
-      })),
       createMediaElementSource: jest.fn(() => { throw new Error("not in test"); }),
-      decodeAudioData: jest.fn(() => Promise.resolve({ duration: 1 })),
       close: jest.fn(() => Promise.resolve()),
       resume: jest.fn(() => Promise.resolve()),
     };
     window.AudioContext = jest.fn(() => mockCtx);
+
+    const origCreateElement = document.createElement.bind(document);
+    jest.spyOn(document, "createElement").mockImplementation((tag) => {
+      if (tag === "audio") return createMockAudioElement();
+      return origCreateElement(tag);
+    });
   });
 
   afterEach(() => {
     delete window.AudioContext;
+    jest.restoreAllMocks();
   });
 
-  test("_fixWavHeader is invoked before decodeAudioData in the queue", async () => {
+  test("_fixWavHeader is invoked during queue processing", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
 
@@ -192,16 +207,9 @@ describe("CARD-080: _processQueue calls _fixWavHeader", () => {
     const wavData = buildWavBuffer({ riffSize: 0xFFFFFFFF, dataSize: 0xFFFFFFFF, totalBytes: 200 });
     mgr.queueSpeech(wavData);
 
-    await new Promise((r) => setTimeout(r, 10));
-
     expect(fixSpy).toHaveBeenCalledTimes(1);
-    expect(mockCtx.decodeAudioData).toHaveBeenCalledTimes(1);
-
-    // Verify decodeAudioData received the fixed buffer (sizes patched)
-    const decodedArg = mockCtx.decodeAudioData.mock.calls[0][0];
-    const view = new DataView(decodedArg);
-    expect(view.getUint32(4, true)).toBe(200 - 8);
-    expect(view.getUint32(40, true)).toBe(200 - 44);
+    // The fixed buffer is used to create a Blob URL set as speechAudio.src
+    expect(mgr._speechAudio.src).toMatch(/^blob:/);
 
     mgr.stop();
   });

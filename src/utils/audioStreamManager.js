@@ -1,37 +1,38 @@
-// audioStreamManager.js — Continuous Web Audio stream with white noise + speech mixing
+// audioStreamManager.js — Continuous audio stream with white noise + TTS speech
 //
-// Architecture (from arch_tts_streaming.txt v2):
-//   [Silent <audio> element] --> [MediaElementSource] --> [GainNode: 0] --+
-//   [Static Noise Generator] --> [GainNode: 0.02] -----------------------+
-//                                                                          +--> [GainNode: master vol] --> destination
-//   [Speech AudioBuffer]     --> [GainNode: 1.0]  -----------------------+
+// Architecture (CARD-082 rewrite):
+//   [Noise <audio> element] --> [MediaElementSource] --> [noiseGain: 0.02] --+
+//   [TTS <audio> element]   --> [MediaElementSource] --> [speechGain: 1.0] --+
+//                                                                             +--> [masterGain] --> destination
+//                                                                                      |
+//                                                                                 [analyser]
 //
-// The silent <audio> element grants background playback privileges from the
-// HTMLMediaElement to the entire AudioContext, preventing the OS from suspending
-// audio when the phone screen is locked (iOS Safari + Chrome Android).
-// Media Session API registers metadata so the OS shows lock screen controls.
+// BOTH noise and speech play through HTMLAudioElements so the OS recognizes
+// them as real media playback. This prevents iOS Safari and Chrome Android
+// from suspending audio when the screen is locked.
+//
+// The white noise <audio> element loops continuously, keeping the audio session
+// alive even between speech clips. This is critical for lock screen: without an
+// actively playing HTMLMediaElement, the OS suspends the entire AudioContext.
 
 const NOISE_GAIN_ACTIVE = 0.02;
 const NOISE_GAIN_DUCKED = 0.005;
 const NOISE_BUFFER_SECONDS = 2;
 const DUCK_FADE_TIME = 0.15; // seconds for gain ramp
 
-// Minimal silent MP3 (~200 bytes) — enough for a looping silent audio element.
-// This keeps the HTMLMediaElement "playing" so the OS won't suspend the AudioContext.
-const SILENT_MP3_BASE64 =
-  "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwBHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRwBHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-
 export default class AudioStreamManager {
   constructor() {
     this._ctx = null;
-    this._noiseSource = null;
+    this._noiseAudio = null;     // HTMLAudioElement for looping white noise
+    this._noiseSource = null;    // MediaElementSourceNode for noise
+    this._noiseBlobUrl = null;
     this._noiseGain = null;
-    this._speechGain = null;
     this._masterGain = null;
     this._analyser = null;
-    this._silentAudio = null;
-    this._silentSource = null;
-    this._silentGain = null;
+    this._speechAudio = null;    // HTMLAudioElement for TTS playback
+    this._speechSource = null;   // MediaElementSourceNode for speech
+    this._speechGain = null;
+    this._currentBlobUrl = null;
     this._queue = [];
     this._playing = false;
     this._active = false;
@@ -39,6 +40,8 @@ export default class AudioStreamManager {
     this._volume = 1.0;
     this._onError = null;
     this._handleVisibilityChange = this._handleVisibilityChange.bind(this);
+    this._handleEnded = this._handleEnded.bind(this);
+    this._handleError = this._handleError.bind(this);
   }
 
   get active() {
@@ -99,13 +102,11 @@ export default class AudioStreamManager {
     // Generate and start looping white noise
     this._startNoise();
 
-    // Silent <audio> element keeps the AudioContext alive when the phone is locked.
-    // HTMLMediaElement has OS-level background playback privileges that extend to
-    // any AudioContext it's connected to via createMediaElementSource().
-    this._startSilentAudio();
+    // Create the speech <audio> element and connect to AudioContext.
+    // TTS plays through this element so the OS treats it as real media.
+    this._initSpeechAudio();
 
-    // Media Session API tells the OS this is a media player, enabling lock screen
-    // controls and preventing aggressive audio suspension on iOS/Android.
+    // Media Session API — registers metadata so the OS shows lock screen controls
     this._setupMediaSession();
 
     // Resume AudioContext if the page becomes visible again after suspension
@@ -123,22 +124,27 @@ export default class AudioStreamManager {
 
     document.removeEventListener("visibilitychange", this._handleVisibilityChange);
 
-    if (this._silentAudio) {
-      try { this._silentAudio.pause(); } catch { /* jsdom */ }
-      this._silentAudio.removeAttribute("src");
-      this._silentAudio = null;
+    if (this._speechAudio) {
+      this._speechAudio.removeEventListener("ended", this._handleEnded);
+      this._speechAudio.removeEventListener("error", this._handleError);
+      try { this._speechAudio.pause(); } catch { /* jsdom */ }
+      this._speechAudio.removeAttribute("src");
+      this._speechAudio = null;
     }
-    this._silentSource = null;
-    this._silentGain = null;
+    this._revokeBlobUrl();
+    this._speechSource = null;
+    this._speechGain = null;
 
-    if (this._noiseSource) {
-      try {
-        this._noiseSource.stop();
-      } catch {
-        // already stopped
-      }
-      this._noiseSource = null;
+    if (this._noiseAudio) {
+      try { this._noiseAudio.pause(); } catch { /* jsdom */ }
+      this._noiseAudio.removeAttribute("src");
+      this._noiseAudio = null;
     }
+    if (this._noiseBlobUrl) {
+      try { URL.revokeObjectURL(this._noiseBlobUrl); } catch { /* ok */ }
+      this._noiseBlobUrl = null;
+    }
+    this._noiseSource = null;
 
     if (this._ctx) {
       this._ctx.close().catch(() => {});
@@ -146,7 +152,6 @@ export default class AudioStreamManager {
     }
 
     this._noiseGain = null;
-    this._speechGain = null;
     this._masterGain = null;
     this._analyser = null;
   }
@@ -165,10 +170,14 @@ export default class AudioStreamManager {
   }
 
   /**
-   * Set playback speed (0.5 to 2.0). Affects queued speech buffers.
+   * Set playback speed (0.5 to 2.0). Affects current and queued speech.
    */
   setSpeed(speed) {
     this._speed = Math.max(0.5, Math.min(2.0, speed));
+    // Apply to currently playing audio element
+    if (this._speechAudio) {
+      this._speechAudio.playbackRate = this._speed;
+    }
   }
 
   /**
@@ -186,7 +195,7 @@ export default class AudioStreamManager {
 
   /**
    * Fix WAV header sizes when the server used 0xFFFFFFFF (streaming/unknown length).
-   * decodeAudioData requires correct sizes, so patch them from the actual buffer length.
+   * Some browsers require correct sizes to play WAV via <audio> element.
    */
   _fixWavHeader(arrayBuffer) {
     if (arrayBuffer.byteLength < 44) return arrayBuffer;
@@ -214,23 +223,83 @@ export default class AudioStreamManager {
     if (this._onError) this._onError(msg);
   }
 
+  _revokeBlobUrl() {
+    if (this._currentBlobUrl) {
+      try { URL.revokeObjectURL(this._currentBlobUrl); } catch { /* ok */ }
+      this._currentBlobUrl = null;
+    }
+  }
+
+  _initSpeechAudio() {
+    if (typeof document === "undefined") return;
+
+    this._speechAudio = document.createElement("audio");
+    this._speechAudio.preload = "auto";
+    this._speechAudio.addEventListener("ended", this._handleEnded);
+    this._speechAudio.addEventListener("error", this._handleError);
+
+    // Connect to AudioContext for waveform visualization and gain control.
+    // createMediaElementSource can only be called once per element.
+    try {
+      this._speechSource = this._ctx.createMediaElementSource(this._speechAudio);
+      this._speechSource.connect(this._speechGain);
+    } catch {
+      // createMediaElementSource not available (test env) — speech still plays
+      // through the <audio> element's default output, just without visualization.
+    }
+  }
+
   _startNoise() {
-    if (!this._ctx) return;
+    if (!this._ctx || typeof document === "undefined") return;
 
-    const sampleRate = this._ctx.sampleRate;
-    const length = sampleRate * NOISE_BUFFER_SECONDS;
-    const buffer = this._ctx.createBuffer(1, length, sampleRate);
-    const data = buffer.getChannelData(0);
+    // Generate white noise as a WAV file and play it through an <audio> element
+    // so the OS treats it as real media playback (survives lock screen).
+    const sampleRate = 22050; // Low rate is fine for noise — smaller file
+    const numSamples = sampleRate * NOISE_BUFFER_SECONDS;
+    const dataSize = numSamples * 2; // 16-bit = 2 bytes per sample
+    const wavBuffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(wavBuffer);
 
-    for (let i = 0; i < length; i++) {
-      data[i] = Math.random() * 2 - 1;
+    // WAV header
+    const writeStr = (offset, str) => {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+    };
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + dataSize, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);     // PCM
+    view.setUint16(22, 1, true);     // mono
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byteRate
+    view.setUint16(32, 2, true);     // blockAlign
+    view.setUint16(34, 16, true);    // bitsPerSample
+    writeStr(36, "data");
+    view.setUint32(40, dataSize, true);
+
+    // White noise samples
+    for (let i = 0; i < numSamples; i++) {
+      view.setInt16(44 + i * 2, Math.floor((Math.random() * 2 - 1) * 32767), true);
     }
 
-    this._noiseSource = this._ctx.createBufferSource();
-    this._noiseSource.buffer = buffer;
-    this._noiseSource.loop = true;
-    this._noiseSource.connect(this._noiseGain);
-    this._noiseSource.start();
+    const blob = new Blob([wavBuffer], { type: "audio/wav" });
+    this._noiseBlobUrl = URL.createObjectURL(blob);
+
+    this._noiseAudio = document.createElement("audio");
+    this._noiseAudio.loop = true;
+    this._noiseAudio.src = this._noiseBlobUrl;
+
+    // Connect to AudioContext through noiseGain for ducking and volume control
+    try {
+      this._noiseSource = this._ctx.createMediaElementSource(this._noiseAudio);
+      this._noiseSource.connect(this._noiseGain);
+    } catch {
+      // createMediaElementSource not available (test env)
+      return;
+    }
+
+    this._noiseAudio.play().catch(() => {});
   }
 
   _duckNoise() {
@@ -249,7 +318,20 @@ export default class AudioStreamManager {
     );
   }
 
-  async _processQueue() {
+  _handleEnded() {
+    this._unduckNoise();
+    this._revokeBlobUrl();
+    this._processQueue();
+  }
+
+  _handleError() {
+    this._emitError("Audio playback error");
+    this._unduckNoise();
+    this._revokeBlobUrl();
+    this._processQueue();
+  }
+
+  _processQueue() {
     if (this._queue.length === 0 || !this._active) {
       this._playing = false;
       return;
@@ -258,54 +340,30 @@ export default class AudioStreamManager {
     this._playing = true;
     const audioData = this._queue.shift();
 
-    try {
-      const fixed = this._fixWavHeader(audioData.slice(0));
-      const audioBuffer = await this._ctx.decodeAudioData(fixed);
-      this._duckNoise();
+    // Fix WAV header and create Blob URL for the <audio> element
+    const fixed = this._fixWavHeader(audioData.slice(0));
+    const blob = new Blob([fixed], { type: "audio/wav" });
+    this._revokeBlobUrl();
+    this._currentBlobUrl = URL.createObjectURL(blob);
 
-      const source = this._ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.playbackRate.value = this._speed;
-      source.connect(this._speechGain);
+    this._duckNoise();
 
-      source.onended = () => {
-        this._unduckNoise();
-        this._processQueue();
-      };
+    this._speechAudio.src = this._currentBlobUrl;
+    this._speechAudio.playbackRate = this._speed;
 
-      source.start();
-    } catch (err) {
-      this._emitError("Audio decode error: " + err.message);
+    this._speechAudio.play().then(() => {
+      // Reapply playbackRate after play starts (iOS Safari workaround)
+      this._speechAudio.playbackRate = this._speed;
+
+      // Update Media Session playback state
+      if (typeof navigator !== "undefined" && navigator.mediaSession) {
+        navigator.mediaSession.playbackState = "playing";
+      }
+    }).catch((err) => {
+      this._emitError("Audio playback error: " + err.message);
       this._unduckNoise();
+      this._revokeBlobUrl();
       this._processQueue();
-    }
-  }
-
-  _startSilentAudio() {
-    if (!this._ctx || typeof document === "undefined") return;
-
-    this._silentAudio = document.createElement("audio");
-    this._silentAudio.loop = true;
-    // Volume must be > 0 for iOS to grant background privileges; route through
-    // a zero-gain node instead so no actual sound is produced.
-    this._silentAudio.volume = 1.0;
-    this._silentAudio.src = "data:audio/mp3;base64," + SILENT_MP3_BASE64;
-
-    try {
-      this._silentSource = this._ctx.createMediaElementSource(this._silentAudio);
-      this._silentGain = this._ctx.createGain();
-      this._silentGain.gain.value = 0;
-      this._silentSource.connect(this._silentGain);
-      this._silentGain.connect(this._masterGain);
-    } catch {
-      // createMediaElementSource not available (e.g. test env) — fall back to
-      // noise-only keep-alive which still works on desktop browsers.
-      return;
-    }
-
-    this._silentAudio.play().catch(() => {
-      // Autoplay blocked — the user gesture that called start() should have
-      // already unlocked playback, but some browsers are stricter.
     });
   }
 
@@ -318,11 +376,14 @@ export default class AudioStreamManager {
     });
 
     navigator.mediaSession.setActionHandler("play", () => {
-      if (this._silentAudio && this._silentAudio.paused) {
-        this._silentAudio.play().catch(() => {});
-      }
       if (this._ctx && this._ctx.state === "suspended") {
         this._ctx.resume().catch(() => {});
+      }
+      if (this._noiseAudio && this._noiseAudio.paused) {
+        this._noiseAudio.play().catch(() => {});
+      }
+      if (this._speechAudio && this._speechAudio.paused && this._currentBlobUrl) {
+        this._speechAudio.play().catch(() => {});
       }
     });
 
@@ -339,8 +400,9 @@ export default class AudioStreamManager {
     if (this._ctx && this._ctx.state === "suspended") {
       this._ctx.resume().catch(() => {});
     }
-    if (this._silentAudio && this._silentAudio.paused) {
-      this._silentAudio.play().catch(() => {});
+    // Resume noise if it was paused
+    if (this._noiseAudio && this._noiseAudio.paused) {
+      this._noiseAudio.play().catch(() => {});
     }
   }
 }

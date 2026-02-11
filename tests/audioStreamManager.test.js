@@ -1,7 +1,15 @@
 /**
- * CARD-070: AudioStreamManager — Test Suite
- * Tests for Web Audio API continuous stream, white noise, speech mixing, queue, controls.
- * Author: developer-1
+ * CARD-070 / CARD-082: AudioStreamManager — Test Suite
+ * Tests for HTMLAudioElement-based continuous stream, white noise, speech mixing,
+ * queue, controls, and lock screen compatibility.
+ *
+ * Architecture (CARD-082):
+ *   [Noise <audio>] -> [MediaElementSource] -> [noiseGain] --+
+ *   [TTS <audio>]   -> [MediaElementSource] -> [speechGain] -+--> [masterGain] -> destination
+ *                                                                       |
+ *                                                                  [analyser]
+ *
+ * Author: developer-1 (original), senior-dev-1 (CARD-082 rewrite)
  * Date: 2026-02-11
  */
 
@@ -17,18 +25,6 @@ function createMockGainNode() {
   };
 }
 
-function createMockBufferSource() {
-  return {
-    buffer: null,
-    loop: false,
-    playbackRate: { value: 1 },
-    connect: jest.fn(),
-    start: jest.fn(),
-    stop: jest.fn(),
-    onended: null,
-  };
-}
-
 function createMockAnalyser() {
   return {
     fftSize: 0,
@@ -37,45 +33,63 @@ function createMockAnalyser() {
   };
 }
 
-function createMockAudioBuffer(duration = 1.0) {
+function createMockMediaElementSource() {
+  return { connect: jest.fn() };
+}
+
+function createMockAudioElement() {
   return {
-    duration,
-    length: 44100,
-    sampleRate: 44100,
-    numberOfChannels: 1,
-    getChannelData: jest.fn(() => new Float32Array(44100)),
+    loop: false,
+    src: "",
+    preload: "",
+    paused: false,
+    playbackRate: 1,
+    play: jest.fn(() => Promise.resolve()),
+    pause: jest.fn(),
+    removeAttribute: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
   };
 }
 
 function createMockAudioContext() {
-  const ctx = {
+  return {
     sampleRate: 44100,
     currentTime: 0,
+    state: "running",
     destination: { name: "destination" },
     createGain: jest.fn(() => createMockGainNode()),
-    createBufferSource: jest.fn(() => createMockBufferSource()),
     createAnalyser: jest.fn(() => createMockAnalyser()),
-    createBuffer: jest.fn((channels, length, sampleRate) => ({
-      numberOfChannels: channels,
-      length,
-      sampleRate,
-      getChannelData: jest.fn(() => new Float32Array(length)),
-    })),
-    decodeAudioData: jest.fn(() => Promise.resolve(createMockAudioBuffer())),
+    createMediaElementSource: jest.fn(() => createMockMediaElementSource()),
     close: jest.fn(() => Promise.resolve()),
+    resume: jest.fn(() => Promise.resolve()),
   };
-  return ctx;
 }
 
 let mockCtx;
+let mockAudioElements;
+
 beforeEach(() => {
   mockCtx = createMockAudioContext();
   window.AudioContext = jest.fn(() => mockCtx);
+
+  // Track all created <audio> elements
+  mockAudioElements = [];
+  const origCreateElement = document.createElement.bind(document);
+  jest.spyOn(document, "createElement").mockImplementation((tag) => {
+    if (tag === "audio") {
+      const el = createMockAudioElement();
+      mockAudioElements.push(el);
+      return el;
+    }
+    return origCreateElement(tag);
+  });
 });
 
 afterEach(() => {
   delete window.AudioContext;
   delete window.webkitAudioContext;
+  jest.restoreAllMocks();
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -115,16 +129,45 @@ describe("AudioStreamManager", () => {
       expect(mgr.getAnalyserNode()).not.toBeNull();
     });
 
-    test("creates and starts looping white noise buffer", () => {
+    test("creates two <audio> elements: noise and speech", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      // Should create a 2-second noise buffer
-      expect(mockCtx.createBuffer).toHaveBeenCalledWith(1, 44100 * 2, 44100);
-      expect(mockCtx.createBufferSource).toHaveBeenCalled();
-      // The noise source should be looping and started
-      const source = mockCtx.createBufferSource.mock.results[0].value;
-      expect(source.loop).toBe(true);
-      expect(source.start).toHaveBeenCalled();
+      // noise audio + speech audio = 2 elements
+      expect(document.createElement).toHaveBeenCalledWith("audio");
+      expect(mockAudioElements.length).toBe(2);
+    });
+
+    test("noise <audio> element is set to loop", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      // First <audio> is noise
+      expect(mgr._noiseAudio.loop).toBe(true);
+    });
+
+    test("noise <audio> src is a blob URL", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      expect(mgr._noiseAudio.src).toMatch(/^blob:/);
+      expect(URL.createObjectURL).toHaveBeenCalled();
+    });
+
+    test("noise <audio> play() is called", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      expect(mgr._noiseAudio.play).toHaveBeenCalled();
+    });
+
+    test("speech <audio> preload is set to auto", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      expect(mgr._speechAudio.preload).toBe("auto");
+    });
+
+    test("createMediaElementSource called for both noise and speech", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      // Called for noise audio and speech audio
+      expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(2);
     });
 
     test("is a no-op if already active", () => {
@@ -167,18 +210,39 @@ describe("AudioStreamManager", () => {
       expect(mockCtx.close).toHaveBeenCalled();
     });
 
-    test("stops the noise source", () => {
+    test("pauses and cleans up noise audio", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      const noiseSource = mockCtx.createBufferSource.mock.results[0].value;
+      const noiseAudio = mgr._noiseAudio;
       mgr.stop();
-      expect(noiseSource.stop).toHaveBeenCalled();
+      expect(noiseAudio.pause).toHaveBeenCalled();
+      expect(noiseAudio.removeAttribute).toHaveBeenCalledWith("src");
+      expect(mgr._noiseAudio).toBeNull();
+    });
+
+    test("pauses and cleans up speech audio", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      const speechAudio = mgr._speechAudio;
+      mgr.stop();
+      expect(speechAudio.pause).toHaveBeenCalled();
+      expect(speechAudio.removeAttribute).toHaveBeenCalledWith("src");
+      expect(mgr._speechAudio).toBeNull();
+    });
+
+    test("revokes noise blob URL", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      const noiseBlobUrl = mgr._noiseBlobUrl;
+      expect(noiseBlobUrl).toBeTruthy();
+      mgr.stop();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith(noiseBlobUrl);
+      expect(mgr._noiseBlobUrl).toBeNull();
     });
 
     test("clears the speech queue", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      // Add to queue without processing (simulate by direct access)
       mgr._queue.push(new ArrayBuffer(10));
       mgr._queue.push(new ArrayBuffer(10));
       mgr.stop();
@@ -236,33 +300,46 @@ describe("AudioStreamManager", () => {
       mgr.setSpeed(1.5);
       expect(mgr.speed).toBe(1.5);
     });
+
+    test("applies speed to currently active speech audio", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      mgr.setSpeed(1.5);
+      expect(mgr._speechAudio.playbackRate).toBe(1.5);
+    });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // queueSpeech()
   // ═══════════════════════════════════════════════════════════════════════════
   describe("queueSpeech()", () => {
-    test("decodes audio data and plays it", async () => {
+    test("creates blob URL and sets as speech audio src", async () => {
       const mgr = new AudioStreamManager();
       mgr.start();
       const wavData = new ArrayBuffer(100);
       mgr.queueSpeech(wavData);
 
-      // Wait for async decode
-      await new Promise((r) => setTimeout(r, 0));
-
-      expect(mockCtx.decodeAudioData).toHaveBeenCalled();
-      // Should have created a new buffer source for speech (in addition to noise source)
-      expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(2);
+      // processQueue is synchronous
+      expect(mgr._speechAudio.src).toMatch(/^blob:/);
+      expect(URL.createObjectURL).toHaveBeenCalled();
     });
 
-    test("ducks noise gain during speech playback", async () => {
+    test("calls play() on speech audio", async () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      const speechAudio = mgr._speechAudio;
+      speechAudio.play.mockClear();
+
+      mgr.queueSpeech(new ArrayBuffer(100));
+      expect(speechAudio.play).toHaveBeenCalled();
+    });
+
+    test("ducks noise gain during speech playback", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
       const noiseGain = mockCtx.createGain.mock.results[2].value;
 
       mgr.queueSpeech(new ArrayBuffer(100));
-      await new Promise((r) => setTimeout(r, 0));
 
       expect(noiseGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
         0.005,
@@ -270,17 +347,21 @@ describe("AudioStreamManager", () => {
       );
     });
 
-    test("unducks noise after speech ends", async () => {
+    test("unducks noise after speech ends", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
       const noiseGain = mockCtx.createGain.mock.results[2].value;
+      const speechAudio = mgr._speechAudio;
 
       mgr.queueSpeech(new ArrayBuffer(100));
-      await new Promise((r) => setTimeout(r, 0));
 
-      // Simulate speech ended
-      const speechSource = mockCtx.createBufferSource.mock.results[1].value;
-      speechSource.onended();
+      // Simulate speech ended via the 'ended' event handler
+      const endedHandler = speechAudio.addEventListener.mock.calls.find(
+        (c) => c[0] === "ended"
+      );
+      expect(endedHandler).toBeTruthy();
+      // Call the bound handler directly
+      mgr._handleEnded();
 
       expect(noiseGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(
         0.02,
@@ -288,33 +369,27 @@ describe("AudioStreamManager", () => {
       );
     });
 
-    test("applies current speed to playback rate", async () => {
+    test("applies current speed as playbackRate", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
       mgr.setSpeed(1.5);
       mgr.queueSpeech(new ArrayBuffer(100));
-      await new Promise((r) => setTimeout(r, 0));
 
-      const speechSource = mockCtx.createBufferSource.mock.results[1].value;
-      expect(speechSource.playbackRate.value).toBe(1.5);
+      expect(mgr._speechAudio.playbackRate).toBe(1.5);
     });
 
-    test("processes queue sequentially", async () => {
+    test("processes queue sequentially via ended event", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
 
       mgr.queueSpeech(new ArrayBuffer(100));
       mgr.queueSpeech(new ArrayBuffer(100));
 
-      // First item processes immediately
-      await new Promise((r) => setTimeout(r, 0));
-      // Second should still be queued (first hasn't ended yet)
+      // First item starts immediately, second stays queued
       expect(mgr._queue).toHaveLength(1);
 
-      // Finish first speech
-      const firstSource = mockCtx.createBufferSource.mock.results[1].value;
-      firstSource.onended();
-      await new Promise((r) => setTimeout(r, 0));
+      // Simulate first speech ended
+      mgr._handleEnded();
 
       // Second should now be processing
       expect(mgr._queue).toHaveLength(0);
@@ -326,24 +401,29 @@ describe("AudioStreamManager", () => {
       expect(mgr._queue).toHaveLength(0);
     });
 
-    test("handles decode error gracefully and continues queue", async () => {
+    test("handles playback error and continues queue", async () => {
       const mgr = new AudioStreamManager();
       mgr.start();
       const errorCb = jest.fn();
       mgr.setOnError(errorCb);
 
-      mockCtx.decodeAudioData
-        .mockRejectedValueOnce(new Error("bad format"))
-        .mockResolvedValueOnce(createMockAudioBuffer());
+      // First play() rejects, second succeeds
+      const speechAudio = mgr._speechAudio;
+      speechAudio.play
+        .mockRejectedValueOnce(new Error("playback failed"))
+        .mockResolvedValueOnce(undefined);
 
       mgr.queueSpeech(new ArrayBuffer(100));
       mgr.queueSpeech(new ArrayBuffer(100));
+
+      // Wait for the rejected promise to propagate
       await new Promise((r) => setTimeout(r, 0));
 
-      expect(errorCb).toHaveBeenCalledWith("Audio decode error: bad format");
-      // Should continue to second item
-      await new Promise((r) => setTimeout(r, 0));
-      expect(mockCtx.decodeAudioData).toHaveBeenCalledTimes(2);
+      expect(errorCb).toHaveBeenCalledWith(
+        expect.stringContaining("Audio playback error")
+      );
+      // Second item should now be processing
+      expect(mgr._queue).toHaveLength(0);
     });
   });
 
@@ -377,21 +457,20 @@ describe("AudioStreamManager", () => {
       expect(noiseGain.connect).toHaveBeenCalledWith(masterGain);
     });
 
-    test("noise source connects to noise gain", () => {
+    test("noise MediaElementSource connects to noise gain", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      const noiseSource = mockCtx.createBufferSource.mock.results[0].value;
+      // First createMediaElementSource call is for noise
+      const noiseSource = mockCtx.createMediaElementSource.mock.results[0].value;
       const noiseGain = mockCtx.createGain.mock.results[2].value;
       expect(noiseSource.connect).toHaveBeenCalledWith(noiseGain);
     });
 
-    test("speech source connects to speech gain", async () => {
+    test("speech MediaElementSource connects to speech gain", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      mgr.queueSpeech(new ArrayBuffer(100));
-      await new Promise((r) => setTimeout(r, 0));
-
-      const speechSource = mockCtx.createBufferSource.mock.results[1].value;
+      // Second createMediaElementSource call is for speech
+      const speechSource = mockCtx.createMediaElementSource.mock.results[1].value;
       const speechGain = mockCtx.createGain.mock.results[1].value;
       expect(speechSource.connect).toHaveBeenCalledWith(speechGain);
     });

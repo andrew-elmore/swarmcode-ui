@@ -1,10 +1,11 @@
 /**
  * CARD-070 QA Supplementary Tests — AudioStreamManager edge cases.
- * Author: qa-1
+ * Author: qa-1 (original), senior-dev-1 (CARD-082 update)
  * Date: 2026-02-11
  *
- * Supplements the 30 tests in audioStreamManager.test.js with
+ * Supplements the main audioStreamManager.test.js with
  * additional edge case and lifecycle coverage.
+ * Updated for CARD-082 HTMLAudioElement architecture.
  */
 
 import AudioStreamManager from "../src/utils/audioStreamManager";
@@ -19,18 +20,6 @@ function createMockGainNode() {
   };
 }
 
-function createMockBufferSource() {
-  return {
-    buffer: null,
-    loop: false,
-    playbackRate: { value: 1 },
-    connect: jest.fn(),
-    start: jest.fn(),
-    stop: jest.fn(),
-    onended: null,
-  };
-}
-
 function createMockAnalyser() {
   return {
     fftSize: 0,
@@ -39,13 +28,22 @@ function createMockAnalyser() {
   };
 }
 
-function createMockAudioBuffer(duration = 1.0) {
+function createMockMediaElementSource() {
+  return { connect: jest.fn() };
+}
+
+function createMockAudioElement() {
   return {
-    duration,
-    length: 44100,
-    sampleRate: 44100,
-    numberOfChannels: 1,
-    getChannelData: jest.fn(() => new Float32Array(44100)),
+    loop: false,
+    src: "",
+    preload: "",
+    paused: false,
+    playbackRate: 1,
+    play: jest.fn(() => Promise.resolve()),
+    pause: jest.fn(),
+    removeAttribute: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
   };
 }
 
@@ -53,18 +51,13 @@ function createMockAudioContext() {
   return {
     sampleRate: 44100,
     currentTime: 0,
+    state: "running",
     destination: { name: "destination" },
     createGain: jest.fn(() => createMockGainNode()),
-    createBufferSource: jest.fn(() => createMockBufferSource()),
     createAnalyser: jest.fn(() => createMockAnalyser()),
-    createBuffer: jest.fn((channels, length, sampleRate) => ({
-      numberOfChannels: channels,
-      length,
-      sampleRate,
-      getChannelData: jest.fn(() => new Float32Array(length)),
-    })),
-    decodeAudioData: jest.fn(() => Promise.resolve(createMockAudioBuffer())),
+    createMediaElementSource: jest.fn(() => createMockMediaElementSource()),
     close: jest.fn(() => Promise.resolve()),
+    resume: jest.fn(() => Promise.resolve()),
   };
 }
 
@@ -72,11 +65,20 @@ let mockCtx;
 beforeEach(() => {
   mockCtx = createMockAudioContext();
   window.AudioContext = jest.fn(() => mockCtx);
+
+  const origCreateElement = document.createElement.bind(document);
+  jest.spyOn(document, "createElement").mockImplementation((tag) => {
+    if (tag === "audio") {
+      return createMockAudioElement();
+    }
+    return origCreateElement(tag);
+  });
 });
 
 afterEach(() => {
   delete window.AudioContext;
   delete window.webkitAudioContext;
+  jest.restoreAllMocks();
 });
 
 // ─── Lifecycle edge cases ───────────────────────────────────────────────────
@@ -100,7 +102,7 @@ describe("CARD-070 QA: lifecycle edge cases", () => {
     expect(mgr.getAnalyserNode()).not.toBeNull();
   });
 
-  test("stop during active speech queue clears queue", async () => {
+  test("stop during active speech queue clears queue", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
 
@@ -108,9 +110,7 @@ describe("CARD-070 QA: lifecycle edge cases", () => {
     mgr.queueSpeech(new ArrayBuffer(100));
     mgr.queueSpeech(new ArrayBuffer(100));
 
-    // First item starts processing
-    await new Promise((r) => setTimeout(r, 0));
-
+    // First item starts processing immediately
     // Stop mid-queue
     mgr.stop();
     expect(mgr._queue).toHaveLength(0);
@@ -134,7 +134,6 @@ describe("CARD-070 QA: controls before start", () => {
     const mgr = new AudioStreamManager();
     mgr.setVolume(0.3);
     expect(mgr.volume).toBe(0.3);
-    // No AudioContext created yet, so no gain node calls
   });
 
   test("setSpeed before start stores value", () => {
@@ -152,16 +151,15 @@ describe("CARD-070 QA: controls before start", () => {
     expect(masterGain.gain.value).toBe(0.6);
   });
 
-  test("speed set before start is applied to queued speech", async () => {
+  test("speed set before start is applied to queued speech", () => {
     const mgr = new AudioStreamManager();
     mgr.setSpeed(1.75);
     mgr.start();
 
     mgr.queueSpeech(new ArrayBuffer(100));
-    await new Promise((r) => setTimeout(r, 0));
 
-    const speechSource = mockCtx.createBufferSource.mock.results[1].value;
-    expect(speechSource.playbackRate.value).toBe(1.75);
+    // playbackRate is set on the speechAudio element
+    expect(mgr._speechAudio.playbackRate).toBe(1.75);
   });
 });
 
@@ -212,37 +210,37 @@ describe("CARD-070 QA: error handling", () => {
     expect(cb2).toHaveBeenCalledWith("Web Audio API not supported");
   });
 
-  test("no crash when error callback is not set and decode fails", async () => {
+  test("no crash when error callback is not set and play fails", async () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    mockCtx.decodeAudioData.mockRejectedValueOnce(new Error("corrupt"));
 
-    // Should not throw even without error callback
+    // Make play() reject
+    mgr._speechAudio.play.mockRejectedValueOnce(new Error("play failed"));
+
     mgr.queueSpeech(new ArrayBuffer(100));
     await new Promise((r) => setTimeout(r, 0));
+
     // Manager should still be active
     expect(mgr.active).toBe(true);
   });
 
-  test("queue continues processing after decode error", async () => {
+  test("queue continues processing after playback error", async () => {
     const mgr = new AudioStreamManager();
     mgr.start();
 
-    mockCtx.decodeAudioData
+    const speechAudio = mgr._speechAudio;
+    speechAudio.play
       .mockRejectedValueOnce(new Error("bad"))
-      .mockResolvedValueOnce(createMockAudioBuffer());
+      .mockResolvedValueOnce(undefined);
 
     mgr.queueSpeech(new ArrayBuffer(50));
     mgr.queueSpeech(new ArrayBuffer(50));
 
-    // Process first (fails)
-    await new Promise((r) => setTimeout(r, 0));
-    // Process second (succeeds)
+    // Process first (fails), then second starts
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(mockCtx.decodeAudioData).toHaveBeenCalledTimes(2);
-    // Speech source created for second item
-    expect(mockCtx.createBufferSource).toHaveBeenCalledTimes(2); // noise + speech
+    // Second item should have been dequeued
+    expect(mgr._queue).toHaveLength(0);
   });
 });
 
