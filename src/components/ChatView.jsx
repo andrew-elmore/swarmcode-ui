@@ -112,7 +112,7 @@ export default function ChatView() {
           display: "flex",
           flexDirection: "column",
           gap: 1,
-          bgcolor: "grey.50",
+          bgcolor: "background.default",
         }}
       >
         {hasMore && (
@@ -216,7 +216,7 @@ export default function ChatView() {
           disabled={sending || !input.trim()}
           sx={{
             bgcolor: "primary.main",
-            color: "white",
+            color: "primary.contrastText",
             "&:hover": { bgcolor: "primary.dark" },
             "&.Mui-disabled": { bgcolor: "action.disabledBackground" },
             borderRadius: 2,
