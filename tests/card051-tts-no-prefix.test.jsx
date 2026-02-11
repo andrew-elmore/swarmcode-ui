@@ -53,7 +53,7 @@ const theme = createTheme({
   palette: { primary: { main: "#1976d2" }, secondary: { main: "#9c27b0" } },
 });
 
-const DEFAULT_TTS_STATE = { enabled: false, volume: 1.0, rate: 1.0, perAgentVoice: {}, speakAgentName: false, error: null };
+const DEFAULT_TTS_STATE = { enabled: false, volume: 1.0, rate: 1.0, error: null };
 
 function createTestStore(ttsOverrides = {}) {
   return configureStore({

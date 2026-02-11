@@ -1,94 +1,36 @@
 /**
- * CARD-048 QA Tests — TTS Redux slice (state persistence, actions, error Snackbar).
+ * CARD-048 QA Tests — TTS Redux slice (state persistence, actions, error state).
  *
  * Verifies:
  * 1. TTS state persists to localStorage via saveToStorage on each action
- * 2. Actions (setEnabled, setVolume, setRate, setAgentVoice, setSpeakAgentName) update state correctly
+ * 2. Actions (setEnabled, setVolume, setRate) update state correctly
  * 3. Volume is clamped to [0, 1], rate to [0.5, 2.0]
- * 4. Error Snackbar renders when tts.error is set, auto-dismisses via clearError
- * 5. TtsControls dispatches correct actions and syncs to engine
+ * 4. Error state (setError, clearError) is managed correctly and NOT persisted
+ *
+ * Updated: 2026-02-11 (CARD-074: removed deprecated setAgentVoice, setSpeakAgentName, TtsControls)
  */
 
-import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
-import { ThemeProvider, createTheme } from "@mui/material";
 import ttsReducer, {
   setEnabled,
   setVolume,
   setRate,
-  setAgentVoice,
-  setSpeakAgentName,
   setError,
   clearError,
 } from "../src/store/ttsSlice";
-import agentsReducer from "../src/store/agentsSlice";
-import boardReducer from "../src/store/boardSlice";
-import messagesReducer from "../src/store/messagesSlice";
-import projectsReducer from "../src/store/projectsSlice";
-import TtsControls from "../src/components/TtsControls";
-import * as api from "../src/services/api";
-
-jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
-  createCard: jest.fn(),
-  updateCard: jest.fn(),
-  addComment: jest.fn(),
-  listCards: jest.fn(),
-  showCard: jest.fn(),
-  pollBoard: jest.fn(),
-  sendMessage: jest.fn(),
-  pollMessages: jest.fn(),
-  getConversation: jest.fn(),
-  subscribeToMessages: jest.fn(),
-  addRecentProject: jest.fn(),
-  getRecentProjects: jest.fn(),
-  deleteProject: jest.fn(),
-  getAgents: jest.fn(),
-  createAgent: jest.fn(),
-  updateAgent: jest.fn(),
-  deleteAgent: jest.fn(),
-}));
-
-const theme = createTheme({
-  palette: { primary: { main: "#1976d2" }, secondary: { main: "#9c27b0" } },
-});
 
 const DEFAULT_TTS_STATE = {
   enabled: false,
   volume: 1.0,
   rate: 1.0,
-  perAgentVoice: {},
-  speakAgentName: false,
   error: null,
 };
 
 function createTestStore(ttsOverrides = {}) {
   return configureStore({
-    reducer: {
-      agents: agentsReducer,
-      board: boardReducer,
-      messages: messagesReducer,
-      projects: projectsReducer,
-      tts: ttsReducer,
-    },
-    preloadedState: {
-      tts: { ...DEFAULT_TTS_STATE, ...ttsOverrides },
-    },
+    reducer: { tts: ttsReducer },
+    preloadedState: { tts: { ...DEFAULT_TTS_STATE, ...ttsOverrides } },
   });
-}
-
-function renderWithProviders(ui, store) {
-  const testStore = store || createTestStore();
-  function Wrapper({ children }) {
-    return (
-      <Provider store={testStore}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
-      </Provider>
-    );
-  }
-  return { ...render(ui, { wrapper: Wrapper }), store: testStore };
 }
 
 // Mock localStorage
@@ -107,7 +49,6 @@ beforeEach(() => {
   localStorageMock.clear();
   localStorageMock.getItem.mockClear();
   localStorageMock.setItem.mockClear();
-  api.getAgents.mockResolvedValue({ agents: [] });
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -145,20 +86,6 @@ describe("CARD-048: ttsSlice reducer actions", () => {
 
     store.dispatch(setRate(3.0));
     expect(store.getState().tts.rate).toBe(2.0);
-  });
-
-  test("setAgentVoice stores per-agent voice preference", () => {
-    const store = createTestStore();
-    store.dispatch(setAgentVoice({ agent: "pm-1", voiceName: "Google UK English Male" }));
-    expect(store.getState().tts.perAgentVoice["pm-1"]).toBe("Google UK English Male");
-  });
-
-  test("setSpeakAgentName toggles speakAgentName", () => {
-    const store = createTestStore();
-    store.dispatch(setSpeakAgentName(true));
-    expect(store.getState().tts.speakAgentName).toBe(true);
-    store.dispatch(setSpeakAgentName(false));
-    expect(store.getState().tts.speakAgentName).toBe(false);
   });
 
   test("setError and clearError manage error state", () => {
@@ -200,38 +127,17 @@ describe("CARD-048: TTS state persists to localStorage", () => {
     );
   });
 
-  test("setAgentVoice saves perAgentVoice to localStorage", () => {
-    const store = createTestStore();
-    store.dispatch(setAgentVoice({ agent: "developer-1", voiceName: "Alex" }));
-    const lastCall = localStorageMock.setItem.mock.calls.find(
-      (c) => c[0] === "swarmcode_tts"
-    );
-    expect(lastCall).toBeDefined();
-    const saved = JSON.parse(lastCall[1]);
-    expect(saved.perAgentVoice["developer-1"]).toBe("Alex");
-  });
-
-  test("setSpeakAgentName saves to localStorage", () => {
-    const store = createTestStore();
-    store.dispatch(setSpeakAgentName(true));
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      "swarmcode_tts",
-      expect.stringContaining('"speakAgentName":true')
-    );
-  });
-
   test("error state is NOT persisted to localStorage", () => {
     const store = createTestStore();
     localStorageMock.setItem.mockClear();
     store.dispatch(setError("Some error"));
-    // setError does not call saveToStorage, so no localStorage.setItem call
     const ttsCalls = localStorageMock.setItem.mock.calls.filter(
       (c) => c[0] === "swarmcode_tts"
     );
     expect(ttsCalls).toHaveLength(0);
   });
 
-  test("localStorage stores correct shape (no error field)", () => {
+  test("localStorage stores correct shape (enabled, volume, rate only)", () => {
     const store = createTestStore();
     store.dispatch(setEnabled(true));
     const lastCall = localStorageMock.setItem.mock.calls.find(
@@ -241,81 +147,8 @@ describe("CARD-048: TTS state persists to localStorage", () => {
     expect(saved).toHaveProperty("enabled");
     expect(saved).toHaveProperty("volume");
     expect(saved).toHaveProperty("rate");
-    expect(saved).toHaveProperty("perAgentVoice");
-    expect(saved).toHaveProperty("speakAgentName");
     expect(saved).not.toHaveProperty("error");
-  });
-});
-
-// ─── TtsControls Component Tests ────────────────────────────────────────────
-
-describe("CARD-048: TtsControls component", () => {
-  function createMockEngineRef() {
-    return {
-      current: {
-        getVoices: jest.fn().mockReturnValue([]),
-        voice: null,
-        stop: jest.fn(),
-        setVoice: jest.fn(),
-        setEnabled: jest.fn(),
-        setRate: jest.fn(),
-        setVolume: jest.fn(),
-        setOnError: jest.fn(),
-      },
-    };
-  }
-
-  test("renders enable/disable toggle button", () => {
-    const engineRef = createMockEngineRef();
-    const store = createTestStore({ enabled: false });
-    renderWithProviders(<TtsControls engineRef={engineRef} />, store);
-
-    const toggleBtn = screen.getByRole("button");
-    expect(toggleBtn).toBeInTheDocument();
-  });
-
-  test("clicking toggle dispatches setEnabled(true)", () => {
-    const engineRef = createMockEngineRef();
-    const store = createTestStore({ enabled: false });
-    renderWithProviders(<TtsControls engineRef={engineRef} />, store);
-
-    const toggleBtn = screen.getByRole("button");
-    fireEvent.click(toggleBtn);
-    expect(store.getState().tts.enabled).toBe(true);
-  });
-
-  test("when enabled, shows stop button, volume slider, and rate selector", () => {
-    const engineRef = createMockEngineRef();
-    const store = createTestStore({ enabled: true });
-    renderWithProviders(<TtsControls engineRef={engineRef} />, store);
-
-    // Stop button should be visible
-    const buttons = screen.getAllByRole("button");
-    expect(buttons.length).toBeGreaterThanOrEqual(2); // toggle + stop
-
-    // Volume slider
-    expect(screen.getByRole("slider")).toBeInTheDocument();
-  });
-
-  test("error Snackbar displays when tts.error is set", async () => {
-    const engineRef = createMockEngineRef();
-    const store = createTestStore({ enabled: true, error: "Speech error: audio-busy" });
-    renderWithProviders(<TtsControls engineRef={engineRef} />, store);
-
-    expect(screen.getByText("Speech error: audio-busy")).toBeInTheDocument();
-  });
-
-  test("error Snackbar not visible when error is null", () => {
-    const engineRef = createMockEngineRef();
-    const store = createTestStore({ enabled: true, error: null });
-    renderWithProviders(<TtsControls engineRef={engineRef} />, store);
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  test("returns null when engineRef is null", () => {
-    const store = createTestStore();
-    const { container } = renderWithProviders(<TtsControls engineRef={null} />, store);
-    expect(container.firstChild).toBeNull();
+    expect(saved).not.toHaveProperty("perAgentVoice");
+    expect(saved).not.toHaveProperty("speakAgentName");
   });
 });

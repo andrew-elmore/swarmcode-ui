@@ -77,7 +77,7 @@ function createTestStore(preloadedState = {}) {
       tts: ttsReducer,
     },
     preloadedState: {
-      tts: { enabled: false, volume: 1.0, rate: 1.0, perAgentVoice: {}, speakAgentName: false, error: null },
+      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
       ...preloadedState,
     },
   });

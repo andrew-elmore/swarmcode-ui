@@ -1,9 +1,8 @@
 /**
  * CARD-054 QA Tests — Per-agent voice wiring (server-side Piper TTS).
  *
- * Updated for CARD-073: Voice is now read from Agent.voice in DB (agents store),
- * NOT from ttsSlice.perAgentVoice. synthesizeSpeech is called with the agent's
- * DB voice. speakAgentName and perAgentVoice (localStorage) are deprecated.
+ * Updated for CARD-073: Voice is now read from Agent.voice in DB (agents store).
+ * synthesizeSpeech is called with the agent's DB voice.
  *
  * Verifies:
  * 1. Agent with voice set in DB: synthesizeSpeech called with that voice
@@ -73,8 +72,6 @@ const DEFAULT_TTS_STATE = {
   enabled: true,
   volume: 1.0,
   rate: 1.0,
-  perAgentVoice: {},
-  speakAgentName: false,
   error: null,
 };
 

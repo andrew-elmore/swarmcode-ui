@@ -56,8 +56,6 @@ const DEFAULT_TTS = {
   enabled: false,
   volume: 1.0,
   rate: 1.0,
-  perAgentVoice: {},
-  speakAgentName: false,
   error: null,
 };
 

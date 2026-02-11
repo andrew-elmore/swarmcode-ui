@@ -63,7 +63,7 @@ function createTestStore(overrides = {}) {
       tts: ttsReducer,
     },
     preloadedState: {
-      tts: { enabled: false, volume: 1.0, rate: 1.0, perAgentVoice: {}, speakAgentName: false, error: null },
+      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
       agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
       board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
