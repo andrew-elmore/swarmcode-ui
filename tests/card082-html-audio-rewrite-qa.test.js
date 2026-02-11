@@ -301,9 +301,7 @@ describe("CARD-082 QA: cleanup and resource management", () => {
 
     expect(mgr._noiseAudio).toBeNull();
     expect(mgr._speechAudio).toBeNull();
-    expect(mgr._speechSource).toBeNull();
-    expect(mgr._speechGain).toBeNull();
-    expect(mgr._masterGain).toBeNull();
+    expect(mgr._speechStreamSource).toBeNull();
     expect(mgr._analyser).toBeNull();
     expect(mgr._ctx).toBeNull();
   });

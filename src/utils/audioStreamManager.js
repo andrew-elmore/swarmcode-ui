@@ -1,21 +1,24 @@
 // audioStreamManager.js — Continuous audio stream with white noise + TTS speech
 //
-// Architecture (CARD-082 + CARD-087):
+// Architecture (CARD-088):
 //   [Noise <audio> element] --> plays DIRECTLY through speakers (no AudioContext)
-//                               Volume controlled via element.volume property
+//                               Volume: element.volume = NOISE_GAIN * _volume
 //                               Keeps OS audio session alive on lock screen
 //
-//   [TTS <audio> element]   --> [MediaElementSource] --> [speechGain: 1.0] --+
-//                                                                             +--> [masterGain] --> destination
-//                                                                                      |
-//                                                                                 [analyser]
+//   [TTS <audio> element]   --> plays DIRECTLY through speakers (no AudioContext)
+//                               Volume: element.volume = _volume
+//                               Survives lock screen (not captured by AudioContext)
+//                               |
+//                               +--> [captureStream()] --> [MediaStreamSource] --> [analyser]
+//                                    (optional, for waveform visualization only)
+//                                    (gracefully skipped if captureStream unavailable)
 //
-// CRITICAL: The noise element must NOT use createMediaElementSource(). When an
+// CRITICAL: Neither audio element uses createMediaElementSource(). When an
 // <audio> element is captured by createMediaElementSource(), its output goes
 // exclusively through the AudioContext graph. When the OS suspends the
-// AudioContext on lock screen, the captured element also stops — defeating the
-// purpose. By keeping noise as a standalone <audio> element, the OS recognizes
-// it as real media playback and keeps the audio session alive.
+// AudioContext on lock screen, captured elements stop or loop — defeating the
+// purpose. By keeping BOTH elements as standalone <audio> elements, the OS
+// recognizes them as real media playback and keeps the audio session alive.
 
 const NOISE_GAIN_ACTIVE = 0.02;
 const NOISE_GAIN_DUCKED = 0.005;
@@ -26,11 +29,9 @@ export default class AudioStreamManager {
     this._ctx = null;
     this._noiseAudio = null;     // HTMLAudioElement for looping white noise (standalone, no AudioContext)
     this._noiseBlobUrl = null;
-    this._masterGain = null;
     this._analyser = null;
-    this._speechAudio = null;    // HTMLAudioElement for TTS playback
-    this._speechSource = null;   // MediaElementSourceNode for speech
-    this._speechGain = null;
+    this._speechAudio = null;    // HTMLAudioElement for TTS playback (standalone, no AudioContext)
+    this._speechStreamSource = null; // MediaStreamSource for captureStream() visualization (optional)
     this._currentBlobUrl = null;
     this._queue = [];
     this._playing = false;
@@ -78,26 +79,16 @@ export default class AudioStreamManager {
     this._ctx = new AudioCtx();
     this._active = true;
 
-    // Master gain (volume control)
-    this._masterGain = this._ctx.createGain();
-    this._masterGain.gain.value = this._volume;
-    this._masterGain.connect(this._ctx.destination);
-
-    // Analyser node for waveform visualization
+    // Analyser node for waveform visualization (fed by captureStream, not by gain chain)
     this._analyser = this._ctx.createAnalyser();
     this._analyser.fftSize = 256;
-    this._masterGain.connect(this._analyser);
-
-    // Speech gain
-    this._speechGain = this._ctx.createGain();
-    this._speechGain.gain.value = 1.0;
-    this._speechGain.connect(this._masterGain);
 
     // Generate and start looping white noise (standalone <audio>, no AudioContext)
     this._startNoise();
 
-    // Create the speech <audio> element and connect to AudioContext.
-    // TTS plays through this element so the OS treats it as real media.
+    // Create the speech <audio> element (standalone, no AudioContext capture).
+    // Speech plays directly through speakers so it survives lock screen.
+    // Optional: captureStream() feeds the analyser for waveform visualization.
     this._initSpeechAudio();
 
     // Media Session API — registers metadata so the OS shows lock screen controls
@@ -127,8 +118,7 @@ export default class AudioStreamManager {
       this._speechAudio = null;
     }
     this._revokeBlobUrl();
-    this._speechSource = null;
-    this._speechGain = null;
+    this._speechStreamSource = null;
 
     if (this._noiseAudio) {
       try { this._noiseAudio.pause(); } catch { /* jsdom */ }
@@ -146,7 +136,6 @@ export default class AudioStreamManager {
       this._ctx = null;
     }
 
-    this._masterGain = null;
     this._analyser = null;
   }
 
@@ -155,11 +144,13 @@ export default class AudioStreamManager {
    */
   setVolume(vol) {
     this._volume = Math.max(0, Math.min(1, vol));
-    if (this._masterGain && this._ctx) {
-      this._masterGain.gain.setValueAtTime(
-        this._volume,
-        this._ctx.currentTime
-      );
+    // Apply volume directly to audio elements (no AudioContext gain chain)
+    if (this._speechAudio) {
+      this._speechAudio.volume = this._volume;
+    }
+    if (this._noiseAudio) {
+      // Scale noise volume relative to its base level
+      this._noiseAudio.volume = (this._playing ? NOISE_GAIN_DUCKED : NOISE_GAIN_ACTIVE) * this._volume;
     }
   }
 
@@ -229,22 +220,32 @@ export default class AudioStreamManager {
 
     this._speechAudio = document.createElement("audio");
     this._speechAudio.preload = "auto";
+    this._speechAudio.volume = this._volume;
     this._speechAudio.addEventListener("ended", this._handleEnded);
     this._speechAudio.addEventListener("error", this._handleError);
 
-    // Append to DOM — mobile browsers require <audio> elements to be in the
-    // document for reliable playback via createMediaElementSource.
+    // Append to DOM — mobile browsers require <audio> elements in the document.
     this._speechAudio.style.display = "none";
     document.body.appendChild(this._speechAudio);
 
-    // Connect to AudioContext for waveform visualization and gain control.
-    // createMediaElementSource can only be called once per element.
+    // CARD-088: Do NOT use createMediaElementSource() — it captures the element
+    // exclusively into the AudioContext graph. When the OS suspends the
+    // AudioContext on lock screen, captured elements loop/stall instead of
+    // playing through. Speech must play directly through the <audio> element.
+    //
+    // For waveform visualization, try captureStream() which creates a parallel
+    // copy of the audio without redirecting the element's output. This is
+    // optional — captureStream() is not available on all browsers (notably
+    // iOS Safari), so we gracefully skip if unavailable.
     try {
-      this._speechSource = this._ctx.createMediaElementSource(this._speechAudio);
-      this._speechSource.connect(this._speechGain);
+      if (typeof this._speechAudio.captureStream === "function") {
+        const stream = this._speechAudio.captureStream();
+        this._speechStreamSource = this._ctx.createMediaStreamSource(stream);
+        this._speechStreamSource.connect(this._analyser);
+      }
     } catch {
-      // createMediaElementSource not available (test env) — speech still plays
-      // through the <audio> element's default output, just without visualization.
+      // captureStream not available — visualization won't reflect speech,
+      // but playback works fine without it.
     }
   }
 
@@ -291,10 +292,10 @@ export default class AudioStreamManager {
     this._noiseAudio.src = this._noiseBlobUrl;
 
     // Set noise volume directly on the element (not through AudioContext).
-    // This is intentional: the noise element must NOT use createMediaElementSource()
-    // because captured elements stop when the OS suspends the AudioContext on lock
-    // screen. A standalone <audio> element keeps the OS audio session alive.
-    this._noiseAudio.volume = NOISE_GAIN_ACTIVE;
+    // This is intentional: neither audio element uses createMediaElementSource()
+    // because captured elements stop/loop when the OS suspends the AudioContext
+    // on lock screen. Standalone <audio> elements keep the OS audio session alive.
+    this._noiseAudio.volume = NOISE_GAIN_ACTIVE * this._volume;
 
     // Append to DOM — mobile browsers require <audio> elements in the document.
     this._noiseAudio.style.display = "none";
@@ -305,12 +306,12 @@ export default class AudioStreamManager {
 
   _duckNoise() {
     if (!this._noiseAudio) return;
-    this._noiseAudio.volume = NOISE_GAIN_DUCKED;
+    this._noiseAudio.volume = NOISE_GAIN_DUCKED * this._volume;
   }
 
   _unduckNoise() {
     if (!this._noiseAudio) return;
-    this._noiseAudio.volume = NOISE_GAIN_ACTIVE;
+    this._noiseAudio.volume = NOISE_GAIN_ACTIVE * this._volume;
   }
 
   _handleEnded() {
@@ -344,6 +345,7 @@ export default class AudioStreamManager {
     this._duckNoise();
 
     this._speechAudio.src = this._currentBlobUrl;
+    this._speechAudio.volume = this._volume;
     this._speechAudio.playbackRate = this._speed;
 
     this._speechAudio.play().then(() => {

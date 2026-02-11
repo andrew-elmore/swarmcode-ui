@@ -159,8 +159,10 @@ describe("CARD-070 QA: controls before start", () => {
     mgr.setVolume(0.6);
     mgr.start();
 
-    const masterGain = mockCtx.createGain.mock.results[0].value;
-    expect(masterGain.gain.value).toBe(0.6);
+    // CARD-088: volume applied directly to elements, not via gain nodes
+    expect(mgr._speechAudio.volume).toBe(0.6);
+    // Noise volume = NOISE_GAIN_ACTIVE * volume = 0.02 * 0.6
+    expect(mgr._noiseAudio.volume).toBeCloseTo(0.012);
   });
 
   test("speed set before start is applied to queued speech", () => {

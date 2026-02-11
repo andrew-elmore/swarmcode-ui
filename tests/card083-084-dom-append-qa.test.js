@@ -40,6 +40,7 @@ function createMockAudioElement() {
     preload: "",
     paused: false,
     playbackRate: 1,
+    volume: 1,
     style: {},
     parentNode: null,
     play: jest.fn(() => Promise.resolve()),
@@ -235,6 +236,5 @@ describe("CARD-083/084 QA: source code verification", () => {
 
   test("comment explains mobile browser requirement", () => {
     expect(src).toMatch(/mobile browsers/i);
-    expect(src).toMatch(/createMediaElementSource/);
   });
 });

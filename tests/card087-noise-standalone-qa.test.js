@@ -11,9 +11,9 @@
  * Fix: Noise <audio> element now plays DIRECTLY through speakers. Volume ducking
  * controlled via element.volume instead of AudioContext gain nodes.
  *
- * Architecture:
+ * Architecture (CARD-088 update):
  *   [Noise <audio>] -> plays directly (element.volume for ducking)
- *   [TTS <audio>]   -> createMediaElementSource -> speechGain -> masterGain -> dest
+ *   [TTS <audio>]   -> plays directly (element.volume for volume)
  */
 
 import AudioStreamManager from "../src/utils/audioStreamManager";
@@ -101,29 +101,22 @@ afterEach(() => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-087 QA: noise decoupled from AudioContext", () => {
-  test("createMediaElementSource is called only once (for speech, NOT noise)", () => {
+  test("createMediaElementSource is NOT called (CARD-088: both elements play directly)", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(1);
+    expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(0);
   });
 
-  test("createMediaElementSource is called with speech audio (not noise)", () => {
+  test("neither audio element is passed to createMediaElementSource", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    expect(mockCtx.createMediaElementSource).toHaveBeenCalledWith(mgr._speechAudio);
+    expect(mockCtx.createMediaElementSource.mock.calls).toHaveLength(0);
   });
 
-  test("noise audio element is NOT passed to createMediaElementSource", () => {
+  test("no gain nodes created (CARD-088: volume via element.volume)", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-    const sourceArgs = mockCtx.createMediaElementSource.mock.calls.map((c) => c[0]);
-    expect(sourceArgs).not.toContain(mgr._noiseAudio);
-  });
-
-  test("only 2 gain nodes created (master + speech, no noiseGain)", () => {
-    const mgr = new AudioStreamManager();
-    mgr.start();
-    expect(mockCtx.createGain).toHaveBeenCalledTimes(2);
+    expect(mockCtx.createGain).toHaveBeenCalledTimes(0);
   });
 });
 
@@ -190,37 +183,22 @@ describe("CARD-087 QA: noise volume via element.volume", () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Speech still routes through AudioContext (for visualization)
+// CARD-088: Speech plays directly (not through AudioContext)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe("CARD-087 QA: speech still through AudioContext", () => {
-  test("speech MediaElementSource connects to speech gain", () => {
+describe("CARD-087/088 QA: speech plays directly", () => {
+  test("speech audio element plays directly (volume via element.volume)", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-
-    const speechSource = mockCtx.createMediaElementSource.mock.results[0].value;
-    const speechGain = mockCtx.createGain.mock.results[1].value;
-    expect(speechSource.connect).toHaveBeenCalledWith(speechGain);
+    expect(mgr._speechAudio.volume).toBe(1.0);
+    expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(0);
   });
 
-  test("speech gain connects to master gain", () => {
+  test("analyser node created for optional captureStream visualization", () => {
     const mgr = new AudioStreamManager();
     mgr.start();
-
-    const masterGain = mockCtx.createGain.mock.results[0].value;
-    const speechGain = mockCtx.createGain.mock.results[1].value;
-    expect(speechGain.connect).toHaveBeenCalledWith(masterGain);
-  });
-
-  test("master gain connects to destination and analyser", () => {
-    const mgr = new AudioStreamManager();
-    mgr.start();
-
-    const masterGain = mockCtx.createGain.mock.results[0].value;
-    expect(masterGain.connect).toHaveBeenCalledWith(mockCtx.destination);
-    expect(masterGain.connect).toHaveBeenCalledWith(
-      mockCtx.createAnalyser.mock.results[0].value
-    );
+    expect(mockCtx.createAnalyser).toHaveBeenCalledTimes(1);
+    expect(mgr.getAnalyserNode()).not.toBeNull();
   });
 });
 
@@ -236,13 +214,13 @@ describe("CARD-087 QA: source code verification", () => {
     "utf8"
   );
 
-  test("architecture comment documents CARD-087 design", () => {
-    expect(src).toMatch(/CARD-087/);
+  test("architecture comment documents CARD-088 design", () => {
+    expect(src).toMatch(/CARD-088/);
     expect(src).toMatch(/plays DIRECTLY through speakers/i);
   });
 
-  test("critical comment warns against using createMediaElementSource for noise", () => {
-    expect(src).toMatch(/CRITICAL.*noise.*must NOT.*createMediaElementSource/is);
+  test("critical comment warns against using createMediaElementSource", () => {
+    expect(src).toMatch(/CRITICAL.*Neither.*createMediaElementSource/is);
   });
 
   test("_duckNoise uses this._noiseAudio.volume (not gain node)", () => {

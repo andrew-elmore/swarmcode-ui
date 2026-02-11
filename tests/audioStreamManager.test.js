@@ -1,15 +1,15 @@
 /**
- * CARD-070 / CARD-082: AudioStreamManager — Test Suite
+ * CARD-070 / CARD-082 / CARD-088: AudioStreamManager — Test Suite
  * Tests for HTMLAudioElement-based continuous stream, white noise, speech mixing,
  * queue, controls, and lock screen compatibility.
  *
- * Architecture (CARD-082 + CARD-087):
+ * Architecture (CARD-088):
  *   [Noise <audio>] -> plays DIRECTLY through speakers (element.volume for ducking)
- *   [TTS <audio>]   -> [MediaElementSource] -> [speechGain] -> [masterGain] -> destination
- *                                                                    |
- *                                                               [analyser]
+ *   [TTS <audio>]   -> plays DIRECTLY through speakers (element.volume for volume)
+ *                       +--> [captureStream()] -> [MediaStreamSource] -> [analyser]
+ *                            (optional, for visualization only)
  *
- * Author: developer-1 (original), senior-dev-1 (CARD-082 rewrite)
+ * Author: developer-1 (original), senior-dev-1 (CARD-082/088 rewrite)
  * Date: 2026-02-11
  */
 
@@ -131,11 +131,11 @@ describe("AudioStreamManager", () => {
       expect(mgr.active).toBe(true);
     });
 
-    test("creates gain nodes: master and speech", () => {
+    test("creates no gain nodes (both audio elements play directly)", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      // master + speech = 2 gain nodes (noise plays directly, no AudioContext gain)
-      expect(mockCtx.createGain).toHaveBeenCalledTimes(2);
+      // CARD-088: no gain nodes — both elements use element.volume
+      expect(mockCtx.createGain).toHaveBeenCalledTimes(0);
     });
 
     test("creates analyser node", () => {
@@ -187,12 +187,12 @@ describe("AudioStreamManager", () => {
       expect(mgr._speechAudio.preload).toBe("auto");
     });
 
-    test("createMediaElementSource called only for speech (noise plays directly)", () => {
+    test("createMediaElementSource NOT called (both elements play directly)", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      // Only speech goes through AudioContext; noise plays directly for lock screen survival
-      expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(1);
-      expect(mockCtx.createMediaElementSource).toHaveBeenCalledWith(mgr._speechAudio);
+      // CARD-088: neither element is captured by createMediaElementSource
+      // Both play directly through speakers for lock screen survival
+      expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(0);
     });
 
     test("is a no-op if already active", () => {
@@ -305,12 +305,13 @@ describe("AudioStreamManager", () => {
       expect(mgr.volume).toBe(0.7);
     });
 
-    test("updates master gain when active", () => {
+    test("updates speech and noise element volumes when active", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      const masterGain = mockCtx.createGain.mock.results[0].value;
       mgr.setVolume(0.5);
-      expect(masterGain.gain.setValueAtTime).toHaveBeenCalledWith(0.5, 0);
+      expect(mgr._speechAudio.volume).toBe(0.5);
+      // Noise volume = NOISE_GAIN_ACTIVE * volume = 0.02 * 0.5 = 0.01
+      expect(mgr._noiseAudio.volume).toBe(0.01);
     });
   });
 
@@ -445,61 +446,50 @@ describe("AudioStreamManager", () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // Audio routing graph
   // ═══════════════════════════════════════════════════════════════════════════
-  describe("audio routing graph", () => {
-    test("master gain connects to destination and analyser", () => {
+  describe("audio routing graph (CARD-088: both elements play directly)", () => {
+    test("no gain nodes created — volume via element.volume", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      const masterGain = mockCtx.createGain.mock.results[0].value;
-      expect(masterGain.connect).toHaveBeenCalledWith(mockCtx.destination);
-      expect(masterGain.connect).toHaveBeenCalledWith(
-        mockCtx.createAnalyser.mock.results[0].value
-      );
-    });
-
-    test("speech gain connects to master gain", () => {
-      const mgr = new AudioStreamManager();
-      mgr.start();
-      const speechGain = mockCtx.createGain.mock.results[1].value;
-      const masterGain = mockCtx.createGain.mock.results[0].value;
-      expect(speechGain.connect).toHaveBeenCalledWith(masterGain);
+      expect(mockCtx.createGain).toHaveBeenCalledTimes(0);
     });
 
     test("noise audio plays directly (not through AudioContext)", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      // Noise should NOT appear in createMediaElementSource calls
-      const sourceArgs = mockCtx.createMediaElementSource.mock.calls.map((c) => c[0]);
-      expect(sourceArgs).not.toContain(mgr._noiseAudio);
-      // Noise volume is set directly on the element
+      expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(0);
       expect(mgr._noiseAudio.volume).toBe(0.02);
     });
 
-    test("speech MediaElementSource connects to speech gain", () => {
+    test("speech audio plays directly (not through AudioContext)", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      // Only createMediaElementSource call is for speech
-      const speechSource = mockCtx.createMediaElementSource.mock.results[0].value;
-      const speechGain = mockCtx.createGain.mock.results[1].value;
-      expect(speechSource.connect).toHaveBeenCalledWith(speechGain);
+      // Speech should NOT be captured by createMediaElementSource
+      expect(mockCtx.createMediaElementSource).toHaveBeenCalledTimes(0);
+      expect(mgr._speechAudio.volume).toBe(1);
+    });
+
+    test("analyser node is created for optional visualization", () => {
+      const mgr = new AudioStreamManager();
+      mgr.start();
+      expect(mockCtx.createAnalyser).toHaveBeenCalledTimes(1);
+      expect(mgr.getAnalyserNode()).not.toBeNull();
     });
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Noise gain values
   // ═══════════════════════════════════════════════════════════════════════════
-  describe("gain levels", () => {
+  describe("volume levels", () => {
     test("noise audio volume starts at 0.02", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      // Noise volume is set directly on the <audio> element
       expect(mgr._noiseAudio.volume).toBe(0.02);
     });
 
-    test("speech gain starts at 1.0", () => {
+    test("speech audio volume starts at 1.0", () => {
       const mgr = new AudioStreamManager();
       mgr.start();
-      const speechGain = mockCtx.createGain.mock.results[1].value;
-      expect(speechGain.gain.value).toBe(1.0);
+      expect(mgr._speechAudio.volume).toBe(1.0);
     });
   });
 });
