@@ -7,13 +7,36 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import List from "@mui/material/List";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemText from "@mui/material/ListItemText";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import { useAppDispatch, useAppSelector } from "../store";
-import { setEnabled, setVolume, setRate, setError, clearError } from "../store/ttsSlice";
+import {
+  setEnabled,
+  setVolume,
+  setRate,
+  setError,
+  clearError,
+  advanceQueue,
+  skipToMessage,
+  clearQueue,
+} from "../store/ttsSlice";
+import { ttsPreprocess } from "../utils/ttsPreprocess";
+
+/* CARD-090: Commented out — replaced by browser speechSynthesis
 import AudioStreamManager from "../utils/audioStreamManager";
+
+// Singleton stream manager — shared across components
+let _streamManager = null;
+export function getStreamManager() {
+  if (!_streamManager) _streamManager = new AudioStreamManager();
+  return _streamManager;
+}
+*/
 
 const SPEED_OPTIONS = [
   { label: "0.75x", value: 0.75 },
@@ -23,100 +46,135 @@ const SPEED_OPTIONS = [
   { label: "2x", value: 2.0 },
 ];
 
-// Singleton stream manager — shared across components
-let _streamManager = null;
-export function getStreamManager() {
-  if (!_streamManager) _streamManager = new AudioStreamManager();
-  return _streamManager;
-}
+// Chrome has a bug where speechSynthesis pauses after ~15 seconds.
+// Workaround: periodically pause/resume while speaking.
+const CHROME_PAUSE_INTERVAL_MS = 14000;
 
 export default function StreamView() {
   const dispatch = useAppDispatch();
   const tts = useAppSelector((s) => s.tts);
+  const agents = useAppSelector((s) => s.agents.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const canvasRef = useRef(null);
-  const animFrameRef = useRef(null);
-  const managerRef = useRef(getStreamManager());
+  const utteranceRef = useRef(null);
+  const chromeTimerRef = useRef(null);
+  const queueListRef = useRef(null);
 
-  // Wire error callback
-  useEffect(() => {
-    managerRef.current.setOnError((msg) => dispatch(setError(msg)));
-  }, [dispatch]);
+  // Resolve a browser SpeechSynthesisVoice by name
+  const resolveVoice = useCallback((agentName) => {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return null;
 
-  // Sync volume/speed to manager
-  useEffect(() => {
-    managerRef.current.setVolume(tts.volume);
-  }, [tts.volume]);
+    // CARD-090 Phase 8: per-agent voice lookup
+    const agent = agents.find((a) => a.name === agentName);
+    const voiceName = agent?.voice || tts.voice;
 
-  useEffect(() => {
-    managerRef.current.setSpeed(tts.rate);
-  }, [tts.rate]);
+    if (voiceName) {
+      const match = voices.find((v) => v.name === voiceName);
+      if (match) return match;
+    }
+    // Fallback: first English voice or system default
+    return voices.find((v) => v.lang.startsWith("en")) || voices[0] || null;
+  }, [agents, tts.voice]);
 
-  // Waveform animation loop
+  // Start Chrome pause/resume workaround
+  const startChromeWorkaround = useCallback(() => {
+    stopChromeWorkaround();
+    chromeTimerRef.current = setInterval(() => {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, CHROME_PAUSE_INTERVAL_MS);
+  }, []);
+
+  const stopChromeWorkaround = useCallback(() => {
+    if (chromeTimerRef.current) {
+      clearInterval(chromeTimerRef.current);
+      chromeTimerRef.current = null;
+    }
+  }, []);
+
+  // Speak the current message when currentIndex changes to a 'speaking' item
   useEffect(() => {
-    if (!tts.enabled) {
-      // Clear canvas when stopped
-      const canvas = canvasRef.current;
-      const ctx = canvas && canvas.getContext("2d");
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const { queue, currentIndex, enabled } = tts;
+    if (!enabled || currentIndex < 0 || currentIndex >= queue.length) return;
+
+    const item = queue[currentIndex];
+    if (item.status !== "speaking") return;
+
+    // Cancel any in-progress speech
+    window.speechSynthesis.cancel();
+
+    const processed = ttsPreprocess(item.message);
+    if (!processed) {
+      // Empty after preprocessing — skip to next
+      dispatch(advanceQueue());
       return;
     }
 
-    const draw = () => {
-      const canvas = canvasRef.current;
-      const analyser = managerRef.current.getAnalyserNode();
-      const ctx = canvas && canvas.getContext("2d");
-      if (!ctx || !analyser) {
-        animFrameRef.current = requestAnimationFrame(draw);
-        return;
+    const utterance = new SpeechSynthesisUtterance(processed);
+    utterance.rate = tts.rate;
+    utterance.volume = tts.volume;
+
+    const voice = resolveVoice(item.from);
+    if (voice) utterance.voice = voice;
+
+    utterance.onend = () => {
+      stopChromeWorkaround();
+      dispatch(advanceQueue());
+    };
+    utterance.onerror = (e) => {
+      stopChromeWorkaround();
+      // 'canceled' is not a real error — happens on skip/stop
+      if (e.error !== "canceled") {
+        dispatch(setError(`Speech error: ${e.error}`));
       }
-
-      const width = canvas.width;
-      const height = canvas.height;
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      analyser.getByteTimeDomainData(dataArray);
-
-      ctx.fillStyle = theme.palette.grey[100];
-      ctx.fillRect(0, 0, width, height);
-
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = theme.palette.primary.main;
-      ctx.beginPath();
-
-      const sliceWidth = width / bufferLength;
-      let x = 0;
-      for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 128.0;
-        const y = (v * height) / 2;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-        x += sliceWidth;
-      }
-      ctx.lineTo(width, height / 2);
-      ctx.stroke();
-
-      animFrameRef.current = requestAnimationFrame(draw);
+      dispatch(advanceQueue());
     };
 
-    animFrameRef.current = requestAnimationFrame(draw);
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    startChromeWorkaround();
+  }, [tts.currentIndex, tts.queue, tts.enabled, tts.rate, tts.volume, dispatch, resolveVoice, startChromeWorkaround, stopChromeWorkaround]);
+
+  // Auto-scroll queue list to current item
+  useEffect(() => {
+    if (tts.currentIndex >= 0 && queueListRef.current) {
+      const items = queueListRef.current.querySelectorAll("[data-queue-item]");
+      if (items[tts.currentIndex]) {
+        items[tts.currentIndex].scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+  }, [tts.currentIndex]);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      window.speechSynthesis.cancel();
+      stopChromeWorkaround();
     };
-  }, [tts.enabled, theme]);
+  }, [stopChromeWorkaround]);
 
   const handleToggle = useCallback(() => {
-    const mgr = managerRef.current;
     if (tts.enabled) {
-      mgr.stop();
+      window.speechSynthesis.cancel();
+      stopChromeWorkaround();
+      dispatch(clearQueue());
       dispatch(setEnabled(false));
     } else {
-      mgr.start();
       dispatch(setEnabled(true));
     }
-  }, [tts.enabled, dispatch]);
+  }, [tts.enabled, dispatch, stopChromeWorkaround]);
+
+  const handleSkip = useCallback(
+    (index) => {
+      window.speechSynthesis.cancel();
+      dispatch(skipToMessage(index));
+    },
+    [dispatch]
+  );
 
   const handleVolumeChange = useCallback(
     (_, val) => dispatch(setVolume(val)),
@@ -142,7 +200,7 @@ export default function StreamView() {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 3,
+        gap: 2,
         mt: isMobile ? 2 : 4,
       }}
     >
@@ -168,22 +226,86 @@ export default function StreamView() {
       </IconButton>
 
       <Typography variant="body2" color="text.secondary">
-        {tts.enabled ? "Stream active" : "Press play to start"}
+        {tts.enabled
+          ? tts.currentIndex >= 0
+            ? "Speaking..."
+            : "Listening for messages"
+          : "Press play to start"}
       </Typography>
 
-      {/* Waveform canvas */}
-      <canvas
-        ref={canvasRef}
-        width={isMobile ? 300 : 400}
-        height={80}
-        style={{
+      {/* CARD-090: Visible message queue (replaces waveform canvas) */}
+      <Box
+        sx={{
           width: "100%",
           maxWidth: isMobile ? 300 : 400,
-          height: 80,
-          borderRadius: 8,
+          maxHeight: 240,
+          overflow: "auto",
+          borderRadius: 2,
           border: `1px solid ${theme.palette.divider}`,
+          bgcolor: theme.palette.background.paper,
         }}
-      />
+        ref={queueListRef}
+      >
+        {tts.queue.length === 0 ? (
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ p: 2, textAlign: "center" }}
+          >
+            {tts.enabled ? "No messages yet" : "Queue empty"}
+          </Typography>
+        ) : (
+          <List dense disablePadding>
+            {tts.queue.map((item, index) => (
+              <ListItemButton
+                key={item.id}
+                data-queue-item
+                selected={index === tts.currentIndex}
+                onClick={() => handleSkip(index)}
+                disabled={item.status === "done"}
+                sx={{
+                  opacity: item.status === "done" ? 0.5 : 1,
+                  bgcolor:
+                    index === tts.currentIndex
+                      ? `${theme.palette.primary.main}14`
+                      : "transparent",
+                  borderLeft:
+                    index === tts.currentIndex
+                      ? `3px solid ${theme.palette.primary.main}`
+                      : "3px solid transparent",
+                }}
+              >
+                <ListItemText
+                  primary={
+                    <Typography
+                      variant="body2"
+                      component="span"
+                      sx={{ fontWeight: 600 }}
+                    >
+                      {item.from}
+                    </Typography>
+                  }
+                  secondary={
+                    item.message.length > 80
+                      ? item.message.slice(0, 80) + "..."
+                      : item.message
+                  }
+                  secondaryTypographyProps={{
+                    variant: "caption",
+                    noWrap: false,
+                    sx: {
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                    },
+                  }}
+                />
+              </ListItemButton>
+            ))}
+          </List>
+        )}
+      </Box>
 
       {/* Volume */}
       <Box sx={{ width: "100%", maxWidth: 300 }}>

@@ -55,6 +55,22 @@ jest.mock("../src/services/api", () => ({
   deleteAgent: jest.fn(),
 }));
 
+// CARD-090: StreamView now uses speechSynthesis — mock it for jsdom
+window.speechSynthesis = {
+  cancel: jest.fn(),
+  speak: jest.fn(),
+  getVoices: jest.fn(() => []),
+  speaking: false,
+  paused: false,
+  pause: jest.fn(),
+  resume: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+};
+global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
+  constructor(text) { this.text = text; this.rate = 1; this.volume = 1; this.voice = null; this.onend = null; this.onerror = null; }
+};
+
 const theme = createTheme({
   palette: { primary: { main: "#1976d2" }, secondary: { main: "#9c27b0" } },
 });
@@ -68,8 +84,10 @@ const DEFAULT_TTS_STATE = {
   enabled: false,
   volume: 1.0,
   rate: 1.0,
-
+  voice: "",
   error: null,
+  queue: [],
+  currentIndex: -1,
 };
 
 function createTestStore(overrides = {}) {

@@ -1,14 +1,12 @@
 /**
  * CARD-072 QA Supplementary Tests — StreamView edge cases.
+ * Updated for CARD-090: browser speechSynthesis replaces AudioStreamManager.
  * Author: qa-1
- * Date: 2026-02-11
- *
- * Supplements the 15 developer tests in card072-stream-view.test.jsx with
- * additional edge case and integration coverage.
+ * Updated: 2026-02-11 (CARD-090)
  */
 
 import React from "react";
-import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
@@ -19,24 +17,29 @@ import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import * as api from "../src/services/api";
 
-// Mock audioStreamManager
-const mockStart = jest.fn();
-const mockStop = jest.fn();
-const mockSetVolume = jest.fn();
-const mockSetSpeed = jest.fn();
-const mockSetOnError = jest.fn();
-const mockGetAnalyserNode = jest.fn(() => null);
-
-jest.mock("../src/utils/audioStreamManager", () => {
-  return class MockAudioStreamManager {
-    start = mockStart;
-    stop = mockStop;
-    setVolume = mockSetVolume;
-    setSpeed = mockSetSpeed;
-    setOnError = mockSetOnError;
-    getAnalyserNode = mockGetAnalyserNode;
-  };
-});
+// Mock speechSynthesis API for jsdom
+const mockCancel = jest.fn();
+const mockSpeak = jest.fn();
+const mockGetVoices = jest.fn(() => []);
+window.speechSynthesis = {
+  cancel: mockCancel,
+  speak: mockSpeak,
+  getVoices: mockGetVoices,
+  speaking: false,
+  paused: false,
+  pause: jest.fn(),
+  resume: jest.fn(),
+};
+global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
+  constructor(text) {
+    this.text = text;
+    this.rate = 1;
+    this.volume = 1;
+    this.voice = null;
+    this.onend = null;
+    this.onerror = null;
+  }
+};
 
 jest.mock("../src/services/api", () => ({
   getOrCreateBoard: jest.fn(),
@@ -63,7 +66,7 @@ jest.mock("../src/services/api", () => ({
   deleteSprint: jest.fn(),
 }));
 
-import StreamView, { getStreamManager } from "../src/components/StreamView";
+import StreamView from "../src/components/StreamView";
 import App from "../src/App";
 
 const theme = createTheme();
@@ -72,8 +75,10 @@ const DEFAULT_TTS_STATE = {
   enabled: false,
   volume: 1.0,
   rate: 1.0,
-
+  voice: "",
   error: null,
+  queue: [],
+  currentIndex: -1,
 };
 
 function createTestStore(overrides = {}) {
@@ -153,25 +158,6 @@ beforeEach(() => {
   api.getAgents.mockResolvedValue({ agents: [] });
 });
 
-// ─── Singleton pattern ──────────────────────────────────────────────────────
-
-describe("CARD-072 QA: getStreamManager singleton", () => {
-  test("getStreamManager returns an AudioStreamManager instance", () => {
-    const mgr = getStreamManager();
-    expect(mgr).toBeDefined();
-    expect(typeof mgr.start).toBe("function");
-    expect(typeof mgr.stop).toBe("function");
-    expect(typeof mgr.setVolume).toBe("function");
-    expect(typeof mgr.setSpeed).toBe("function");
-  });
-
-  test("getStreamManager returns the same instance on multiple calls", () => {
-    const mgr1 = getStreamManager();
-    const mgr2 = getStreamManager();
-    expect(mgr1).toBe(mgr2);
-  });
-});
-
 // ─── Toggle state transitions ───────────────────────────────────────────────
 
 describe("CARD-072 QA: toggle state transitions", () => {
@@ -180,29 +166,26 @@ describe("CARD-072 QA: toggle state transitions", () => {
 
     // Start
     fireEvent.click(screen.getByLabelText("Start stream"));
-    expect(mockStart).toHaveBeenCalledTimes(1);
     expect(store.getState().tts.enabled).toBe(true);
 
     // Stop
     fireEvent.click(screen.getByLabelText("Stop stream"));
-    expect(mockStop).toHaveBeenCalledTimes(1);
+    expect(mockCancel).toHaveBeenCalled();
     expect(store.getState().tts.enabled).toBe(false);
 
     // Start again
     fireEvent.click(screen.getByLabelText("Start stream"));
-    expect(mockStart).toHaveBeenCalledTimes(2);
     expect(store.getState().tts.enabled).toBe(true);
   });
 
   test("status text toggles with button", () => {
-    const { store } = renderStreamView({ enabled: false });
+    renderStreamView({ enabled: false });
 
     expect(screen.getByText("Press play to start")).toBeInTheDocument();
-    expect(screen.queryByText("Stream active")).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText("Start stream"));
 
-    expect(screen.getByText("Stream active")).toBeInTheDocument();
+    expect(screen.getByText("Listening for messages")).toBeInTheDocument();
     expect(screen.queryByText("Press play to start")).not.toBeInTheDocument();
   });
 });
@@ -224,24 +207,13 @@ describe("CARD-072 QA: volume display", () => {
     renderStreamView({ volume: 0.5 });
     expect(screen.getByText("50%")).toBeInTheDocument();
   });
-
-  test("volume syncs to AudioStreamManager on mount", () => {
-    renderStreamView({ volume: 0.3 });
-    expect(mockSetVolume).toHaveBeenCalledWith(0.3);
-  });
 });
 
 // ─── Speed selector options ─────────────────────────────────────────────────
 
 describe("CARD-072 QA: speed selector values", () => {
-  test("speed syncs to AudioStreamManager on mount", () => {
-    renderStreamView({ rate: 1.5 });
-    expect(mockSetSpeed).toHaveBeenCalledWith(1.5);
-  });
-
   test("default speed value is 1x", () => {
     renderStreamView({ rate: 1.0 });
-    // The combobox should display "1x"
     const combobox = screen.getByRole("combobox");
     expect(combobox).toHaveTextContent("1x");
   });
@@ -255,55 +227,33 @@ describe("CARD-072 QA: error snackbar interactions", () => {
 
     expect(screen.getByText("Test error message")).toBeInTheDocument();
 
-    // Click the close button on the alert
     const closeButton = screen.getByRole("button", { name: "Close" });
     fireEvent.click(closeButton);
 
     expect(store.getState().tts.error).toBeNull();
   });
-
-  test("error callback wired on mount dispatches to Redux", () => {
-    renderStreamView();
-
-    // Verify setOnError was called with a function
-    expect(mockSetOnError).toHaveBeenCalledWith(expect.any(Function));
-  });
 });
 
-// ─── Minimal UI verification (per card requirements) ────────────────────────
+// ─── Minimal UI verification ────────────────────────────────────────────────
 
 describe("CARD-072 QA: minimal UI — no extra elements", () => {
-  test("only expected elements: heading, toggle, status, canvas, volume, speed, snackbar", () => {
-    const { container } = renderStreamView();
+  test("only expected elements: heading, toggle, status, queue, volume, speed, snackbar", () => {
+    renderStreamView();
 
-    // Heading
     expect(screen.getByText("Audio Stream")).toBeInTheDocument();
-
-    // Play/stop toggle (only 1 icon button at the top)
     expect(screen.getByLabelText("Start stream")).toBeInTheDocument();
-
-    // Status text
     expect(screen.getByText("Press play to start")).toBeInTheDocument();
-
-    // Canvas
-    expect(container.querySelector("canvas")).toBeInTheDocument();
-
-    // Volume
+    // CARD-090: Queue area instead of canvas
+    expect(screen.getByText("Queue empty")).toBeInTheDocument();
     expect(screen.getByText("Volume")).toBeInTheDocument();
     expect(screen.getByRole("slider", { name: "Volume" })).toBeInTheDocument();
-
-    // Speed
     expect(screen.getByText("Speed")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeInTheDocument();
 
-    // No per-agent voice table (removed from TtsView)
+    // No per-agent voice table
     expect(screen.queryByText("Per-Agent Voice")).not.toBeInTheDocument();
-
-    // No enable/disable switch (replaced by play/stop button)
     expect(screen.queryByText("TTS Enabled")).not.toBeInTheDocument();
     expect(screen.queryByText("TTS Disabled")).not.toBeInTheDocument();
-
-    // No "Announce agent name" toggle
     expect(screen.queryByText("Announce agent name")).not.toBeInTheDocument();
   });
 });
@@ -315,9 +265,7 @@ describe("CARD-072 QA: App.jsx integration", () => {
     renderApp();
 
     const tabs = screen.getAllByRole("tab");
-    // Tab 3 should have a Headphones icon (via HeadphonesIcon SVG)
     expect(tabs[3]).toHaveTextContent("Stream");
-    // Verify no TTS label exists
     expect(screen.queryByText("TTS")).not.toBeInTheDocument();
   });
 
@@ -331,7 +279,6 @@ describe("CARD-072 QA: App.jsx integration", () => {
       expect(screen.getByText("Audio Stream")).toBeInTheDocument();
     });
 
-    // Verify play button is present
     expect(screen.getByLabelText("Start stream")).toBeInTheDocument();
   });
 });

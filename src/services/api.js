@@ -218,26 +218,27 @@ export async function deleteSprint(projectHash, sprintId) {
 }
 
 // --- TTS ---
+// CARD-090: Server-side TTS commented out — using browser speechSynthesis
 
-const BASE_URL = PARSE_URL.replace("/parse", "");
+// const BASE_URL = PARSE_URL.replace("/parse", "");
 
-export async function getVoices() {
-  const res = await fetch(`${BASE_URL}/tts/voices`, {
-    headers: PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {},
-  });
-  if (!res.ok) throw new Error("Failed to fetch voices");
-  return res.json();
-}
+// export async function getVoices() {
+//   const res = await fetch(`${BASE_URL}/tts/voices`, {
+//     headers: PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {},
+//   });
+//   if (!res.ok) throw new Error("Failed to fetch voices");
+//   return res.json();
+// }
 
-export async function synthesizeSpeech({ text, voice, speed }) {
-  const res = await fetch(`${BASE_URL}/tts/synthesize`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {}),
-    },
-    body: JSON.stringify({ text, voice, speed }),
-  });
-  if (!res.ok) throw new Error("TTS synthesis failed");
-  return res.arrayBuffer();
-}
+// export async function synthesizeSpeech({ text, voice, speed }) {
+//   const res = await fetch(`${BASE_URL}/tts/synthesize`, {
+//     method: "POST",
+//     headers: {
+//       "Content-Type": "application/json",
+//       ...(PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {}),
+//     },
+//     body: JSON.stringify({ text, voice, speed }),
+//   });
+//   if (!res.ok) throw new Error("TTS synthesis failed");
+//   return res.arrayBuffer();
+// }

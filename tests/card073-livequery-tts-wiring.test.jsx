@@ -1,13 +1,13 @@
 /**
- * CARD-073: Wire LiveQuery to AudioStreamManager for TTS
- * Tests that incoming LiveQuery messages trigger server-side TTS synthesis
- * and feed audio into AudioStreamManager.
+ * CARD-073: Wire LiveQuery to browser speechSynthesis TTS queue
+ * Updated for CARD-090: Tests that incoming LiveQuery messages enqueue to Redux
+ * queue instead of calling server-side synthesizeSpeech.
  * Author: developer-1
- * Date: 2026-02-11
+ * Updated: 2026-02-11 (CARD-090: browser TTS replaces AudioStreamManager)
  */
 
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { render, waitFor, act } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
@@ -16,27 +16,8 @@ import agentsReducer from "../src/store/agentsSlice";
 import boardReducer from "../src/store/boardSlice";
 import ttsReducer from "../src/store/ttsSlice";
 
-// --- Mock AudioStreamManager (via StreamView.getStreamManager) ---
-
-const mockQueueSpeech = jest.fn();
-const mockStreamManager = {
-  active: true,
-  start: jest.fn(),
-  stop: jest.fn(),
-  setVolume: jest.fn(),
-  setSpeed: jest.fn(),
-  setOnError: jest.fn(),
-  getAnalyserNode: jest.fn(() => null),
-  queueSpeech: mockQueueSpeech,
-};
-
-jest.mock("../src/components/StreamView", () => ({
-  getStreamManager: () => mockStreamManager,
-}));
-
 // --- Mock API ---
 
-const mockSynthesizeSpeech = jest.fn();
 let capturedOnMessage = null;
 
 jest.mock("../src/services/api", () => ({
@@ -44,10 +25,8 @@ jest.mock("../src/services/api", () => ({
     capturedOnMessage = onMessage;
     return Promise.resolve(() => {});
   }),
-  synthesizeSpeech: (...args) => mockSynthesizeSpeech(...args),
 }));
 
-// Import after mocks are set up
 import MessagesView from "../src/components/MessagesView";
 
 const theme = createTheme();
@@ -56,7 +35,10 @@ const DEFAULT_TTS = {
   enabled: false,
   volume: 1.0,
   rate: 1.0,
+  voice: "",
   error: null,
+  queue: [],
+  currentIndex: -1,
 };
 
 const DEFAULT_AGENTS = [
@@ -116,8 +98,6 @@ function renderMessagesView(overrides = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnMessage = null;
-  mockStreamManager.active = true;
-  mockSynthesizeSpeech.mockResolvedValue(new ArrayBuffer(100));
 });
 
 // ─── LiveQuery subscription ──────────────────────────────────────────────────
@@ -131,216 +111,141 @@ describe("CARD-073: LiveQuery subscription", () => {
   });
 });
 
-// ─── TTS synthesis wiring ────────────────────────────────────────────────────
+// ─── TTS queue wiring ────────────────────────────────────────────────────────
 
-describe("CARD-073: TTS synthesis on incoming messages", () => {
-  test("calls synthesizeSpeech when TTS enabled and agent message arrives", async () => {
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true, rate: 1.0 } });
+describe("CARD-073: TTS enqueue on incoming messages (CARD-090)", () => {
+  test("enqueues message when TTS enabled and agent message arrives", async () => {
+    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg1",
-      from: "pm-1",
-      to: "owner",
-      message: "Hello from PM",
-      createdAt: new Date().toISOString(),
-    });
-
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalledWith({
-        text: "Hello from PM",
-        voice: "en_US-amy-medium",
-        speed: 1.0,
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg1",
+        from: "pm-1",
+        to: "owner",
+        message: "Hello from PM",
+        createdAt: new Date().toISOString(),
       });
     });
+
+    const { queue } = store.getState().tts;
+    expect(queue.length).toBe(1);
+    expect(queue[0].from).toBe("pm-1");
+    expect(queue[0].message).toBe("Hello from PM");
   });
 
-  test("uses agent voice from DB when available", async () => {
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+  test("enqueues message with correct from field for agent voice lookup", async () => {
+    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg2",
-      from: "qa-1",
-      to: "owner",
-      message: "Tests passed",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg2",
+        from: "qa-1",
+        to: "owner",
+        message: "Tests passed",
+        createdAt: new Date().toISOString(),
+      });
     });
 
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalledWith(
-        expect.objectContaining({ voice: "en_GB-alba-medium" })
-      );
-    });
+    const { queue } = store.getState().tts;
+    expect(queue[0].from).toBe("qa-1");
   });
 
-  test("falls back to default voice when agent has no voice set", async () => {
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+  test("auto-starts speaking first enqueued message when idle", async () => {
+    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg3",
-      from: "senior-dev-1",
-      to: "owner",
-      message: "Code review done",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg3",
+        from: "pm-1",
+        to: "owner",
+        message: "Auto-start test",
+        createdAt: new Date().toISOString(),
+      });
     });
 
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalledWith(
-        expect.objectContaining({ voice: "en_US-amy-medium" })
-      );
-    });
+    const { queue, currentIndex } = store.getState().tts;
+    expect(currentIndex).toBe(0);
+    expect(queue[0].status).toBe("speaking");
   });
 
-  test("passes current TTS rate as speed to synthesizeSpeech", async () => {
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true, rate: 1.5 } });
+  test("subsequent messages queue as pending", async () => {
+    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg4",
-      from: "pm-1",
-      to: "owner",
-      message: "Sprint update",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg4",
+        from: "pm-1",
+        to: "owner",
+        message: "First",
+        createdAt: new Date().toISOString(),
+      });
     });
 
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalledWith(
-        expect.objectContaining({ speed: 1.5 })
-      );
-    });
-  });
-
-  test("feeds synthesized audio into AudioStreamManager.queueSpeech", async () => {
-    const fakeAudio = new ArrayBuffer(256);
-    mockSynthesizeSpeech.mockResolvedValue(fakeAudio);
-
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
-
-    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
-
-    capturedOnMessage({
-      id: "msg5",
-      from: "pm-1",
-      to: "owner",
-      message: "Queue this",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg5",
+        from: "developer-1",
+        to: "owner",
+        message: "Second",
+        createdAt: new Date().toISOString(),
+      });
     });
 
-    await waitFor(() => {
-      expect(mockQueueSpeech).toHaveBeenCalledWith(fakeAudio);
-    });
+    const { queue, currentIndex } = store.getState().tts;
+    expect(queue.length).toBe(2);
+    expect(currentIndex).toBe(0);
+    expect(queue[0].status).toBe("speaking");
+    expect(queue[1].status).toBe("pending");
   });
 });
 
 // ─── Skip conditions ────────────────────────────────────────────────────────
 
 describe("CARD-073: TTS skip conditions", () => {
-  test("does NOT call synthesizeSpeech when TTS is disabled", async () => {
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: false } });
+  test("does NOT enqueue when TTS is disabled", async () => {
+    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: false } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg6",
-      from: "pm-1",
-      to: "owner",
-      message: "Should not speak",
-      createdAt: new Date().toISOString(),
-    });
-
-    // Give it a tick to ensure nothing fires
-    await new Promise((r) => setTimeout(r, 50));
-    expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
-  });
-
-  test("does NOT call synthesizeSpeech for owner messages", async () => {
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
-
-    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
-
-    capturedOnMessage({
-      id: "msg7",
-      from: "owner",
-      to: "pm-1",
-      message: "My own message",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg6",
+        from: "pm-1",
+        to: "owner",
+        message: "Should not speak",
+        createdAt: new Date().toISOString(),
+      });
     });
 
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
+    expect(store.getState().tts.queue.length).toBe(0);
   });
 
-  test("does NOT call synthesizeSpeech when stream manager is not active", async () => {
-    mockStreamManager.active = false;
-
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
-
-    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
-
-    capturedOnMessage({
-      id: "msg8",
-      from: "pm-1",
-      to: "owner",
-      message: "Stream not active",
-      createdAt: new Date().toISOString(),
-    });
-
-    await new Promise((r) => setTimeout(r, 50));
-    expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
-  });
-});
-
-// ─── Error handling ──────────────────────────────────────────────────────────
-
-describe("CARD-073: TTS error handling", () => {
-  test("dispatches setError when synthesizeSpeech fails", async () => {
-    mockSynthesizeSpeech.mockRejectedValue(new Error("Network error"));
-
+  test("does NOT enqueue for owner messages", async () => {
     const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg9",
-      from: "pm-1",
-      to: "owner",
-      message: "Will fail",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg7",
+        from: "owner",
+        to: "pm-1",
+        message: "My own message",
+        createdAt: new Date().toISOString(),
+      });
     });
 
-    await waitFor(() => {
-      expect(store.getState().tts.error).toBe("TTS synthesis failed");
-    });
-  });
-
-  test("does NOT call queueSpeech when synthesizeSpeech fails", async () => {
-    mockSynthesizeSpeech.mockRejectedValue(new Error("API error"));
-
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
-
-    await waitFor(() => expect(capturedOnMessage).toBeTruthy());
-
-    capturedOnMessage({
-      id: "msg10",
-      from: "pm-1",
-      to: "owner",
-      message: "Will fail too",
-      createdAt: new Date().toISOString(),
-    });
-
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalled();
-    });
-
-    // Ensure queueSpeech was never called
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockQueueSpeech).not.toHaveBeenCalled();
+    expect(store.getState().tts.queue.length).toBe(0);
   });
 });
 
@@ -352,13 +257,15 @@ describe("CARD-073: Message dispatch still works", () => {
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg11",
-      from: "pm-1",
-      to: "owner",
-      subject: "Test",
-      message: "Check dispatch",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg11",
+        from: "pm-1",
+        to: "owner",
+        subject: "Test",
+        message: "Check dispatch",
+        createdAt: new Date().toISOString(),
+      });
     });
 
     await waitFor(() => {
@@ -373,23 +280,24 @@ describe("CARD-073: Message dispatch still works", () => {
 // ─── Unknown agent (not in DB) ───────────────────────────────────────────────
 
 describe("CARD-073: Unknown agent handling", () => {
-  test("uses default voice for unknown agent names", async () => {
-    renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
+  test("enqueues message for unknown agent with correct from field", async () => {
+    const { store } = renderMessagesView({ tts: { ...DEFAULT_TTS, enabled: true } });
 
     await waitFor(() => expect(capturedOnMessage).toBeTruthy());
 
-    capturedOnMessage({
-      id: "msg12",
-      from: "unknown-agent",
-      to: "owner",
-      message: "I am new",
-      createdAt: new Date().toISOString(),
+    await act(async () => {
+      capturedOnMessage({
+        id: "msg12",
+        from: "unknown-agent",
+        to: "owner",
+        message: "I am new",
+        createdAt: new Date().toISOString(),
+      });
     });
 
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalledWith(
-        expect.objectContaining({ voice: "en_US-amy-medium" })
-      );
-    });
+    const { queue } = store.getState().tts;
+    expect(queue.length).toBe(1);
+    expect(queue[0].from).toBe("unknown-agent");
+    expect(queue[0].message).toBe("I am new");
   });
 });

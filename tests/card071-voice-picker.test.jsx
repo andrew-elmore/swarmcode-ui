@@ -1,28 +1,54 @@
 /**
  * CARD-071: Voice picker in AgentEditDialog — Test Suite
+ * Updated for CARD-090: Uses browser speechSynthesis instead of server-side Piper.
  * Tests for voice dropdown, preview button, and voice field save.
  * Author: developer-1
- * Date: 2026-02-11
+ * Updated: 2026-02-11 (CARD-090: browser speechSynthesis replaces getVoices API)
  */
 
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { ThemeProvider, createTheme } from "@mui/material";
-import * as api from "../src/services/api";
 import AgentEditDialog from "../src/components/AgentEditDialog";
 
-jest.mock("../src/services/api", () => ({
-  getVoices: jest.fn(),
-  synthesizeSpeech: jest.fn(),
-}));
+// Mock browser speechSynthesis API
+const MOCK_BROWSER_VOICES = [
+  { name: "Google US English", lang: "en-US", localService: false },
+  { name: "Google UK English Female", lang: "en-GB", localService: false },
+  { name: "Samantha", lang: "en-US", localService: true },
+  { name: "Thomas", lang: "fr-FR", localService: true },
+];
+
+const mockSpeak = jest.fn();
+const mockCancel = jest.fn();
+const mockGetVoices = jest.fn(() => MOCK_BROWSER_VOICES);
+let voicesChangedHandler = null;
+
+beforeEach(() => {
+  window.speechSynthesis = {
+    speak: mockSpeak,
+    cancel: mockCancel,
+    getVoices: mockGetVoices,
+    speaking: false,
+    addEventListener: jest.fn((event, handler) => {
+      if (event === "voiceschanged") voicesChangedHandler = handler;
+    }),
+    removeEventListener: jest.fn(),
+  };
+  window.SpeechSynthesisUtterance = jest.fn().mockImplementation((text) => ({
+    text,
+    voice: null,
+    onend: null,
+    onerror: null,
+  }));
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+  voicesChangedHandler = null;
+});
 
 const theme = createTheme();
-
-const MOCK_VOICES = [
-  { id: "en_US-amy-medium", name: "Amy", language: "en-US", quality: "medium" },
-  { id: "en_US-ryan-medium", name: "Ryan", language: "en-US", quality: "medium" },
-  { id: "en_GB-alba-medium", name: "Alba", language: "en-GB", quality: "medium" },
-];
 
 const MOCK_AGENT = {
   name: "developer-1",
@@ -31,7 +57,7 @@ const MOCK_AGENT = {
   permanentMemory: "",
   permissions: { allowedTools: ["Bash", "Read", "Write", "Edit", "Glob", "Grep"] },
   sortOrder: 2,
-  voice: "en_US-ryan-medium",
+  voice: "Samantha",
 };
 
 function renderDialog(props = {}) {
@@ -48,16 +74,9 @@ function renderDialog(props = {}) {
   );
 }
 
-beforeEach(() => {
-  api.getVoices.mockResolvedValue(MOCK_VOICES);
-  api.synthesizeSpeech.mockResolvedValue(new ArrayBuffer(100));
-});
-
-afterEach(() => jest.restoreAllMocks());
-
 // ─── Voice dropdown ───────────────────────────────────────────────────────────
 
-describe("CARD-071: Voice dropdown", () => {
+describe("CARD-071/090: Voice dropdown (browser speechSynthesis)", () => {
   test("renders Voice label in the dialog", async () => {
     renderDialog();
     await waitFor(() => {
@@ -65,10 +84,10 @@ describe("CARD-071: Voice dropdown", () => {
     });
   });
 
-  test("fetches voices when dialog opens", async () => {
+  test("loads browser voices via speechSynthesis.getVoices()", async () => {
     renderDialog();
     await waitFor(() => {
-      expect(api.getVoices).toHaveBeenCalled();
+      expect(mockGetVoices).toHaveBeenCalled();
     });
   });
 
@@ -77,36 +96,41 @@ describe("CARD-071: Voice dropdown", () => {
     await waitFor(() => {
       expect(screen.getByLabelText("Voice")).toBeInTheDocument();
     });
-    // MUI select renders a combobox
     const voiceField = screen.getByLabelText("Voice");
     expect(voiceField).toHaveAttribute("role", "combobox");
   });
 
-  test("loads agent voice value from agent prop", async () => {
-    renderDialog({ agent: { ...MOCK_AGENT, voice: "en_US-amy-medium" } });
+  test("handles voiceschanged event (async Chrome voice loading)", async () => {
+    // Start with no voices
+    mockGetVoices.mockReturnValueOnce([]);
+    renderDialog();
+
+    const callsBefore = mockGetVoices.mock.calls.length;
+
+    // Simulate Chrome async voice loading
+    mockGetVoices.mockReturnValue(MOCK_BROWSER_VOICES);
+    if (voicesChangedHandler) {
+      act(() => voicesChangedHandler());
+    }
+
     await waitFor(() => {
-      expect(api.getVoices).toHaveBeenCalled();
+      // getVoices should have been called at least once more after voiceschanged
+      expect(mockGetVoices.mock.calls.length).toBeGreaterThan(callsBefore);
     });
   });
 
-  test("handles getVoices failure gracefully with fallback voices", async () => {
-    api.getVoices.mockRejectedValue(new Error("Network error"));
+  test("shows helper text when no browser voices available", async () => {
+    mockGetVoices.mockReturnValue([]);
     renderDialog();
     await waitFor(() => {
-      expect(api.getVoices).toHaveBeenCalled();
-    });
-    // Should still render without crashing
-    expect(screen.getByLabelText("Voice")).toBeInTheDocument();
-    // Should show helper text about fallback
-    await waitFor(() => {
-      expect(screen.getByText(/Could not reach TTS server/)).toBeInTheDocument();
+      expect(screen.getByText("No browser voices available")).toBeInTheDocument();
     });
   });
 });
 
 // ─── Preview button ───────────────────────────────────────────────────────────
 
-describe("CARD-071: Voice preview", () => {
+describe("CARD-071/090: Voice preview (browser speechSynthesis)", () => {
   test("renders preview button", async () => {
     renderDialog();
     await waitFor(() => {
@@ -115,7 +139,7 @@ describe("CARD-071: Voice preview", () => {
   });
 
   test("preview button is disabled when no voice selected", async () => {
-    renderDialog({ agent: { ...MOCK_AGENT, voice: null } });
+    renderDialog({ agent: { ...MOCK_AGENT, voice: "" } });
     await waitFor(() => {
       const btn = screen.getByTitle("Preview voice");
       expect(btn).toBeDisabled();
@@ -123,29 +147,54 @@ describe("CARD-071: Voice preview", () => {
   });
 
   test("preview button is enabled when voice is selected", async () => {
-    renderDialog({ agent: { ...MOCK_AGENT, voice: "en_US-amy-medium" } });
+    renderDialog({ agent: { ...MOCK_AGENT, voice: "Samantha" } });
     await waitFor(() => {
       const btn = screen.getByTitle("Preview voice");
       expect(btn).not.toBeDisabled();
     });
   });
+
+  test("clicking preview calls speechSynthesis.speak()", async () => {
+    renderDialog({ agent: { ...MOCK_AGENT, voice: "Samantha" } });
+    await waitFor(() => {
+      expect(screen.getByTitle("Preview voice")).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByTitle("Preview voice"));
+
+    expect(mockCancel).toHaveBeenCalled();
+    expect(mockSpeak).toHaveBeenCalledTimes(1);
+  });
+
+  test("preview creates SpeechSynthesisUtterance with agent description", async () => {
+    renderDialog({ agent: { ...MOCK_AGENT, voice: "Samantha", description: "Developer" } });
+    await waitFor(() => {
+      expect(screen.getByTitle("Preview voice")).not.toBeDisabled();
+    });
+
+    fireEvent.click(screen.getByTitle("Preview voice"));
+
+    expect(window.SpeechSynthesisUtterance).toHaveBeenCalledWith(
+      "Hello, I am Developer."
+    );
+  });
 });
 
 // ─── Save includes voice ──────────────────────────────────────────────────────
 
-describe("CARD-071: Voice saved with agent", () => {
-  test("onSave includes voice field", async () => {
+describe("CARD-071/090: Voice saved with agent", () => {
+  test("onSave includes voice field (browser voice name)", async () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
-    renderDialog({ onSave, agent: { ...MOCK_AGENT, voice: "en_US-ryan-medium" } });
+    renderDialog({ onSave, agent: { ...MOCK_AGENT, voice: "Samantha" } });
 
-    await waitFor(() => expect(api.getVoices).toHaveBeenCalled());
+    await waitFor(() => expect(mockGetVoices).toHaveBeenCalled());
 
     fireEvent.click(screen.getByText("Save"));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({
-          voice: "en_US-ryan-medium",
+          voice: "Samantha",
         })
       );
     });
@@ -155,7 +204,7 @@ describe("CARD-071: Voice saved with agent", () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     renderDialog({ onSave, agent: { ...MOCK_AGENT, voice: "" } });
 
-    await waitFor(() => expect(api.getVoices).toHaveBeenCalled());
+    await waitFor(() => expect(mockGetVoices).toHaveBeenCalled());
 
     fireEvent.click(screen.getByText("Save"));
 
@@ -171,7 +220,7 @@ describe("CARD-071: Voice saved with agent", () => {
 
 // ─── New agent creation ───────────────────────────────────────────────────────
 
-describe("CARD-071: Voice for new agent", () => {
+describe("CARD-071/090: Voice for new agent", () => {
   test("new agent dialog shows Voice field", async () => {
     renderDialog({ agent: null });
     await waitFor(() => {

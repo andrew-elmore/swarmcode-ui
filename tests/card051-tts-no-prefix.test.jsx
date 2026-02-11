@@ -1,10 +1,10 @@
 /**
  * CARD-051 QA Tests — TTS speaks message content only, no agent name prefix.
  *
- * Updated for CARD-073: Now tests that synthesizeSpeech is called with
- * raw msg.message (no prefix), using server-side Piper TTS via AudioStreamManager.
+ * Updated for CARD-090: Now tests that enqueueMessage is dispatched with
+ * raw msg.message (no prefix), using browser speechSynthesis via Redux queue.
  * Author: developer-1
- * Updated: 2026-02-11 (CARD-073: replaced TtsEngine with AudioStreamManager)
+ * Updated: 2026-02-11 (CARD-090: replaced synthesizeSpeech with enqueueMessage)
  */
 
 import React from "react";
@@ -18,25 +18,7 @@ import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 
-// Mock StreamView.getStreamManager
-const mockQueueSpeech = jest.fn();
-const mockStreamManager = {
-  active: true,
-  start: jest.fn(),
-  stop: jest.fn(),
-  setVolume: jest.fn(),
-  setSpeed: jest.fn(),
-  setOnError: jest.fn(),
-  getAnalyserNode: jest.fn(() => null),
-  queueSpeech: mockQueueSpeech,
-};
-
-jest.mock("../src/components/StreamView", () => ({
-  getStreamManager: () => mockStreamManager,
-}));
-
 // Mock API
-const mockSynthesizeSpeech = jest.fn(() => Promise.resolve(new ArrayBuffer(100)));
 let capturedOnMessage = null;
 
 jest.mock("../src/services/api", () => ({
@@ -44,7 +26,6 @@ jest.mock("../src/services/api", () => ({
     capturedOnMessage = cb;
     return Promise.resolve(jest.fn());
   }),
-  synthesizeSpeech: (...args) => mockSynthesizeSpeech(...args),
 }));
 
 import MessagesView from "../src/components/MessagesView";
@@ -53,7 +34,15 @@ const theme = createTheme({
   palette: { primary: { main: "#1976d2" }, secondary: { main: "#9c27b0" } },
 });
 
-const DEFAULT_TTS_STATE = { enabled: false, volume: 1.0, rate: 1.0, error: null };
+const DEFAULT_TTS_STATE = {
+  enabled: false,
+  volume: 1.0,
+  rate: 1.0,
+  voice: "",
+  error: null,
+  queue: [],
+  currentIndex: -1,
+};
 
 function createTestStore(ttsOverrides = {}) {
   return configureStore({
@@ -94,12 +83,10 @@ function renderWithProviders(ui, store) {
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnMessage = null;
-  mockStreamManager.active = true;
-  mockSynthesizeSpeech.mockResolvedValue(new ArrayBuffer(100));
 });
 
 describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
-  test("TTS synthesizeSpeech receives only message content when TTS is enabled", async () => {
+  test("enqueueMessage receives only message content when TTS is enabled", async () => {
     const store = createTestStore({ enabled: true });
     renderWithProviders(<MessagesView />, store);
 
@@ -116,19 +103,14 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
       });
     });
 
-    // synthesizeSpeech should have been called with raw message only
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalledWith(
-        expect.objectContaining({ text: "Bug fix complete" })
-      );
-    });
-    // Verify it was NOT called with any agent name prefix
-    expect(mockSynthesizeSpeech).not.toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining("says:") })
-    );
+    // CARD-090: Message should be enqueued with raw message content (no prefix)
+    const { queue } = store.getState().tts;
+    expect(queue.length).toBe(1);
+    expect(queue[0].message).toBe("Bug fix complete");
+    expect(queue[0].from).toBe("developer-1");
   });
 
-  test("agent name prefix is NOT prepended to synthesized text", async () => {
+  test("agent name prefix is NOT prepended to enqueued message", async () => {
     const store = createTestStore({ enabled: true });
     renderWithProviders(<MessagesView />, store);
 
@@ -145,16 +127,14 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
       });
     });
 
-    await waitFor(() => {
-      expect(mockSynthesizeSpeech).toHaveBeenCalledTimes(1);
-    });
-    const calledText = mockSynthesizeSpeech.mock.calls[0][0].text;
-    expect(calledText).toBe("Task assigned to developer-1");
-    expect(calledText).not.toMatch(/^pm-1 says:/);
-    expect(calledText).not.toMatch(/^PM Agent says:/);
+    const { queue } = store.getState().tts;
+    expect(queue.length).toBe(1);
+    expect(queue[0].message).toBe("Task assigned to developer-1");
+    expect(queue[0].message).not.toMatch(/^pm-1 says:/);
+    expect(queue[0].message).not.toMatch(/^PM Agent says:/);
   });
 
-  test("owner messages are NOT synthesized (only incoming agent messages)", async () => {
+  test("owner messages are NOT enqueued (only incoming agent messages)", async () => {
     const store = createTestStore({ enabled: true });
     renderWithProviders(<MessagesView />, store);
 
@@ -172,10 +152,10 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
     });
 
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
+    expect(store.getState().tts.queue.length).toBe(0);
   });
 
-  test("TTS does not synthesize when TTS is disabled", async () => {
+  test("TTS does not enqueue when TTS is disabled", async () => {
     const store = createTestStore({ enabled: false });
     renderWithProviders(<MessagesView />, store);
 
@@ -193,6 +173,6 @@ describe("CARD-051: TTS speaks message only, no agent name prefix", () => {
     });
 
     await new Promise((r) => setTimeout(r, 50));
-    expect(mockSynthesizeSpeech).not.toHaveBeenCalled();
+    expect(store.getState().tts.queue.length).toBe(0);
   });
 });
