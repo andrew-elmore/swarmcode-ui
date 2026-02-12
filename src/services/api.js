@@ -217,6 +217,118 @@ export async function deleteSprint(projectHash, sprintId) {
   return callFunction("deleteSprint", { projectHash, sprintId });
 }
 
+// --- Commands (CARD-102) ---
+
+export async function createCommand(projectHash, action) {
+  return callFunction("createCommand", { projectHash, action });
+}
+
+export async function listRecentCommands(projectHash) {
+  return callFunction("listRecentCommands", { projectHash });
+}
+
+export async function updateCommandStatus(commandId, status, error) {
+  const params = { commandId, status };
+  if (error) params.error = error;
+  return callFunction("updateCommandStatus", params);
+}
+
+// --- Ping (CARD-102) ---
+
+export async function recordPing(projectHash, agentStatus) {
+  return callFunction("recordPing", { projectHash, agentStatus });
+}
+
+export async function getLatestPing(projectHash) {
+  return callFunction("getLatestPing", { projectHash });
+}
+
+export async function getRequestedCommands(projectHash) {
+  return callFunction("getRequestedCommands", { projectHash });
+}
+
+// --- Command LiveQuery ---
+
+let _commandSubscription = null;
+
+export async function subscribeToCommands(projectHash, onCommand) {
+  if (_commandSubscription) {
+    _commandSubscription.unsubscribe();
+    _commandSubscription = null;
+  }
+
+  const query = new Parse.Query("Command");
+  query.equalTo("projectHash", projectHash);
+  const subscription = await query.subscribe();
+  _commandSubscription = subscription;
+
+  subscription.on("create", (object) => {
+    onCommand({
+      type: "create",
+      command: {
+        objectId: object.id,
+        action: object.get("action"),
+        status: object.get("status"),
+        error: object.get("error") || null,
+        createdAt: object.get("createdAt"),
+        fulfilledAt: object.get("fulfilledAt") || null,
+      },
+    });
+  });
+
+  subscription.on("update", (object) => {
+    onCommand({
+      type: "update",
+      command: {
+        objectId: object.id,
+        action: object.get("action"),
+        status: object.get("status"),
+        error: object.get("error") || null,
+        createdAt: object.get("createdAt"),
+        fulfilledAt: object.get("fulfilledAt") || null,
+      },
+    });
+  });
+
+  return () => {
+    subscription.unsubscribe();
+    _commandSubscription = null;
+  };
+}
+
+// --- Ping LiveQuery ---
+
+let _pingSubscription = null;
+
+export async function subscribeToPings(projectHash, onPing) {
+  if (_pingSubscription) {
+    _pingSubscription.unsubscribe();
+    _pingSubscription = null;
+  }
+
+  const query = new Parse.Query("Ping");
+  query.equalTo("projectHash", projectHash);
+  const subscription = await query.subscribe();
+  _pingSubscription = subscription;
+
+  const handler = (object) => {
+    onPing({
+      objectId: object.id,
+      projectHash: object.get("projectHash"),
+      agentStatus: object.get("agentStatus"),
+      updatedAt: object.get("updatedAt"),
+    });
+  };
+
+  subscription.on("create", handler);
+  subscription.on("update", handler);
+
+  return () => {
+    subscription.unsubscribe();
+    _pingSubscription = null;
+  };
+}
+
 // --- TTS ---
 // CARD-090: Server-side TTS commented out — using browser speechSynthesis
 

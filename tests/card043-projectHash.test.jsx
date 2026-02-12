@@ -18,6 +18,7 @@ import boardReducer from "../src/store/boardSlice";
 import messagesReducer, { sendMessage, loadConversation, loadMoreMessages } from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+import commandsReducer from "../src/store/commandsSlice";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
@@ -39,6 +40,8 @@ jest.mock("../src/services/api", () => ({
   createAgent: jest.fn(),
   updateAgent: jest.fn(),
   deleteAgent: jest.fn(),
+  subscribeToCommands: jest.fn(),
+  subscribeToPings: jest.fn(),
 }));
 
 const theme = createTheme({
@@ -53,6 +56,7 @@ function createTestStore(preloadedState = {}) {
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
+      commands: commandsReducer,
     },
     preloadedState: {
       tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
@@ -93,6 +97,8 @@ beforeEach(() => {
       { name: "developer-1", description: "Developer", isActive: true, sortOrder: 1 },
     ],
   });
+  api.subscribeToCommands.mockResolvedValue(jest.fn());
+  api.subscribeToPings.mockResolvedValue(jest.fn());
 });
 
 afterEach(() => jest.restoreAllMocks());

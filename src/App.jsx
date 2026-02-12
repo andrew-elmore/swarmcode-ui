@@ -13,14 +13,17 @@ import MailIcon from "@mui/icons-material/Mail";
 import FolderIcon from "@mui/icons-material/Folder";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import HeadphonesIcon from "@mui/icons-material/Headphones";
+import TerminalIcon from "@mui/icons-material/Terminal";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
 import { fetchBoard } from "./store/boardSlice";
 import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
-import { subscribeToMessages } from "./services/api";
+import { updateCommand, setPing } from "./store/commandsSlice";
+import { subscribeToMessages, subscribeToCommands, subscribeToPings } from "./services/api";
 import AgentsView from "./components/AgentsView";
 import BoardView from "./components/BoardView";
+import CommandsView from "./components/CommandsView";
 import MessagesView from "./components/MessagesView";
 import ProjectsView from "./components/ProjectsView";
 import ProjectSelector from "./components/ProjectSelector";
@@ -34,6 +37,7 @@ export default function App() {
   const activeProject = useAppSelector((s) => s.projects.activeProject);
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
+  const projectHash = useAppSelector((s) => s.board.board?.projectHash);
   const tts = useAppSelector((s) => s.tts);
   const ttsRef = useRef(tts);
 
@@ -74,6 +78,26 @@ export default function App() {
       if (unsubscribe) unsubscribe();
     };
   }, [dispatch]);
+
+  // CARD-104: LiveQuery subscriptions for Command and Ping classes
+  useEffect(() => {
+    if (!projectHash) return;
+    let unsubCmd = null;
+    let unsubPing = null;
+
+    subscribeToCommands(projectHash, (event) => {
+      dispatch(updateCommand(event.command));
+    }).then((unsub) => { unsubCmd = unsub; });
+
+    subscribeToPings(projectHash, (ping) => {
+      dispatch(setPing(ping));
+    }).then((unsub) => { unsubPing = unsub; });
+
+    return () => {
+      if (unsubCmd) unsubCmd();
+      if (unsubPing) unsubPing();
+    };
+  }, [dispatch, projectHash]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
@@ -117,6 +141,7 @@ export default function App() {
                 <Tab key="agents" icon={<SmartToyIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="stream" icon={<HeadphonesIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="projects" icon={<FolderIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="commands" icon={<TerminalIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
               ]
             ) : (
               [
@@ -125,6 +150,7 @@ export default function App() {
                 <Tab key="agents" icon={<SmartToyIcon />} iconPosition="start" label="Agents" />,
                 <Tab key="stream" icon={<HeadphonesIcon />} iconPosition="start" label="Stream" />,
                 <Tab key="projects" icon={<FolderIcon />} iconPosition="start" label="Projects" />,
+                <Tab key="commands" icon={<TerminalIcon />} iconPosition="start" label="Commands" />,
               ]
             )}
           </Tabs>
@@ -164,6 +190,7 @@ export default function App() {
         {tab === 2 && <AgentsView />}
         {tab === 3 && <StreamView />}
         {tab === 4 && <ProjectsView />}
+        {tab === 5 && <CommandsView />}
       </Box>
     </Box>
   );

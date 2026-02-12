@@ -1,0 +1,105 @@
+// commandsSlice.js — Redux slice for remote agent commands (CARD-104)
+
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import * as api from "../services/api";
+
+// --- Async Thunks ---
+
+export const fetchRecentCommands = createAsyncThunk(
+  "commands/fetchRecentCommands",
+  async (projectHash) => {
+    return api.listRecentCommands(projectHash);
+  }
+);
+
+export const createCommand = createAsyncThunk(
+  "commands/createCommand",
+  async ({ projectHash, action }) => {
+    return api.createCommand(projectHash, action);
+  }
+);
+
+export const fetchLatestPing = createAsyncThunk(
+  "commands/fetchLatestPing",
+  async (projectHash) => {
+    return api.getLatestPing(projectHash);
+  }
+);
+
+// --- Slice ---
+
+const commandsSlice = createSlice({
+  name: "commands",
+  initialState: {
+    commands: [],
+    latestPing: null,
+    loading: false,
+    sending: false,
+    error: null,
+  },
+  reducers: {
+    setCommands(state, action) {
+      state.commands = action.payload;
+    },
+    updateCommand(state, action) {
+      const updated = action.payload;
+      const idx = state.commands.findIndex((c) => c.objectId === updated.objectId);
+      if (idx !== -1) {
+        state.commands[idx] = updated;
+      } else {
+        // New command — prepend and keep only 5
+        state.commands.unshift(updated);
+        if (state.commands.length > 5) {
+          state.commands = state.commands.slice(0, 5);
+        }
+      }
+    },
+    setPing(state, action) {
+      state.latestPing = action.payload;
+    },
+    clearError(state) {
+      state.error = null;
+    },
+  },
+  extraReducers: (builder) => {
+    // fetchRecentCommands
+    builder.addCase(fetchRecentCommands.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(fetchRecentCommands.fulfilled, (state, action) => {
+      state.loading = false;
+      state.commands = action.payload.commands;
+    });
+    builder.addCase(fetchRecentCommands.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.error.message;
+    });
+
+    // createCommand
+    builder.addCase(createCommand.pending, (state) => {
+      state.sending = true;
+      state.error = null;
+    });
+    builder.addCase(createCommand.fulfilled, (state, action) => {
+      state.sending = false;
+      // Prepend the new command and keep only 5
+      state.commands.unshift(action.payload);
+      if (state.commands.length > 5) {
+        state.commands = state.commands.slice(0, 5);
+      }
+    });
+    builder.addCase(createCommand.rejected, (state, action) => {
+      state.sending = false;
+      state.error = action.error.message;
+    });
+
+    // fetchLatestPing
+    builder.addCase(fetchLatestPing.fulfilled, (state, action) => {
+      state.latestPing = action.payload.ping;
+    });
+  },
+});
+
+export const { setCommands, updateCommand, setPing, clearError } = commandsSlice.actions;
+export default commandsSlice.reducer;
