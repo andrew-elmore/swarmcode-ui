@@ -71,6 +71,7 @@ export default function StreamView() {
   const utteranceRef = useRef(null);
   const chromeTimerRef = useRef(null);
   const queueListRef = useRef(null);
+  const speakingIndexRef = useRef(-1); // CARD-113: track which index we're already speaking
 
   // CARD-094: Push-to-talk state
   const [isListening, setIsListening] = useState(false);
@@ -116,7 +117,12 @@ export default function StreamView() {
     }, CHROME_PAUSE_INTERVAL_MS);
   }, [stopChromeWorkaround]);
 
-  // Speak the current message when currentIndex changes to a 'speaking' item
+  // CARD-113: Speak the current message when currentIndex advances to a new item.
+  // IMPORTANT: tts.queue is NOT in the dependency array — new messages appending
+  // to the queue must not interrupt the currently speaking utterance.  We only
+  // react to currentIndex changes (which the slice sets when a message starts or
+  // advanceQueue is dispatched).  The queue is read from the store via the tts
+  // selector at render time, so the value is always fresh.
   useEffect(() => {
     const { queue, currentIndex, enabled } = tts;
     if (!enabled || currentIndex < 0 || currentIndex >= queue.length) return;
@@ -124,12 +130,18 @@ export default function StreamView() {
     const item = queue[currentIndex];
     if (item.status !== "speaking") return;
 
-    // Cancel any in-progress speech
+    // CARD-113: Guard — don't re-speak the same index if the effect re-fires
+    // due to rate/volume/enabled changes while already speaking this index.
+    if (speakingIndexRef.current === currentIndex) return;
+    speakingIndexRef.current = currentIndex;
+
+    // Cancel any in-progress speech (safe: only reached on a genuine index change)
     window.speechSynthesis.cancel();
 
     const processed = ttsPreprocess(item.message);
     if (!processed) {
       // Empty after preprocessing — skip to next
+      speakingIndexRef.current = -1;
       dispatch(advanceQueue());
       return;
     }
@@ -143,10 +155,12 @@ export default function StreamView() {
 
     utterance.onend = () => {
       stopChromeWorkaround();
+      speakingIndexRef.current = -1;
       dispatch(advanceQueue());
     };
     utterance.onerror = (e) => {
       stopChromeWorkaround();
+      speakingIndexRef.current = -1;
       // 'canceled' is not a real error — happens on skip/stop
       if (e.error !== "canceled") {
         dispatch(setError(`Speech error: ${e.error}`));
@@ -157,7 +171,8 @@ export default function StreamView() {
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
     startChromeWorkaround();
-  }, [tts.currentIndex, tts.queue, tts.enabled, tts.rate, tts.volume, dispatch, resolveVoice, startChromeWorkaround, stopChromeWorkaround]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- CARD-113: tts.queue/rate/volume intentionally omitted; queue changes must not interrupt speech
+  }, [tts.currentIndex, tts.enabled, dispatch, resolveVoice, startChromeWorkaround, stopChromeWorkaround]);
 
   // Auto-scroll queue list to current item
   useEffect(() => {
@@ -174,6 +189,7 @@ export default function StreamView() {
     return () => {
       window.speechSynthesis.cancel();
       stopChromeWorkaround();
+      speakingIndexRef.current = -1;
     };
   }, [stopChromeWorkaround]);
 
@@ -272,6 +288,7 @@ export default function StreamView() {
     if (tts.enabled) {
       window.speechSynthesis.cancel();
       stopChromeWorkaround();
+      speakingIndexRef.current = -1; // CARD-113: reset guard on stop
       dispatch(clearQueue());
       dispatch(setEnabled(false));
     } else {
@@ -282,6 +299,7 @@ export default function StreamView() {
   const handleSkip = useCallback(
     (index) => {
       window.speechSynthesis.cancel();
+      speakingIndexRef.current = -1; // CARD-113: reset guard so new index triggers speech
       dispatch(skipToMessage(index));
     },
     [dispatch]
