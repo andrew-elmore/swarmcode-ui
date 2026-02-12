@@ -50,9 +50,13 @@ jest.mock("../src/services/api", () => ({
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
   getAgents: jest.fn(),
+  getAllAgents: jest.fn(),
   createAgent: jest.fn(),
   updateAgent: jest.fn(),
   deleteAgent: jest.fn(),
+  assignAgentToProject: jest.fn(),
+  unassignAgentFromProject: jest.fn(),
+  updateProjectAgent: jest.fn(),
 }));
 
 // CARD-090: StreamView now uses speechSynthesis — mock it for jsdom
@@ -101,7 +105,7 @@ function createTestStore(overrides = {}) {
     },
     preloadedState: {
       tts: DEFAULT_TTS_STATE,
-      agents: overrides.agents || { agents: DEFAULT_AGENTS, loading: false, error: null },
+      agents: overrides.agents || { agents: DEFAULT_AGENTS, allAgents: [], loading: false, error: null },
       board: overrides.board || { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: overrides.messages || {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
@@ -136,6 +140,7 @@ beforeEach(() => {
   api.subscribeToMessages.mockResolvedValue(jest.fn());
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
+  api.getAllAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
   api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
 });
 

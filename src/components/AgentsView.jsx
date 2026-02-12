@@ -57,7 +57,7 @@ export default function AgentsView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [selectedProjectPath, setSelectedProjectPath] = useState("");
+  const [selectedProjectPath, setSelectedProjectPath] = useState(activeProject?.path || "");
 
   const projectHash = board?.projectHash;
 
@@ -74,13 +74,6 @@ export default function AgentsView() {
       dispatch(fetchRecentProjects());
     }
   }, [dispatch, projects.length]);
-
-  // Default selected project to active project
-  useEffect(() => {
-    if (activeProject && !selectedProjectPath) {
-      setSelectedProjectPath(activeProject.path);
-    }
-  }, [activeProject, selectedProjectPath]);
 
   // When dropdown selection changes, fetch the board for that project
   // so projectHash updates and triggers agent fetch
