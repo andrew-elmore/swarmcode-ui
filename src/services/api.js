@@ -88,10 +88,22 @@ export async function subscribeToMessages(onMessage) {
   _messageSubscription = subscription;
 
   subscription.on("create", (object) => {
+    // CARD-118: from/to may be Pointer stubs (LiveQuery doesn't support include).
+    // Extract name if included, or objectId for lookup via agentIdMap in Redux.
+    const rawFrom = object.get("from");
+    const rawTo = object.get("to");
+    const resolveAgent = (raw) => {
+      if (!raw) return null;
+      if (typeof raw === "string") return raw; // Pre-migration: plain string
+      if (raw.get && raw.get("name")) return raw.get("name"); // Included Pointer
+      return raw.id || null; // Pointer stub: return objectId for caller to resolve
+    };
     const msg = {
       id: object.id,
-      from: object.get("from"),
-      to: object.get("to"),
+      from: resolveAgent(rawFrom),
+      to: resolveAgent(rawTo),
+      fromId: rawFrom?.id || null,  // Always provide objectId for agentIdMap lookup
+      toId: rawTo?.id || null,
       subject: object.get("subject"),
       message: object.get("message"),
       createdAt: object.get("createdAt"),

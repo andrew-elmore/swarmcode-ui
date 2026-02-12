@@ -84,9 +84,9 @@ export default function BoardView() {
     ? cards.find((c) => c.cardId === selectedCardId) || null
     : null;
 
-  // Filter cards by selected sprint
+  // Filter cards by selected sprint (use sprintName for backward compat with string filter)
   const filteredCards = sprintFilter
-    ? cards.filter((c) => c.sprint === sprintFilter)
+    ? cards.filter((c) => (c.sprintName || c.sprint) === sprintFilter)
     : cards;
 
   // For mobile: filter to the selected column only
@@ -226,9 +226,9 @@ export default function BoardView() {
                               variant="outlined"
                             />
                           )}
-                          {card.sprint && (
+                          {(card.sprintName || card.sprint) && (
                             <Chip
-                              label={card.sprint}
+                              label={card.sprintName || (typeof card.sprint === "string" ? card.sprint : card.sprint?.name)}
                               size="small"
                               color="secondary"
                               variant="outlined"

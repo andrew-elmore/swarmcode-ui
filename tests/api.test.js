@@ -177,6 +177,8 @@ describe("api.subscribeToMessages", () => {
       id: "msg-001",
       from: "pm-1",
       to: "owner",
+      fromId: null,  // CARD-118: string from has no .id
+      toId: null,    // CARD-118: string to has no .id
       subject: "Test",
       message: "Hello from LiveQuery",
       createdAt: "2026-01-01T00:00:00Z",

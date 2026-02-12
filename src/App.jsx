@@ -44,6 +44,14 @@ export default function App() {
   // Keep ref in sync so the LiveQuery callback always sees latest TTS state
   useEffect(() => { ttsRef.current = tts; }, [tts]);
 
+  // CARD-118: Build agent objectId -> name lookup map for LiveQuery Pointer resolution
+  const agentIdMapRef = useRef({});
+  useEffect(() => {
+    const map = {};
+    agents.forEach((a) => { if (a.objectId) map[a.objectId] = a.name; });
+    agentIdMapRef.current = map;
+  }, [agents]);
+
   // Build label lookup from dynamic agents list
   const agentLabels = { all: "All Agents" };
   agents.forEach((a) => { agentLabels[a.name] = a.description || a.name; });
@@ -63,12 +71,24 @@ export default function App() {
     let unsubscribe = null;
 
     subscribeToMessages((msg) => {
-      dispatch(appendMessage(msg));
+      // CARD-118: Resolve Pointer objectIds to agent names via agentIdMap.
+      // api.js returns from/to as name (if included) or objectId (Pointer stub).
+      // Use fromId/toId to look up the actual name from the agents list.
+      const idMap = agentIdMapRef.current;
+      const resolvedFrom = (msg.fromId && idMap[msg.fromId]) || msg.from;
+      const resolvedTo = (msg.toId && idMap[msg.toId]) || msg.to;
+
+      if (msg.fromId && !idMap[msg.fromId] && msg.from === msg.fromId) {
+        console.warn("CARD-118: Could not resolve agent name for fromId:", msg.fromId);
+      }
+
+      const resolvedMsg = { ...msg, from: resolvedFrom, to: resolvedTo };
+      dispatch(appendMessage(resolvedMsg));
 
       // Enqueue incoming agent messages for browser speechSynthesis (CARD-090)
       const currentTts = ttsRef.current;
-      if (msg.from !== "owner" && currentTts.enabled) {
-        dispatch(enqueueMessage({ from: msg.from, message: msg.message }));
+      if (resolvedMsg.from !== "owner" && currentTts.enabled) {
+        dispatch(enqueueMessage({ from: resolvedMsg.from, message: resolvedMsg.message }));
       }
     }).then((unsub) => {
       unsubscribe = unsub;

@@ -38,9 +38,6 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import ttsReducer, {
   enqueueMessage,
   advanceQueue,
-  skipToMessage,
-  setEnabled,
-  clearQueue,
 } from "../src/store/ttsSlice";
 import agentsReducer from "../src/store/agentsSlice";
 

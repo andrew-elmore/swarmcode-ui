@@ -135,7 +135,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
           </TextField>
           <TextField
             label="Sprint"
-            value={editSprint || card.sprint || ""}
+            value={editSprint || card.sprintName || (typeof card.sprint === "string" ? card.sprint : "") || ""}
             onChange={(e) => handleSprintChange(e.target.value)}
             select
             size="small"
@@ -159,9 +159,9 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
             size="small"
             color={PRIORITY_COLORS[card.priority] || "default"}
           />
-          {card.sprint && (
+          {(card.sprintName || card.sprint) && (
             <Chip
-              label={`Sprint: ${card.sprint}`}
+              label={`Sprint: ${card.sprintName || (typeof card.sprint === "string" ? card.sprint : card.sprint?.name)}`}
               size="small"
               color="secondary"
               variant="outlined"
