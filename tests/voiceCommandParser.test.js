@@ -269,6 +269,50 @@ describe("parseVoiceCommand() — edge cases", () => {
   });
 });
 
+// ─── Fuzzy matching (agent name not at start) ────────────────────────────
+
+describe("parseVoiceCommand() — fuzzy matching", () => {
+  test("matches agent name after leading filler words", () => {
+    const result = parseVoiceCommand("hey pm one create a card");
+    expect(result).toEqual({ agent: "pm-1", message: "create a card" });
+  });
+
+  test("matches agent name after 'okay'", () => {
+    const result = parseVoiceCommand("okay senior dev one review my code");
+    expect(result).toEqual({ agent: "senior-dev-1", message: "review my code" });
+  });
+
+  test("matches agent name after 'umm'", () => {
+    const result = parseVoiceCommand("umm developer one fix the bug");
+    expect(result).toEqual({ agent: "developer-1", message: "fix the bug" });
+  });
+
+  test("matches agent name after 'so'", () => {
+    const result = parseVoiceCommand("so qa one run the tests");
+    expect(result).toEqual({ agent: "qa-1", message: "run the tests" });
+  });
+
+  test("matches agent name after multiple filler words", () => {
+    const result = parseVoiceCommand("okay so devops one deploy now");
+    expect(result).toEqual({ agent: "devops-1", message: "deploy now" });
+  });
+
+  test("does not match agent name as substring of another word", () => {
+    expect(parseVoiceCommand("overall the system is fine")).toBeNull();
+  });
+
+  test("prefers earliest match when multiple agents in text", () => {
+    const result = parseVoiceCommand("hey qa one tell developer one to fix it");
+    expect(result.agent).toBe("qa-1");
+    expect(result.message).toBe("tell developer one to fix it");
+  });
+
+  test("matches broadcast after filler", () => {
+    const result = parseVoiceCommand("okay everyone status update");
+    expect(result).toEqual({ agent: "all", message: "status update" });
+  });
+});
+
 // ─── Alias map ordering ─────────────────────────────────────────────────────
 
 describe("AGENT_PHONETIC_MAP ordering", () => {

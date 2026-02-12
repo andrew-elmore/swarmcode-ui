@@ -84,15 +84,25 @@ export function parseVoiceCommand(transcript) {
   const normalized = normalize(transcript);
   if (!normalized) return null;
 
+  let best = null;
+
   for (const { pattern, agent } of AGENT_PHONETIC_MAP) {
-    if (normalized.startsWith(pattern)) {
-      const rawMessage = normalized.substring(pattern.length).trim();
-      const message = stripLeadingFillers(rawMessage);
-      return { agent, message };
+    const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = normalized.match(new RegExp(`\\b${escaped}\\b`));
+    if (!match) continue;
+
+    // Prefer earliest position; on ties, prefer longest pattern
+    if (!best || match.index < best.index ||
+        (match.index === best.index && pattern.length > best.pattern.length)) {
+      best = { index: match.index, pattern, agent };
     }
   }
 
-  return null;
+  if (!best) return null;
+
+  const rawMessage = normalized.substring(best.index + best.pattern.length).trim();
+  const message = stripLeadingFillers(rawMessage);
+  return { agent: best.agent, message };
 }
 
 export { normalize, AGENT_PHONETIC_MAP };
