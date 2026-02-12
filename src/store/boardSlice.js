@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as api from "../services/api";
 
-// --- Async Thunks ---
 
 export const fetchBoard = createAsyncThunk(
   "board/fetchBoard",
@@ -45,13 +44,6 @@ export const fetchCard = createAsyncThunk(
   }
 );
 
-export const pollBoard = createAsyncThunk(
-  "board/pollBoard",
-  async ({ projectHash, since }) => {
-    return api.pollBoard(projectHash, since);
-  }
-);
-
 export const createSprint = createAsyncThunk(
   "board/createSprint",
   async (sprintData) => {
@@ -73,7 +65,6 @@ export const deleteSprint = createAsyncThunk(
   }
 );
 
-// --- Slice ---
 
 const boardSlice = createSlice({
   name: "board",
@@ -99,7 +90,6 @@ const boardSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // fetchBoard
     builder.addCase(fetchBoard.pending, (state) => {
       state.loading = true;
       state.error = null;
@@ -116,7 +106,6 @@ const boardSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // createCard
     builder.addCase(createCard.fulfilled, (state, action) => {
       state.cards.push(action.payload.card);
     });
@@ -124,7 +113,6 @@ const boardSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // updateCard
     builder.addCase(updateCard.fulfilled, (state, action) => {
       const updated = action.payload.card;
       const idx = state.cards.findIndex((c) => c.cardId === updated.cardId);
@@ -139,7 +127,6 @@ const boardSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // addComment
     builder.addCase(addComment.fulfilled, (state, action) => {
       if (state.selectedCard) {
         const comments = state.selectedCard.comments || [];
@@ -151,25 +138,14 @@ const boardSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // fetchCards
     builder.addCase(fetchCards.fulfilled, (state, action) => {
       state.cards = action.payload.cards;
     });
 
-    // fetchCard
     builder.addCase(fetchCard.fulfilled, (state, action) => {
       state.selectedCard = action.payload.card;
     });
 
-    // pollBoard
-    builder.addCase(pollBoard.fulfilled, (state, action) => {
-      if (action.payload.changed) {
-        state.cards = action.payload.cards;
-      }
-      state.lastPoll = new Date().toISOString();
-    });
-
-    // createSprint
     builder.addCase(createSprint.fulfilled, (state, action) => {
       state.sprints.push(action.payload);
     });
@@ -177,7 +153,6 @@ const boardSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // updateSprint
     builder.addCase(updateSprint.fulfilled, (state, action) => {
       const updated = action.payload;
       const idx = state.sprints.findIndex((s) => s.objectId === updated.objectId);
@@ -189,7 +164,6 @@ const boardSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // deleteSprint
     builder.addCase(deleteSprint.fulfilled, (state, action) => {
       const { sprintId } = action.payload;
       const deleted = state.sprints.find((s) => s.objectId === sprintId);

@@ -13,6 +13,7 @@ import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../store";
 import { fetchRecentProjects, addRecentProject, setActiveProject } from "../store/projectsSlice";
+import { projectNameFromPath } from "../constants";
 
 export default function ProjectSelector() {
   const dispatch = useAppDispatch();
@@ -45,7 +46,7 @@ export default function ProjectSelector() {
   const handleAddProject = async () => {
     if (!newPath.trim()) return;
     const path = newPath.trim();
-    const name = path.split(/[/\\]/).filter(Boolean).pop() || path;
+    const name = projectNameFromPath(path);
     await dispatch(addRecentProject({ path, name }));
     dispatch(setActiveProject({ path, name }));
     setNewPath("");

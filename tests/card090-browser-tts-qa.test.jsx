@@ -432,11 +432,9 @@ describe("CARD-090 QA: source code verification", () => {
     expect(activeCode).not.toMatch(/synthesizeSpeech/);
   });
 
-  test("API: synthesizeSpeech and getVoices are commented out", () => {
-    // Should be commented out, not active
+  test("API: synthesizeSpeech and getVoices are not exported", () => {
     expect(apiSrc).not.toMatch(/^export async function synthesizeSpeech/m);
     expect(apiSrc).not.toMatch(/^export async function getVoices/m);
-    expect(apiSrc).toMatch(/CARD-090.*commented out/i);
   });
 
   test("ttsSlice exports queue actions", () => {

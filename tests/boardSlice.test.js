@@ -5,7 +5,7 @@
 
 import { configureStore } from "@reduxjs/toolkit";
 import * as api from "../src/services/api";
-import boardReducer, { fetchBoard, createCard, updateCard, addComment, fetchCards, fetchCard, pollBoard, clearError, clearSelectedCard } from "../src/store/boardSlice";
+import boardReducer, { fetchBoard, createCard, updateCard, addComment, fetchCards, fetchCard, clearError, clearSelectedCard } from "../src/store/boardSlice";
 
 jest.mock("../src/services/api", () => ({
   getOrCreateBoard: jest.fn(),
@@ -14,9 +14,7 @@ jest.mock("../src/services/api", () => ({
   addComment: jest.fn(),
   listCards: jest.fn(),
   showCard: jest.fn(),
-  pollBoard: jest.fn(),
   sendMessage: jest.fn(),
-  pollMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
 }));
@@ -213,27 +211,3 @@ describe("fetchCard thunk", () => {
   });
 });
 
-// ─── pollBoard ───────────────────────────────────────────────────────────────
-
-describe("pollBoard thunk", () => {
-  test("updates cards when changed is true", async () => {
-    const newCards = [{ cardId: "CARD-001", status: "done" }];
-    api.pollBoard.mockResolvedValue({ changed: true, cards: newCards });
-
-    const store = createTestStore({ cards: [{ cardId: "CARD-001", status: "todo" }] });
-    await store.dispatch(pollBoard({ projectHash: "abc", since: "2026-01-01T00:00:00Z" }));
-
-    expect(store.getState().board.cards).toEqual(newCards);
-    expect(store.getState().board.lastPoll).toBeDefined();
-  });
-
-  test("does not update cards when changed is false", async () => {
-    api.pollBoard.mockResolvedValue({ changed: false, cards: [] });
-
-    const originalCards = [{ cardId: "CARD-001", status: "todo" }];
-    const store = createTestStore({ cards: originalCards });
-    await store.dispatch(pollBoard({ projectHash: "abc", since: "2099-01-01T00:00:00Z" }));
-
-    expect(store.getState().board.cards).toEqual(originalCards);
-  });
-});

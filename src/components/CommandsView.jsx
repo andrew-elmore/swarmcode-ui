@@ -1,4 +1,4 @@
-// CommandsView.jsx — Remote agent command panel (CARD-104)
+// CommandsView.jsx — Remote agent command panel
 
 import { useState, useEffect, useCallback } from "react";
 import Box from "@mui/material/Box";

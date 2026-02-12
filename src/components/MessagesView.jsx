@@ -4,12 +4,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
 import { selectAgent, setMobileDrawerOpen } from "../store/messagesSlice";
-/* CARD-090: Commented out — server-side TTS replaced by browser speechSynthesis
-import { setError as setTtsError } from "../store/ttsSlice";
-import { synthesizeSpeech } from "../services/api";
-import { getStreamManager } from "./StreamView";
-*/
-// CARD-092: LiveQuery subscription moved to App.jsx so it stays active across all tabs.
+// LiveQuery subscription lives in App.jsx so it stays active across all tabs.
 import AgentSidebar from "./AgentSidebar";
 import ChatView from "./ChatView";
 

@@ -16,6 +16,7 @@ import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../store";
 import { fetchBoard, setSprintFilter } from "../store/boardSlice";
+import { PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 import CreateCardDialog from "./CreateCardDialog";
 import CardDetailDialog from "./CardDetailDialog";
 import SprintManagerDialog from "./SprintManagerDialog";
@@ -28,13 +29,6 @@ const COLUMNS = [
   { key: "qa", label: "QA" },
   { key: "done", label: "Done" },
 ];
-
-const PRIORITY_COLORS = {
-  critical: "error",
-  high: "warning",
-  medium: "info",
-  low: "default",
-};
 
 export default function BoardView() {
   const dispatch = useAppDispatch();
@@ -228,7 +222,7 @@ export default function BoardView() {
                           )}
                           {(card.sprintName || card.sprint) && (
                             <Chip
-                              label={card.sprintName || (typeof card.sprint === "string" ? card.sprint : card.sprint?.name)}
+                              label={getSprintDisplayName(card)}
                               size="small"
                               color="secondary"
                               variant="outlined"

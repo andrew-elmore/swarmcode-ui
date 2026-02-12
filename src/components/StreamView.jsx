@@ -38,17 +38,6 @@ function getSpeechRecognition() {
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
 }
 
-/* CARD-090: Commented out — replaced by browser speechSynthesis
-import AudioStreamManager from "../utils/audioStreamManager";
-
-// Singleton stream manager — shared across components
-let _streamManager = null;
-export function getStreamManager() {
-  if (!_streamManager) _streamManager = new AudioStreamManager();
-  return _streamManager;
-}
-*/
-
 const SPEED_OPTIONS = [
   { label: "0.75x", value: 0.75 },
   { label: "1x", value: 1.0 },
@@ -71,9 +60,9 @@ export default function StreamView() {
   const utteranceRef = useRef(null);
   const chromeTimerRef = useRef(null);
   const queueListRef = useRef(null);
-  const speakingIndexRef = useRef(-1); // CARD-113: track which index we're already speaking
+  const speakingIndexRef = useRef(-1); // track which index we're already speaking
 
-  // CARD-094: Push-to-talk state
+  // Push-to-talk state
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [micError, setMicError] = useState("");
@@ -86,7 +75,7 @@ export default function StreamView() {
     const voices = window.speechSynthesis.getVoices();
     if (!voices.length) return null;
 
-    // CARD-090 Phase 8: per-agent voice lookup
+    // Per-agent voice lookup
     const agent = agents.find((a) => a.name === agentName);
     const voiceName = agent?.voice || tts.voice;
 
@@ -117,7 +106,7 @@ export default function StreamView() {
     }, CHROME_PAUSE_INTERVAL_MS);
   }, [stopChromeWorkaround]);
 
-  // CARD-113: Speak the current message when currentIndex advances to a new item.
+  // Speak the current message when currentIndex advances to a new item.
   // IMPORTANT: tts.queue is NOT in the dependency array — new messages appending
   // to the queue must not interrupt the currently speaking utterance.  We only
   // react to currentIndex changes (which the slice sets when a message starts or
@@ -130,7 +119,7 @@ export default function StreamView() {
     const item = queue[currentIndex];
     if (item.status !== "speaking") return;
 
-    // CARD-113: Guard — don't re-speak the same index if the effect re-fires
+    // Guard — don't re-speak the same index if the effect re-fires
     // due to rate/volume/enabled changes while already speaking this index.
     if (speakingIndexRef.current === currentIndex) return;
     speakingIndexRef.current = currentIndex;
@@ -171,7 +160,7 @@ export default function StreamView() {
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
     startChromeWorkaround();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- CARD-113: tts.queue/rate/volume intentionally omitted; queue changes must not interrupt speech
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- tts.queue/rate/volume intentionally omitted; queue changes must not interrupt speech
   }, [tts.currentIndex, tts.enabled, dispatch, resolveVoice, startChromeWorkaround, stopChromeWorkaround]);
 
   // Auto-scroll queue list to current item
@@ -193,7 +182,7 @@ export default function StreamView() {
     };
   }, [stopChromeWorkaround]);
 
-  // CARD-094: Push-to-talk handlers
+  // Push-to-talk handlers
   const handleMicDown = useCallback(() => {
     const SR = getSpeechRecognition();
     if (!SR) {
@@ -288,7 +277,7 @@ export default function StreamView() {
     if (tts.enabled) {
       window.speechSynthesis.cancel();
       stopChromeWorkaround();
-      speakingIndexRef.current = -1; // CARD-113: reset guard on stop
+      speakingIndexRef.current = -1;
       dispatch(clearQueue());
       dispatch(setEnabled(false));
     } else {
@@ -299,7 +288,7 @@ export default function StreamView() {
   const handleSkip = useCallback(
     (index) => {
       window.speechSynthesis.cancel();
-      speakingIndexRef.current = -1; // CARD-113: reset guard so new index triggers speech
+      speakingIndexRef.current = -1;
       dispatch(skipToMessage(index));
     },
     [dispatch]
@@ -362,7 +351,7 @@ export default function StreamView() {
           : "Press play to start"}
       </Typography>
 
-      {/* CARD-090: Visible message queue (replaces waveform canvas) */}
+      {/* Message queue */}
       <Box
         sx={{
           width: "100%",
@@ -474,7 +463,7 @@ export default function StreamView() {
         </Select>
       </Box>
 
-      {/* CARD-094: Push-to-talk mic button */}
+      {/* Push-to-talk mic button */}
       <Divider sx={{ width: "100%", maxWidth: 300, my: 1 }} />
       <Typography variant="subtitle2" color="text.secondary">
         Voice Command

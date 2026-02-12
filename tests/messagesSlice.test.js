@@ -6,7 +6,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import * as api from "../src/services/api";
 import boardReducer from "../src/store/boardSlice";
-import messagesReducer, { sendMessage, pollMessages, loadConversation, loadMoreMessages, clearError, clearMessages } from "../src/store/messagesSlice";
+import messagesReducer, { sendMessage, loadConversation, loadMoreMessages, clearError } from "../src/store/messagesSlice";
 
 jest.mock("../src/services/api", () => ({
   getOrCreateBoard: jest.fn(),
@@ -15,9 +15,7 @@ jest.mock("../src/services/api", () => ({
   addComment: jest.fn(),
   listCards: jest.fn(),
   showCard: jest.fn(),
-  pollBoard: jest.fn(),
   sendMessage: jest.fn(),
-  pollMessages: jest.fn(),
   getConversation: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
@@ -54,11 +52,8 @@ describe("messagesSlice initial state", () => {
   test("has correct default values", () => {
     const store = createTestStore();
     const state = store.getState().messages;
-    expect(state.messages).toEqual([]);
     expect(state.sending).toBe(false);
-    expect(state.polling).toBe(false);
     expect(state.error).toBeNull();
-    expect(state.lastPoll).toBeNull();
   });
 
   test("has lazy conversation state (only 'all' channel pre-created)", () => {
@@ -86,13 +81,6 @@ describe("messagesSlice reducers", () => {
     expect(store.getState().messages.error).toBeNull();
   });
 
-  test("clearMessages empties the messages array", () => {
-    const store = createTestStore({
-      messages: [{ from: "pm-1", to: "qa-1", subject: "Hi", message: "Hello" }],
-    });
-    store.dispatch(clearMessages());
-    expect(store.getState().messages.messages).toEqual([]);
-  });
 });
 
 // ─── sendMessage ─────────────────────────────────────────────────────────────
@@ -124,47 +112,6 @@ describe("sendMessage thunk", () => {
   });
 });
 
-// ─── pollMessages ────────────────────────────────────────────────────────────
-
-describe("pollMessages thunk", () => {
-  test("appends new messages to existing array on fulfilled", async () => {
-    const newMsgs = [
-      { from: "pm-1", to: "qa-1", subject: "New", message: "New msg" },
-    ];
-    api.pollMessages.mockResolvedValue({ messages: newMsgs });
-
-    const store = createTestStore({
-      messages: [{ from: "dev-1", to: "qa-1", subject: "Old", message: "Old msg" }],
-    });
-    await store.dispatch(pollMessages());
-
-    const msgs = store.getState().messages.messages;
-    expect(msgs).toHaveLength(2);
-    expect(msgs[1]).toEqual(newMsgs[0]);
-    expect(store.getState().messages.lastPoll).toBeDefined();
-  });
-
-  test("does not duplicate when poll returns empty", async () => {
-    api.pollMessages.mockResolvedValue({ messages: [] });
-
-    const store = createTestStore({
-      messages: [{ from: "pm-1", to: "qa-1", subject: "Existing", message: "Msg" }],
-    });
-    await store.dispatch(pollMessages());
-
-    expect(store.getState().messages.messages).toHaveLength(1);
-  });
-
-  test("sets error on rejected", async () => {
-    api.pollMessages.mockRejectedValue(new Error("Network timeout"));
-
-    const store = createTestStore();
-    await store.dispatch(pollMessages());
-
-    expect(store.getState().messages.polling).toBe(false);
-    expect(store.getState().messages.error).toBe("Network timeout");
-  });
-});
 
 // ─── loadConversation ───────────────────────────────────────────────────────
 

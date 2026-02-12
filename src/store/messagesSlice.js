@@ -16,7 +16,6 @@ function ensureConvo(state, agentName) {
   }
 }
 
-// --- Async Thunks ---
 
 export const loadConversation = createAsyncThunk(
   "messages/loadConversation",
@@ -55,15 +54,6 @@ export const loadMoreMessages = createAsyncThunk(
   }
 );
 
-// Legacy poll thunk — kept for backward compatibility
-export const pollMessages = createAsyncThunk(
-  "messages/pollMessages",
-  async (since) => {
-    return api.pollMessages(since);
-  }
-);
-
-// --- Slice ---
 
 const messagesSlice = createSlice({
   name: "messages",
@@ -74,10 +64,6 @@ const messagesSlice = createSlice({
     sending: false,
     error: null,
     mobileDrawerOpen: false,
-    // Legacy fields for backward compat
-    messages: [],
-    polling: false,
-    lastPoll: null,
   },
   reducers: {
     selectAgent(state, action) {
@@ -127,14 +113,8 @@ const messagesSlice = createSlice({
     setMobileDrawerOpen(state, action) {
       state.mobileDrawerOpen = action.payload;
     },
-    clearMessages(state) {
-      state.conversations = { all: emptyConvo(false) };
-      state.unreadCounts = { all: 0 };
-      state.messages = [];
-    },
   },
   extraReducers: (builder) => {
-    // loadConversation
     builder.addCase(loadConversation.pending, (state) => {
       state.error = null;
     });
@@ -149,7 +129,6 @@ const messagesSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // loadMoreMessages
     builder.addCase(loadMoreMessages.pending, (state, action) => {
       const agent = action.meta.arg;
       ensureConvo(state, agent);
@@ -168,7 +147,6 @@ const messagesSlice = createSlice({
       state.conversations[agent].loadingMore = false;
     });
 
-    // sendMessage
     builder.addCase(sendMessage.pending, (state) => {
       state.sending = true;
       state.error = null;
@@ -187,23 +165,8 @@ const messagesSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // Legacy pollMessages
-    builder.addCase(pollMessages.pending, (state) => {
-      state.polling = true;
-    });
-    builder.addCase(pollMessages.fulfilled, (state, action) => {
-      state.polling = false;
-      if (action.payload.messages.length > 0) {
-        state.messages = [...state.messages, ...action.payload.messages];
-      }
-      state.lastPoll = new Date().toISOString();
-    });
-    builder.addCase(pollMessages.rejected, (state, action) => {
-      state.polling = false;
-      state.error = action.error.message;
-    });
   },
 });
 
-export const { selectAgent, appendMessage, clearError, clearMessages, setMobileDrawerOpen } = messagesSlice.actions;
+export const { selectAgent, appendMessage, clearError, setMobileDrawerOpen } = messagesSlice.actions;
 export default messagesSlice.reducer;

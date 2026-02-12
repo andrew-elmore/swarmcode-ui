@@ -467,7 +467,7 @@ describe("CARD-113 QA: source code verification", () => {
     // but NOT tts.queue, tts.rate, or tts.volume
     // The eslint-disable-next-line comment documents this intentional omission
     expect(streamViewSrc).toMatch(
-      /eslint-disable-next-line react-hooks\/exhaustive-deps.*CARD-113.*queue.*intentionally omitted/
+      /eslint-disable-next-line react-hooks\/exhaustive-deps.*queue.*intentionally omitted/
     );
 
     // Verify the dependency array explicitly lists tts.currentIndex

@@ -86,8 +86,9 @@ describe("CARD-120 QA: BoardView.jsx sprint backward compat (CARD-118)", () => {
     expect(src).toMatch(/c\.sprintName \|\| c\.sprint\) === sprintFilter/);
   });
 
-  test("sprint Chip display uses sprintName with string/object fallback", () => {
-    expect(src).toMatch(/card\.sprintName \|\| \(typeof card\.sprint === "string" \? card\.sprint : card\.sprint\?\.name\)/);
+  test("sprint Chip display uses getSprintDisplayName from constants", () => {
+    expect(src).toMatch(/import.*getSprintDisplayName.*from.*constants/);
+    expect(src).toMatch(/getSprintDisplayName\(card\)/);
   });
 
   test("sprint Chip visibility check uses sprintName || sprint", () => {
@@ -98,12 +99,9 @@ describe("CARD-120 QA: BoardView.jsx sprint backward compat (CARD-118)", () => {
 describe("CARD-120 QA: CardDetailDialog.jsx sprint backward compat (CARD-118)", () => {
   const src = fs.readFileSync(path.join(uiSrcDir, "components/CardDetailDialog.jsx"), "utf8");
 
-  test("sprint dropdown value uses sprintName with string fallback", () => {
-    expect(src).toMatch(/card\.sprintName \|\| \(typeof card\.sprint === "string" \? card\.sprint : ""\)/);
-  });
-
-  test("sprint Chip label uses sprintName with string/object fallback", () => {
-    expect(src).toMatch(/card\.sprintName \|\| \(typeof card\.sprint === "string" \? card\.sprint : card\.sprint\?\.name\)/);
+  test("sprint display uses getSprintDisplayName from constants", () => {
+    expect(src).toMatch(/import.*getSprintDisplayName.*from.*constants/);
+    expect(src).toMatch(/getSprintDisplayName\(card\)/);
   });
 
   test("sprint Chip visibility check uses sprintName || sprint", () => {

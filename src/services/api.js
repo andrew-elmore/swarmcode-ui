@@ -15,7 +15,6 @@ if (LIVEQUERY_URL) {
   Parse.liveQueryServerURL = LIVEQUERY_URL;
 }
 
-// --- Low-level REST call ---
 
 const HEADERS = {
   "X-Parse-Application-Id": APP_ID,
@@ -49,25 +48,19 @@ async function callFunction(name, params = {}) {
   return data.result;
 }
 
-// --- Messaging ---
 
 export async function sendMessage({ projectHash, from, to, message }) {
   return callFunction("sendMessage", { projectHash, from, to, message });
 }
 
-export async function pollMessages(since) {
-  const params = since ? { since } : {};
-  return callFunction("pollMessages", params);
-}
 
 export async function getConversation(projectHash, userA, userB, { limit, before } = {}) {
-  const params = { projectHash, userA, userB };
+  const params = { projectHash, user1: userA, user2: userB };
   if (limit) params.limit = limit;
   if (before) params.before = before;
   return callFunction("getConversation", params);
 }
 
-// --- LiveQuery ---
 
 let _messageSubscription = null;
 
@@ -88,7 +81,6 @@ export async function subscribeToMessages(onMessage) {
   _messageSubscription = subscription;
 
   subscription.on("create", (object) => {
-    // CARD-118: from/to may be Pointer stubs (LiveQuery doesn't support include).
     // Extract name if included, or objectId for lookup via agentIdMap in Redux.
     const rawFrom = object.get("from");
     const rawTo = object.get("to");
@@ -119,7 +111,6 @@ export async function subscribeToMessages(onMessage) {
   };
 }
 
-// --- Board ---
 
 export async function getOrCreateBoard(projectPath) {
   return callFunction("getOrCreateBoard", { projectPath });
@@ -157,13 +148,6 @@ export async function showCard(projectHash, cardId) {
   return callFunction("showCard", { projectHash, cardId });
 }
 
-export async function pollBoard(projectHash, since) {
-  const params = { projectHash };
-  if (since) params.since = since;
-  return callFunction("pollBoard", params);
-}
-
-// --- Projects ---
 
 export async function addRecentProject(path, name) {
   return callFunction("addRecentProject", { path, name });
@@ -177,7 +161,6 @@ export async function deleteProject(path) {
   return callFunction("deleteProject", { path });
 }
 
-// --- Agents ---
 
 // Fetch agents assigned to a specific project (via ProjectAgent join table)
 export async function getAgents(projectHash) {
@@ -234,7 +217,6 @@ export async function updateProjectAgent({ projectHash, agentName, isActive, sor
   return callFunction("updateProjectAgent", params);
 }
 
-// --- Sprints ---
 
 export async function createSprint({ projectHash, name, order }) {
   return callFunction("createSprint", { projectHash, name, order });
@@ -255,7 +237,6 @@ export async function deleteSprint(projectHash, sprintId) {
   return callFunction("deleteSprint", { projectHash, sprintId });
 }
 
-// --- Commands (CARD-102) ---
 
 export async function createCommand(projectHash, action) {
   return callFunction("createCommand", { projectHash, action });
@@ -265,27 +246,11 @@ export async function listRecentCommands(projectHash) {
   return callFunction("listRecentCommands", { projectHash });
 }
 
-export async function updateCommandStatus(commandId, status, error) {
-  const params = { commandId, status };
-  if (error) params.error = error;
-  return callFunction("updateCommandStatus", params);
-}
-
-// --- Ping (CARD-102) ---
-
-export async function recordPing(projectHash, agentStatus) {
-  return callFunction("recordPing", { projectHash, agentStatus });
-}
 
 export async function getLatestPing(projectHash) {
   return callFunction("getLatestPing", { projectHash });
 }
 
-export async function getRequestedCommands(projectHash) {
-  return callFunction("getRequestedCommands", { projectHash });
-}
-
-// --- Command LiveQuery ---
 
 let _commandSubscription = null;
 
@@ -334,7 +299,6 @@ export async function subscribeToCommands(projectHash, onCommand) {
   };
 }
 
-// --- Ping LiveQuery ---
 
 let _pingSubscription = null;
 
@@ -366,29 +330,3 @@ export async function subscribeToPings(projectHash, onPing) {
     _pingSubscription = null;
   };
 }
-
-// --- TTS ---
-// CARD-090: Server-side TTS commented out — using browser speechSynthesis
-
-// const BASE_URL = PARSE_URL.replace("/parse", "");
-
-// export async function getVoices() {
-//   const res = await fetch(`${BASE_URL}/tts/voices`, {
-//     headers: PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {},
-//   });
-//   if (!res.ok) throw new Error("Failed to fetch voices");
-//   return res.json();
-// }
-
-// export async function synthesizeSpeech({ text, voice, speed }) {
-//   const res = await fetch(`${BASE_URL}/tts/synthesize`, {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//       ...(PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {}),
-//     },
-//     body: JSON.stringify({ text, voice, speed }),
-//   });
-//   if (!res.ok) throw new Error("TTS synthesis failed");
-//   return res.arrayBuffer();
-// }

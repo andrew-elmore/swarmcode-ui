@@ -34,9 +34,7 @@ const ttsSlice = createSlice({
     enabled: false,
     volume: saved?.volume ?? 1.0,
     rate: saved?.rate ?? 1.0,
-    voice: saved?.voice ?? "",    // CARD-090: browser voice name
     error: null,
-    // CARD-090: visible message queue
     queue: [],          // Array of { id, from, message, status: 'pending'|'speaking'|'done' }
     currentIndex: -1,   // Index of currently speaking message (-1 = idle)
   },
@@ -68,7 +66,6 @@ const ttsSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
-    // CARD-090: Queue management
     enqueueMessage(state, action) {
       const { from, message } = action.payload;
       state.queue.push({ id: _nextId++, from, message, status: "pending" });

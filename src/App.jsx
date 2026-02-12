@@ -28,6 +28,7 @@ import MessagesView from "./components/MessagesView";
 import ProjectsView from "./components/ProjectsView";
 import ProjectSelector from "./components/ProjectSelector";
 import StreamView from "./components/StreamView";
+import { buildAgentLabels } from "./constants";
 
 export default function App() {
   const [tab, setTab] = useState(0);
@@ -44,7 +45,7 @@ export default function App() {
   // Keep ref in sync so the LiveQuery callback always sees latest TTS state
   useEffect(() => { ttsRef.current = tts; }, [tts]);
 
-  // CARD-118: Build agent objectId -> name lookup map for LiveQuery Pointer resolution
+  // Build agent objectId -> name lookup map for LiveQuery Pointer resolution
   const agentIdMapRef = useRef({});
   useEffect(() => {
     const map = {};
@@ -52,9 +53,7 @@ export default function App() {
     agentIdMapRef.current = map;
   }, [agents]);
 
-  // Build label lookup from dynamic agents list
-  const agentLabels = { all: "All Agents" };
-  agents.forEach((a) => { agentLabels[a.name] = a.description || a.name; });
+  const agentLabels = buildAgentLabels(agents);
 
   const isMessagesTab = tab === 0;
 
@@ -65,27 +64,24 @@ export default function App() {
     }
   }, [dispatch, activeProject]);
 
-  // CARD-092: LiveQuery subscription lives in App so it stays active across all tabs.
-  // Previously in MessagesView, which unmounted when switching to Stream tab.
+  // LiveQuery subscription lives in App so it stays active across all tabs.
   useEffect(() => {
     let unsubscribe = null;
 
     subscribeToMessages((msg) => {
-      // CARD-118: Resolve Pointer objectIds to agent names via agentIdMap.
-      // api.js returns from/to as name (if included) or objectId (Pointer stub).
-      // Use fromId/toId to look up the actual name from the agents list.
+      // Resolve Pointer objectIds to agent names via agentIdMap.
       const idMap = agentIdMapRef.current;
       const resolvedFrom = (msg.fromId && idMap[msg.fromId]) || msg.from;
       const resolvedTo = (msg.toId && idMap[msg.toId]) || msg.to;
 
       if (msg.fromId && !idMap[msg.fromId] && msg.from === msg.fromId) {
-        console.warn("CARD-118: Could not resolve agent name for fromId:", msg.fromId);
+        console.warn("Could not resolve agent name for fromId:", msg.fromId);
       }
 
       const resolvedMsg = { ...msg, from: resolvedFrom, to: resolvedTo };
       dispatch(appendMessage(resolvedMsg));
 
-      // Enqueue incoming agent messages for browser speechSynthesis (CARD-090)
+      // Enqueue incoming agent messages for browser speechSynthesis
       const currentTts = ttsRef.current;
       if (resolvedMsg.from !== "owner" && currentTts.enabled) {
         dispatch(enqueueMessage({ from: resolvedMsg.from, message: resolvedMsg.message }));
@@ -99,7 +95,7 @@ export default function App() {
     };
   }, [dispatch]);
 
-  // CARD-104: LiveQuery subscriptions for Command and Ping classes
+  // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {
     if (!projectHash) return;
     let unsubCmd = null;

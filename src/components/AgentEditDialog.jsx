@@ -18,12 +18,6 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 
-// CARD-090: Server-side Piper TTS commented out — using browser speechSynthesis
-// import { getVoices, synthesizeSpeech } from "../services/api";
-
-// CARD-090: Piper fallback voices no longer needed — browser voices used instead
-// const FALLBACK_VOICES = [ ... ];
-
 const ALL_TOOLS = ["Bash", "Read", "Write", "Edit", "Glob", "Grep"];
 
 /**
@@ -67,7 +61,6 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // CARD-090: Load browser voices via speechSynthesis API
   useEffect(() => {
     if (!open) return;
     if (typeof window === "undefined" || !window.speechSynthesis) return;
@@ -115,7 +108,6 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
     );
   };
 
-  // CARD-090: Preview voice using browser speechSynthesis
   const handlePreviewVoice = () => {
     if (!voice || previewing) return;
     if (typeof window === "undefined" || !window.speechSynthesis) return;

@@ -17,16 +17,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
 import { updateCard, addComment } from "../store/boardSlice";
-
-const STATUSES = ["backlog", "todo", "in_progress", "review", "qa", "done"];
-const PRIORITIES = ["low", "medium", "high", "critical"];
-
-const PRIORITY_COLORS = {
-  critical: "error",
-  high: "warning",
-  medium: "info",
-  low: "default",
-};
+import { STATUSES, PRIORITIES, PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 
 export default function CardDetailDialog({ open, onClose, card, projectHash }) {
   const dispatch = useAppDispatch();
@@ -135,7 +126,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
           </TextField>
           <TextField
             label="Sprint"
-            value={editSprint || card.sprintName || (typeof card.sprint === "string" ? card.sprint : "") || ""}
+            value={editSprint || getSprintDisplayName(card) || ""}
             onChange={(e) => handleSprintChange(e.target.value)}
             select
             size="small"
@@ -161,7 +152,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
           />
           {(card.sprintName || card.sprint) && (
             <Chip
-              label={`Sprint: ${card.sprintName || (typeof card.sprint === "string" ? card.sprint : card.sprint?.name)}`}
+              label={`Sprint: ${getSprintDisplayName(card)}`}
               size="small"
               color="secondary"
               variant="outlined"

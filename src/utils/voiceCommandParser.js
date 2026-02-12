@@ -1,6 +1,4 @@
 // voiceCommandParser.js — Parse voice transcripts into { agent, message }
-// CARD-094: Push-to-talk voice command system
-// Author: developer-1
 
 /**
  * Phonetic alias map: spoken names -> canonical agent IDs.

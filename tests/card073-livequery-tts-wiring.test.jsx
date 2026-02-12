@@ -43,9 +43,7 @@ jest.mock("../src/services/api", () => ({
   addComment: jest.fn(),
   listCards: jest.fn(),
   showCard: jest.fn(),
-  pollBoard: jest.fn(),
   sendMessage: jest.fn(),
-  pollMessages: jest.fn(),
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn((onMessage) => {
     capturedOnMessage = onMessage;

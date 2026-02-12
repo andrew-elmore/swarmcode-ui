@@ -11,14 +11,12 @@ import SendIcon from "@mui/icons-material/Send";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useAppDispatch, useAppSelector } from "../store";
 import { sendMessage, loadConversation, loadMoreMessages, clearError } from "../store/messagesSlice";
+import { buildAgentLabels } from "../constants";
 export default function ChatView() {
   const dispatch = useAppDispatch();
   const { conversations, selectedAgent, sending, error } = useAppSelector((s) => s.messages);
   const agents = useAppSelector((s) => s.agents.agents);
-
-  // Build label lookup from dynamic agents list
-  const agentLabels = { all: "All Agents" };
-  agents.forEach((a) => { agentLabels[a.name] = a.description || a.name; });
+  const agentLabels = buildAgentLabels(agents);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef(null);
   const scrollContainerRef = useRef(null);

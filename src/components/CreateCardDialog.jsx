@@ -10,14 +10,12 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
 import { createCard } from "../store/boardSlice";
-
-const STATUSES = ["backlog", "todo", "in_progress", "review", "qa", "done"];
-const PRIORITIES = ["low", "medium", "high", "critical"];
-const AGENTS = ["pm-1", "senior-dev-1", "developer-1", "qa-1", "devops-1"];
+import { STATUSES, PRIORITIES } from "../constants";
 
 export default function CreateCardDialog({ open, onClose, projectHash }) {
   const dispatch = useAppDispatch();
   const { sprints } = useAppSelector((s) => s.board);
+  const agents = useAppSelector((s) => s.agents.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [title, setTitle] = useState("");
@@ -105,9 +103,9 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
           fullWidth
         >
           <MenuItem value="">Unassigned</MenuItem>
-          {AGENTS.map((a) => (
-            <MenuItem key={a} value={a}>
-              {a}
+          {agents.map((a) => (
+            <MenuItem key={a.name} value={a.name}>
+              {a.name}
             </MenuItem>
           ))}
         </TextField>

@@ -1,4 +1,3 @@
-// CARD-090: Client-side text preprocessing for browser speechSynthesis
 // Ported from swarmcode-api/cloud/ttsPreprocess.js
 
 const AGENT_NAMES = {

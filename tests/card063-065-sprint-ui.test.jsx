@@ -31,9 +31,7 @@ jest.mock("../src/services/api", () => ({
   addComment: jest.fn(),
   listCards: jest.fn(),
   showCard: jest.fn(),
-  pollBoard: jest.fn(),
   sendMessage: jest.fn(),
-  pollMessages: jest.fn(),
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn(),
   addRecentProject: jest.fn(),
@@ -102,7 +100,6 @@ beforeEach(() => {
   api.addComment.mockResolvedValue({ comment: {} });
   api.listCards.mockResolvedValue({ cards: [] });
   api.showCard.mockResolvedValue({ card: {} });
-  api.pollBoard.mockResolvedValue({ changed: false, cards: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
   api.getAgents.mockResolvedValue({ agents: [] });

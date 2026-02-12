@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as api from "../services/api";
 
-// --- Async Thunks ---
 
 export const fetchRecentProjects = createAsyncThunk(
   "projects/fetchRecentProjects",
@@ -26,7 +25,6 @@ export const deleteProject = createAsyncThunk(
   }
 );
 
-// --- Slice ---
 
 const projectsSlice = createSlice({
   name: "projects",
@@ -45,7 +43,6 @@ const projectsSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // fetchRecentProjects
     builder.addCase(fetchRecentProjects.pending, (state) => {
       state.loading = true;
       state.error = null;
@@ -59,7 +56,6 @@ const projectsSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // addRecentProject
     builder.addCase(addRecentProject.fulfilled, (state, action) => {
       const { path, name } = action.payload;
       const existing = state.projects.find((p) => p.path === path);
@@ -78,7 +74,6 @@ const projectsSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // deleteProject
     builder.addCase(deleteProject.fulfilled, (state, action) => {
       const { path } = action.payload;
       state.projects = state.projects.filter((p) => p.path !== path);

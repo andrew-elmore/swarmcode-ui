@@ -25,6 +25,7 @@ import {
   deleteProject,
   clearError,
 } from "../store/projectsSlice";
+import { projectNameFromPath } from "../constants";
 
 export default function ProjectsView() {
   const dispatch = useAppDispatch();
@@ -54,7 +55,7 @@ export default function ProjectsView() {
   const handleAddProject = async () => {
     if (!newPath.trim()) return;
     const path = newPath.trim();
-    const name = path.split(/[/\\]/).filter(Boolean).pop() || path;
+    const name = projectNameFromPath(path);
     await dispatch(addRecentProject({ path, name }));
     dispatch(setActiveProject({ path, name }));
     setNewPath("");

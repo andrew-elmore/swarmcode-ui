@@ -5,7 +5,6 @@
 
 import {
   sendMessage,
-  pollMessages,
   getConversation,
   subscribeToMessages,
   getOrCreateBoard,
@@ -14,7 +13,6 @@ import {
   addComment,
   listCards,
   showCard,
-  pollBoard,
   addRecentProject,
   getRecentProjects,
   deleteProject,
@@ -83,38 +81,15 @@ describe("api.sendMessage", () => {
   });
 });
 
-// ─── pollMessages ────────────────────────────────────────────────────────────
-
-describe("api.pollMessages", () => {
-  test("calls pollMessages without since when not provided", async () => {
-    mockFetchSuccess({ messages: [] });
-    await pollMessages();
-    expect(getLastFetchBody()).toEqual({});
-  });
-
-  test("passes since parameter when provided", async () => {
-    const since = "2026-02-07T12:00:00.000Z";
-    mockFetchSuccess({ messages: [] });
-    await pollMessages(since);
-    expect(getLastFetchBody()).toEqual({ since });
-  });
-
-  test("returns messages array", async () => {
-    const msgs = [{ from: "pm-1", to: "qa-1", subject: "Hi", message: "Hello" }];
-    mockFetchSuccess({ messages: msgs });
-    const result = await pollMessages();
-    expect(result.messages).toEqual(msgs);
-  });
-});
 
 // ─── getConversation ─────────────────────────────────────────────────────────
 
 describe("api.getConversation", () => {
-  test("calls getConversation with projectHash, userA and userB", async () => {
+  test("calls getConversation with projectHash, user1 and user2", async () => {
     mockFetchSuccess({ messages: [] });
     await getConversation("test-hash", "owner", "pm-1");
     expect(getLastFetchUrl()).toContain("/functions/getConversation");
-    expect(getLastFetchBody()).toEqual({ projectHash: "test-hash", userA: "owner", userB: "pm-1" });
+    expect(getLastFetchBody()).toEqual({ projectHash: "test-hash", user1: "owner", user2: "pm-1" });
   });
 
   test("returns messages array", async () => {
@@ -329,24 +304,6 @@ describe("api.showCard", () => {
   });
 });
 
-// ─── pollBoard ───────────────────────────────────────────────────────────────
-
-describe("api.pollBoard", () => {
-  test("sends projectHash without since", async () => {
-    mockFetchSuccess({ changed: false, cards: [] });
-    await pollBoard("abc");
-    const body = getLastFetchBody();
-    expect(body.projectHash).toBe("abc");
-    expect(body.since).toBeUndefined();
-  });
-
-  test("sends since when provided", async () => {
-    mockFetchSuccess({ changed: true, cards: [] });
-    await pollBoard("abc", "2026-02-07T00:00:00Z");
-    const body = getLastFetchBody();
-    expect(body.since).toBe("2026-02-07T00:00:00Z");
-  });
-});
 
 // ─── addRecentProject ────────────────────────────────────────────────────────
 

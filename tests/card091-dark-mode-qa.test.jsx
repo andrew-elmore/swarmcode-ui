@@ -4,11 +4,10 @@
  * Date: 2026-02-11
  *
  * Validates:
- * 1. Theme config: dark mode with red primary (#f44336)
- * 2. main.jsx and theme.js are consistent
- * 3. ChatView uses semantic theme tokens (no hardcoded light colors)
- * 4. CssBaseline included for consistent dark background
- * 5. No hardcoded light-only colors in ChatView
+ * 1. Theme config in main.jsx: dark mode with red primary (#f44336)
+ * 2. ChatView uses semantic theme tokens (no hardcoded light colors)
+ * 3. CssBaseline included for consistent dark background
+ * 4. No hardcoded light-only colors in ChatView
  */
 
 const fs = require("fs");
@@ -16,9 +15,6 @@ const path = require("path");
 
 const mainSrc = fs.readFileSync(
   path.resolve(__dirname, "../src/main.jsx"), "utf8"
-);
-const themeSrc = fs.readFileSync(
-  path.resolve(__dirname, "../src/theme.js"), "utf8"
 );
 const chatViewSrc = fs.readFileSync(
   path.resolve(__dirname, "../src/components/ChatView.jsx"), "utf8"
@@ -47,29 +43,6 @@ describe("CARD-091 QA: theme configuration", () => {
     expect(mainSrc).toMatch(/<\/ThemeProvider>/);
   });
 
-  test("theme.js mode is 'dark'", () => {
-    expect(themeSrc).toMatch(/mode:\s*['"]dark['"]/);
-  });
-
-  test("theme.js primary color matches main.jsx (#f44336)", () => {
-    expect(themeSrc).toMatch(/#f44336/);
-  });
-
-  test("theme.js and main.jsx use the same primary color", () => {
-    const mainPrimary = mainSrc.match(/#[0-9a-fA-F]{6}/);
-    const themePrimary = themeSrc.match(/#[0-9a-fA-F]{6}/);
-    expect(mainPrimary).not.toBeNull();
-    expect(themePrimary).not.toBeNull();
-    expect(mainPrimary[0]).toBe(themePrimary[0]);
-  });
-
-  test("theme.js and main.jsx use the same secondary color", () => {
-    const mainSecondary = mainSrc.match(/secondary:\s*\{\s*main:\s*['"]([^'"]+)['"]/);
-    const themeSecondary = themeSrc.match(/secondary:\s*\{\s*main:\s*['"]([^'"]+)['"]/);
-    expect(mainSecondary).not.toBeNull();
-    expect(themeSecondary).not.toBeNull();
-    expect(mainSecondary[1]).toBe(themeSecondary[1]);
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

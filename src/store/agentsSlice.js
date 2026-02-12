@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as api from "../services/api";
 
-// --- Async Thunks ---
 
 // Fetch agents assigned to the current project (via ProjectAgent join table)
 export const fetchAgents = createAsyncThunk(
@@ -69,7 +68,6 @@ export const updateProjectAgent = createAsyncThunk(
   }
 );
 
-// --- Slice ---
 
 const agentsSlice = createSlice({
   name: "agents",

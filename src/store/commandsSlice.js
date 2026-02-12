@@ -1,9 +1,8 @@
-// commandsSlice.js — Redux slice for remote agent commands (CARD-104)
+// commandsSlice.js — Redux slice for remote agent commands
 
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as api from "../services/api";
 
-// --- Async Thunks ---
 
 export const fetchRecentCommands = createAsyncThunk(
   "commands/fetchRecentCommands",
@@ -26,7 +25,6 @@ export const fetchLatestPing = createAsyncThunk(
   }
 );
 
-// --- Slice ---
 
 const commandsSlice = createSlice({
   name: "commands",
@@ -38,9 +36,6 @@ const commandsSlice = createSlice({
     error: null,
   },
   reducers: {
-    setCommands(state, action) {
-      state.commands = action.payload;
-    },
     updateCommand(state, action) {
       const updated = action.payload;
       const idx = state.commands.findIndex((c) => c.objectId === updated.objectId);
@@ -62,7 +57,6 @@ const commandsSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // fetchRecentCommands
     builder.addCase(fetchRecentCommands.pending, (state) => {
       state.loading = true;
       state.error = null;
@@ -76,7 +70,6 @@ const commandsSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // createCommand
     builder.addCase(createCommand.pending, (state) => {
       state.sending = true;
       state.error = null;
@@ -94,12 +87,11 @@ const commandsSlice = createSlice({
       state.error = action.error.message;
     });
 
-    // fetchLatestPing
     builder.addCase(fetchLatestPing.fulfilled, (state, action) => {
       state.latestPing = action.payload.ping;
     });
   },
 });
 
-export const { setCommands, updateCommand, setPing, clearError } = commandsSlice.actions;
+export const { updateCommand, setPing, clearError } = commandsSlice.actions;
 export default commandsSlice.reducer;
