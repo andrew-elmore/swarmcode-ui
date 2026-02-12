@@ -167,13 +167,19 @@ export async function deleteProject(path) {
 
 // --- Agents ---
 
+// Fetch agents assigned to a specific project (via ProjectAgent join table)
 export async function getAgents(projectHash) {
   return callFunction("getAgents", { projectHash });
 }
 
-export async function createAgent({ projectHash, name, description, openingInstructions, permanentMemory, permissions, isActive, sortOrder }) {
+// Fetch ALL global agents regardless of project
+export async function getAllAgents() {
+  return callFunction("getAllAgents", {});
+}
+
+// Create a global agent (no projectHash needed)
+export async function createAgent({ name, description, openingInstructions, permanentMemory, permissions, isActive, sortOrder }) {
   return callFunction("createAgent", {
-    projectHash,
     name,
     description,
     openingInstructions,
@@ -184,16 +190,36 @@ export async function createAgent({ projectHash, name, description, openingInstr
   });
 }
 
-export async function updateAgent({ projectHash, name, ...updates }) {
-  const params = { projectHash, name };
+// Update a global agent (no projectHash needed)
+export async function updateAgent({ name, ...updates }) {
+  const params = { name };
   for (const key of ["description", "openingInstructions", "permanentMemory", "permissions", "isActive", "sortOrder", "voice"]) {
     if (updates[key] !== undefined) params[key] = updates[key];
   }
   return callFunction("updateAgent", params);
 }
 
-export async function deleteAgent(projectHash, name) {
-  return callFunction("deleteAgent", { projectHash, name });
+// Delete a global agent (cascades ProjectAgent join rows)
+export async function deleteAgent(name) {
+  return callFunction("deleteAgent", { name });
+}
+
+// Assign a global agent to a project
+export async function assignAgentToProject({ projectHash, agentName }) {
+  return callFunction("assignAgentToProject", { projectHash, agentName });
+}
+
+// Unassign an agent from a project
+export async function unassignAgentFromProject({ projectHash, agentName }) {
+  return callFunction("unassignAgentFromProject", { projectHash, agentName });
+}
+
+// Update per-project agent overrides (isActive, sortOrder)
+export async function updateProjectAgent({ projectHash, agentName, isActive, sortOrder }) {
+  const params = { projectHash, agentName };
+  if (isActive !== undefined) params.isActive = isActive;
+  if (sortOrder !== undefined) params.sortOrder = sortOrder;
+  return callFunction("updateProjectAgent", params);
 }
 
 // --- Sprints ---

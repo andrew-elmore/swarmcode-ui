@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -19,26 +19,35 @@ import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
 import Alert from "@mui/material/Alert";
 import CircularProgress from "@mui/material/CircularProgress";
+import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
 import {
   fetchAgents,
+  fetchAllAgents,
   createAgent,
   updateAgent,
   deleteAgent,
+  assignAgent,
+  unassignAgent,
+  updateProjectAgent,
   clearError,
 } from "../store/agentsSlice";
 import { fetchBoard } from "../store/boardSlice";
+import { fetchRecentProjects } from "../store/projectsSlice";
 import AgentEditDialog from "./AgentEditDialog";
 
 export default function AgentsView() {
   const dispatch = useAppDispatch();
-  const { agents, loading, error } = useAppSelector((s) => s.agents);
-  const { activeProject } = useAppSelector((s) => s.projects);
+  const { agents, allAgents, loading, error } = useAppSelector((s) => s.agents);
+  const { activeProject, projects } = useAppSelector((s) => s.projects);
   const { board } = useAppSelector((s) => s.board);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -48,21 +57,57 @@ export default function AgentsView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedProjectPath, setSelectedProjectPath] = useState("");
 
   const projectHash = board?.projectHash;
 
-  // Ensure board is loaded so we have projectHash (handles visiting Agents tab first)
+  // Ensure board is loaded so we have projectHash
   useEffect(() => {
     if (activeProject && !board) {
       dispatch(fetchBoard(activeProject.path));
     }
   }, [dispatch, activeProject, board]);
 
+  // Load projects for dropdown
+  useEffect(() => {
+    if (projects.length === 0) {
+      dispatch(fetchRecentProjects());
+    }
+  }, [dispatch, projects.length]);
+
+  // Default selected project to active project
+  useEffect(() => {
+    if (activeProject && !selectedProjectPath) {
+      setSelectedProjectPath(activeProject.path);
+    }
+  }, [activeProject, selectedProjectPath]);
+
+  // When dropdown selection changes, fetch the board for that project
+  // so projectHash updates and triggers agent fetch
+  useEffect(() => {
+    if (selectedProjectPath && selectedProjectPath !== activeProject?.path) {
+      dispatch(fetchBoard(selectedProjectPath));
+    }
+  }, [dispatch, selectedProjectPath, activeProject]);
+
+  // Load global agents
+  useEffect(() => {
+    dispatch(fetchAllAgents());
+  }, [dispatch]);
+
+  // Load project-scoped agents when project selected
   useEffect(() => {
     if (projectHash) {
       dispatch(fetchAgents(projectHash));
     }
   }, [dispatch, projectHash]);
+
+  // Compute assigned vs unassigned agents
+  const assignedNames = useMemo(() => new Set(agents.map((a) => a.name)), [agents]);
+  const unassignedAgents = useMemo(
+    () => allAgents.filter((a) => !assignedNames.has(a.name)),
+    [allAgents, assignedNames]
+  );
 
   const handleCreate = () => {
     setEditAgent(null);
@@ -75,21 +120,34 @@ export default function AgentsView() {
   };
 
   const handleSave = async (data) => {
-    if (!projectHash) return;
     if (editAgent) {
-      await dispatch(updateAgent({ projectHash, ...data })).unwrap();
+      await dispatch(updateAgent(data)).unwrap();
     } else {
-      await dispatch(createAgent({ projectHash, ...data })).unwrap();
+      await dispatch(createAgent(data)).unwrap();
     }
+    // Refresh global list after create/update
+    dispatch(fetchAllAgents());
+    // Refresh project list too (in case an assigned agent was edited)
+    if (projectHash) dispatch(fetchAgents(projectHash));
   };
 
   const handleToggleActive = (agent) => {
     if (!projectHash) return;
-    dispatch(updateAgent({
+    dispatch(updateProjectAgent({
       projectHash,
-      name: agent.name,
+      agentName: agent.name,
       isActive: !agent.isActive,
     }));
+  };
+
+  const handleAssign = (agentName) => {
+    if (!projectHash) return;
+    dispatch(assignAgent({ projectHash, agentName }));
+  };
+
+  const handleUnassign = (agentName) => {
+    if (!projectHash) return;
+    dispatch(unassignAgent({ projectHash, agentName }));
   };
 
   const handleDeleteClick = (agent) => {
@@ -98,9 +156,9 @@ export default function AgentsView() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget || !projectHash || deleting) return;
+    if (!deleteTarget || deleting) return;
     setDeleting(true);
-    const result = await dispatch(deleteAgent({ projectHash, name: deleteTarget.name }));
+    const result = await dispatch(deleteAgent({ name: deleteTarget.name }));
     setDeleting(false);
     if (!result.error) {
       setDeleteOpen(false);
@@ -108,15 +166,7 @@ export default function AgentsView() {
     }
   };
 
-  if (!activeProject) {
-    return (
-      <Box sx={{ p: 3, textAlign: "center" }}>
-        <Typography color="text.secondary">Select a project to manage agents.</Typography>
-      </Box>
-    );
-  }
-
-  if (loading) {
+  if (loading && allAgents.length === 0) {
     return (
       <Box sx={{ p: 3, textAlign: "center" }}>
         <CircularProgress />
@@ -139,67 +189,206 @@ export default function AgentsView() {
         </Button>
       </Box>
 
-      {agents.length === 0 ? (
-        <Typography color="text.secondary">
-          No agents configured. Default agents will be created automatically.
-        </Typography>
-      ) : (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Description</TableCell>
-                {!isMobile && <TableCell>Tools</TableCell>}
-                <TableCell align="center">Active</TableCell>
-                <TableCell align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {agents.map((agent) => (
-                <TableRow
-                  key={agent.name}
-                  sx={{ opacity: agent.isActive ? 1 : 0.5 }}
-                >
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="bold">
-                      {agent.name}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: isMobile ? 120 : 250 }}>
-                      {agent.description}
-                    </Typography>
-                  </TableCell>
-                  {!isMobile && (
-                    <TableCell>
-                      <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
-                        {(agent.permissions?.allowedTools || []).map((tool) => (
-                          <Chip key={tool} label={tool} size="small" variant="outlined" />
-                        ))}
-                      </Box>
-                    </TableCell>
-                  )}
-                  <TableCell align="center">
-                    <Switch
-                      checked={agent.isActive}
-                      onChange={() => handleToggleActive(agent)}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" title="Edit" onClick={() => handleEdit(agent)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" title="Delete" onClick={() => handleDeleteClick(agent)}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      {/* Project dropdown */}
+      {projects.length > 0 && (
+        <TextField
+          select
+          label="Project"
+          value={selectedProjectPath}
+          onChange={(e) => setSelectedProjectPath(e.target.value)}
+          fullWidth
+          size="small"
+          sx={{ mb: 2 }}
+        >
+          {projects.map((p) => (
+            <MenuItem key={p.path} value={p.path}>
+              {p.name}
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
+
+      {/* Assigned agents section */}
+      {projectHash && (
+        <>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            Assigned to this project ({agents.length})
+          </Typography>
+          {agents.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              No agents assigned. Click + on an agent below to assign it.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Description</TableCell>
+                    {!isMobile && <TableCell>Tools</TableCell>}
+                    <TableCell align="center">Active</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {agents.map((agent) => (
+                    <TableRow
+                      key={agent.name}
+                      sx={{ opacity: agent.isActive ? 1 : 0.5 }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">
+                          {agent.name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: isMobile ? 120 : 250 }}>
+                          {agent.description}
+                        </Typography>
+                      </TableCell>
+                      {!isMobile && (
+                        <TableCell>
+                          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                            {(agent.permissions?.allowedTools || []).map((tool) => (
+                              <Chip key={tool} label={tool} size="small" variant="outlined" />
+                            ))}
+                          </Box>
+                        </TableCell>
+                      )}
+                      <TableCell align="center">
+                        <Switch
+                          checked={agent.isActive}
+                          onChange={() => handleToggleActive(agent)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                        <IconButton size="small" title="Unassign from project" onClick={() => handleUnassign(agent.name)}>
+                          <RemoveCircleOutlineIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" title="Edit" onClick={() => handleEdit(agent)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" title="Delete" onClick={() => handleDeleteClick(agent)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+
+          {/* Unassigned agents section */}
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            Available ({unassignedAgents.length})
+          </Typography>
+          {unassignedAgents.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">
+              All agents are assigned to this project.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {unassignedAgents.map((agent) => (
+                    <TableRow key={agent.name} sx={{ opacity: 0.7 }}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">
+                          {agent.name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: isMobile ? 120 : 250 }}>
+                          {agent.description}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right" sx={{ whiteSpace: "nowrap" }}>
+                        <IconButton size="small" title="Assign to project" color="primary" onClick={() => handleAssign(agent.name)}>
+                          <AddCircleOutlineIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" title="Edit" onClick={() => handleEdit(agent)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" title="Delete" onClick={() => handleDeleteClick(agent)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </>
+      )}
+
+      {/* No project selected — show all global agents */}
+      {!projectHash && (
+        <>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
+            All Agents ({allAgents.length})
+          </Typography>
+          {allAgents.length === 0 ? (
+            <Typography color="text.secondary">
+              No agents configured. Default agents will be created when a project is opened.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Description</TableCell>
+                    {!isMobile && <TableCell>Tools</TableCell>}
+                    <TableCell align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {allAgents.map((agent) => (
+                    <TableRow key={agent.name}>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">
+                          {agent.name}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: isMobile ? 120 : 250 }}>
+                          {agent.description}
+                        </Typography>
+                      </TableCell>
+                      {!isMobile && (
+                        <TableCell>
+                          <Box sx={{ display: "flex", gap: 0.5, flexWrap: "wrap" }}>
+                            {(agent.permissions?.allowedTools || []).map((tool) => (
+                              <Chip key={tool} label={tool} size="small" variant="outlined" />
+                            ))}
+                          </Box>
+                        </TableCell>
+                      )}
+                      <TableCell align="right">
+                        <IconButton size="small" title="Edit" onClick={() => handleEdit(agent)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" title="Delete" onClick={() => handleDeleteClick(agent)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </>
       )}
 
       <AgentEditDialog
@@ -214,7 +403,7 @@ export default function AgentsView() {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to delete <strong>{deleteTarget?.name}</strong>?
-            This action cannot be undone.
+            This will remove it from all projects. This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
