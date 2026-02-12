@@ -75,7 +75,7 @@ describe("CARD-090 QA: ttsPreprocess", () => {
   test("strips markdown special characters", () => {
     const input = "## Header **bold** _italic_ > quote [link](url)";
     const out = ttsPreprocess(input);
-    expect(out).not.toMatch(/[#*_\[\]>]/);
+    expect(out).not.toMatch(/[#*_[\]>]/);
   });
 
   test("reads 4-digit years naturally: 2026 -> 'twenty twenty six'", () => {
@@ -124,11 +124,9 @@ describe("CARD-090 QA: ttsPreprocess", () => {
 
 import { configureStore } from "@reduxjs/toolkit";
 import ttsReducer, {
-  setEnabled,
   enqueueMessage,
   advanceQueue,
   skipToMessage,
-  clearQueue,
 } from "../src/store/ttsSlice";
 
 const DEFAULT_TTS = {
@@ -369,7 +367,7 @@ describe("CARD-090 QA: StreamView queue UI", () => {
 
   test("empty message after preprocessing skips to next (advanceQueue)", () => {
     // A message that becomes empty after stripping code blocks/backticks
-    const { store } = renderStreamView({
+    renderStreamView({
       enabled: true,
       queue: [
         { id: 1, from: "pm-1", message: "```code only```", status: "speaking" },

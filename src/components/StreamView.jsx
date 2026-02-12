@@ -97,6 +97,14 @@ export default function StreamView() {
     return voices.find((v) => v.lang.startsWith("en")) || voices[0] || null;
   }, [agents, tts.voice]);
 
+  // Stop Chrome pause/resume workaround
+  const stopChromeWorkaround = useCallback(() => {
+    if (chromeTimerRef.current) {
+      clearInterval(chromeTimerRef.current);
+      chromeTimerRef.current = null;
+    }
+  }, []);
+
   // Start Chrome pause/resume workaround
   const startChromeWorkaround = useCallback(() => {
     stopChromeWorkaround();
@@ -106,14 +114,7 @@ export default function StreamView() {
         window.speechSynthesis.resume();
       }
     }, CHROME_PAUSE_INTERVAL_MS);
-  }, []);
-
-  const stopChromeWorkaround = useCallback(() => {
-    if (chromeTimerRef.current) {
-      clearInterval(chromeTimerRef.current);
-      chromeTimerRef.current = null;
-    }
-  }, []);
+  }, [stopChromeWorkaround]);
 
   // Speak the current message when currentIndex changes to a 'speaking' item
   useEffect(() => {
@@ -232,6 +233,8 @@ export default function StreamView() {
   }, []);
 
   // Process transcript after recognition ends and transcript is finalized
+  // setState is gated by isListening flag set in onend callback; this reacts to finalized speech input
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isListening || !transcript) return;
 
@@ -256,6 +259,7 @@ export default function StreamView() {
     if (sentTimerRef.current) clearTimeout(sentTimerRef.current);
     sentTimerRef.current = setTimeout(() => setSentConfirmation(""), 2000);
   }, [isListening, transcript, dispatch]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Cleanup sent timer on unmount
   useEffect(() => {
