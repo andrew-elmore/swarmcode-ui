@@ -20,7 +20,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("backlog");
+  const [status, setStatus] = useState("create");
   const [priority, setPriority] = useState("medium");
   const [assignee, setAssignee] = useState("");
   const [sprint, setSprint] = useState("");
@@ -41,7 +41,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
     );
     setTitle("");
     setDescription("");
-    setStatus("backlog");
+    setStatus("create");
     setPriority("medium");
     setAssignee("");
     setSprint("");

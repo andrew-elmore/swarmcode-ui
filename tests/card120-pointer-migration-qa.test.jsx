@@ -144,7 +144,7 @@ describe("CARD-120 QA: boardSlice sprint object shape compatibility", () => {
         assignee: "developer-1",
         sprint: { objectId: "s1", name: "Sprint 1" },
         sprintName: "Sprint 1",
-        status: "todo",
+        status: "scope",
         priority: "medium",
         comments: [],
       },
@@ -164,7 +164,7 @@ describe("CARD-120 QA: boardSlice sprint object shape compatibility", () => {
         assignee: null,
         sprint: null,
         sprintName: null,
-        status: "backlog",
+        status: "create",
         priority: "low",
         comments: [],
       },
@@ -180,17 +180,17 @@ describe("CARD-120 QA: boardSlice sprint object shape compatibility", () => {
       {
         objectId: "c1", cardId: "CARD-001", title: "A",
         sprint: { objectId: "s1", name: "Alpha" }, sprintName: "Alpha",
-        status: "todo", priority: "medium", assignee: null, comments: [],
+        status: "scope", priority: "medium", assignee: null, comments: [],
       },
       {
         objectId: "c2", cardId: "CARD-002", title: "B",
         sprint: { objectId: "s2", name: "Beta" }, sprintName: "Beta",
-        status: "todo", priority: "medium", assignee: null, comments: [],
+        status: "scope", priority: "medium", assignee: null, comments: [],
       },
       {
         objectId: "c3", cardId: "CARD-003", title: "C",
         sprint: null, sprintName: null,
-        status: "todo", priority: "medium", assignee: null, comments: [],
+        status: "scope", priority: "medium", assignee: null, comments: [],
       },
     ];
 
@@ -226,7 +226,7 @@ describe("CARD-120 QA: assignee remains a string in serialized cards", () => {
       assignee: "developer-1", // String, not { __type: "Pointer", ... }
       sprint: { objectId: "s1", name: "Sprint 1" },
       sprintName: "Sprint 1",
-      status: "in_progress",
+      status: "implement",
       priority: "high",
       comments: [{ author: "qa-1", message: "Test comment", createdAt: "2026-02-12" }],
     };

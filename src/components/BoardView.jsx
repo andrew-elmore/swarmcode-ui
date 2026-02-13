@@ -22,11 +22,13 @@ import CardDetailDialog from "./CardDetailDialog";
 import SprintManagerDialog from "./SprintManagerDialog";
 
 const COLUMNS = [
-  { key: "backlog", label: "Backlog" },
-  { key: "todo", label: "To Do" },
-  { key: "in_progress", label: "In Progress" },
-  { key: "review", label: "Review" },
-  { key: "qa", label: "QA" },
+  { key: "create", label: "Create" },
+  { key: "scope", label: "Scope" },
+  { key: "implement", label: "Implement" },
+  { key: "code_review", label: "Code Review" },
+  { key: "test", label: "Test" },
+  { key: "test_review", label: "Test Review" },
+  { key: "ship", label: "Ship" },
   { key: "done", label: "Done" },
 ];
 
@@ -39,7 +41,7 @@ export default function BoardView() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState(null);
-  const [selectedColumn, setSelectedColumn] = useState("backlog");
+  const [selectedColumn, setSelectedColumn] = useState("create");
   const [sprintManagerOpen, setSprintManagerOpen] = useState(false);
 
   useEffect(() => {

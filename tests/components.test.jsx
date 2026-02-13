@@ -237,20 +237,22 @@ describe("BoardView", () => {
     renderWithProviders(<BoardView />, { store });
 
     await waitFor(() => {
-      expect(screen.getByText("Backlog")).toBeInTheDocument();
+      expect(screen.getByText("Create")).toBeInTheDocument();
     });
-    expect(screen.getByText("To Do")).toBeInTheDocument();
-    expect(screen.getByText("In Progress")).toBeInTheDocument();
-    expect(screen.getByText("Review")).toBeInTheDocument();
-    expect(screen.getByText("QA")).toBeInTheDocument();
+    expect(screen.getByText("Scope")).toBeInTheDocument();
+    expect(screen.getByText("Implement")).toBeInTheDocument();
+    expect(screen.getByText("Code Review")).toBeInTheDocument();
+    expect(screen.getByText("Test")).toBeInTheDocument();
+    expect(screen.getByText("Test Review")).toBeInTheDocument();
+    expect(screen.getByText("Ship")).toBeInTheDocument();
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
   test("renders cards in correct columns", async () => {
     const mockBoard = { objectId: "b1", projectHash: "abc", nextId: 3 };
     const mockCards = [
-      { cardId: "CARD-001", title: "Fix bug", status: "todo", priority: "high" },
-      { cardId: "CARD-002", title: "Add feature", status: "in_progress", priority: "medium" },
+      { cardId: "CARD-001", title: "Fix bug", status: "scope", priority: "high" },
+      { cardId: "CARD-002", title: "Add feature", status: "implement", priority: "medium" },
     ];
     api.getOrCreateBoard.mockResolvedValue({ board: mockBoard, cards: mockCards });
 
@@ -703,7 +705,7 @@ describe("CreateCardDialog", () => {
   test("dispatches createCard on submit", async () => {
     const user = userEvent.setup();
     api.createCard.mockResolvedValue({
-      card: { cardId: "CARD-001", title: "New task", status: "backlog", priority: "medium" },
+      card: { cardId: "CARD-001", title: "New task", status: "create", priority: "medium" },
     });
     const onClose = jest.fn();
     renderWithProviders(
@@ -726,7 +728,7 @@ describe("CardDetailDialog", () => {
     cardId: "CARD-001",
     title: "Test Card",
     description: "A test description",
-    status: "todo",
+    status: "scope",
     priority: "high",
     assignee: "qa-1",
     comments: [

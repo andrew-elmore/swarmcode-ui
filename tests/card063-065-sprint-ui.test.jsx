@@ -59,9 +59,9 @@ const MOCK_SPRINTS = [
 const MOCK_BOARD = { objectId: "b1", projectHash: "testhash", nextId: 5 };
 
 const MOCK_CARDS = [
-  { cardId: "CARD-001", title: "Card A", status: "todo", priority: "high", assignee: "developer-1", sprint: "Sprint 1" },
-  { cardId: "CARD-002", title: "Card B", status: "todo", priority: "medium", assignee: null, sprint: "Sprint 2" },
-  { cardId: "CARD-003", title: "Card C", status: "in_progress", priority: "low", assignee: "qa-1", sprint: null },
+  { cardId: "CARD-001", title: "Card A", status: "scope", priority: "high", assignee: "developer-1", sprint: "Sprint 1" },
+  { cardId: "CARD-002", title: "Card B", status: "scope", priority: "medium", assignee: null, sprint: "Sprint 2" },
+  { cardId: "CARD-003", title: "Card C", status: "implement", priority: "low", assignee: "qa-1", sprint: null },
   { cardId: "CARD-004", title: "Card D", status: "done", priority: "medium", assignee: null, sprint: "Sprint 1" },
 ];
 
@@ -95,8 +95,8 @@ function renderWithProviders(ui, { store, ...options } = {}) {
 
 beforeEach(() => {
   api.getOrCreateBoard.mockResolvedValue({ board: MOCK_BOARD, cards: MOCK_CARDS, sprints: MOCK_SPRINTS });
-  api.createCard.mockResolvedValue({ card: { cardId: "CARD-005", title: "New Card", status: "backlog", priority: "medium", sprint: null } });
-  api.updateCard.mockResolvedValue({ card: { cardId: "CARD-001", title: "Card A", status: "todo", priority: "high", sprint: "Sprint 2" } });
+  api.createCard.mockResolvedValue({ card: { cardId: "CARD-005", title: "New Card", status: "create", priority: "medium", sprint: null } });
+  api.updateCard.mockResolvedValue({ card: { cardId: "CARD-001", title: "Card A", status: "scope", priority: "high", sprint: "Sprint 2" } });
   api.addComment.mockResolvedValue({ comment: {} });
   api.listCards.mockResolvedValue({ cards: [] });
   api.showCard.mockResolvedValue({ card: {} });
@@ -240,7 +240,7 @@ describe("CARD-063: BoardView sprint chip on cards", () => {
     api.getOrCreateBoard.mockResolvedValue({
       board: MOCK_BOARD,
       cards: [
-        { cardId: "CARD-003", title: "Card C", status: "in_progress", priority: "low", assignee: "qa-1", sprint: null },
+        { cardId: "CARD-003", title: "Card C", status: "implement", priority: "low", assignee: "qa-1", sprint: null },
       ],
       sprints: [],
     });
@@ -391,7 +391,7 @@ describe("CARD-065: CardDetailDialog sprint field", () => {
     cardId: "CARD-001",
     title: "Test Card",
     description: "Description",
-    status: "todo",
+    status: "scope",
     priority: "high",
     assignee: "developer-1",
     sprint: "Sprint 1",

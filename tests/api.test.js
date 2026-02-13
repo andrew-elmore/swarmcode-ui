@@ -203,7 +203,7 @@ describe("api.createCard", () => {
       projectHash: "abc",
       title: "Test Card",
       description: "Desc",
-      status: "todo",
+      status: "scope",
       assignee: "developer-1",
       priority: "high",
       author: "pm-1",
@@ -211,7 +211,7 @@ describe("api.createCard", () => {
     const body = getLastFetchBody();
     expect(body.projectHash).toBe("abc");
     expect(body.title).toBe("Test Card");
-    expect(body.status).toBe("todo");
+    expect(body.status).toBe("scope");
     expect(body.assignee).toBe("developer-1");
     expect(body.priority).toBe("high");
     expect(body.author).toBe("pm-1");
@@ -229,7 +229,7 @@ describe("api.createCard", () => {
 
 describe("api.updateCard", () => {
   test("only sends non-undefined fields", async () => {
-    mockFetchSuccess({ card: { cardId: "CARD-001", status: "done" }, changes: "status: todo -> done" });
+    mockFetchSuccess({ card: { cardId: "CARD-001", status: "done" }, changes: "status: scope -> done" });
     await updateCard({
       projectHash: "abc",
       cardId: "CARD-001",
@@ -286,9 +286,9 @@ describe("api.listCards", () => {
 
   test("sends status filter when provided", async () => {
     mockFetchSuccess({ cards: [] });
-    await listCards("abc", "todo");
+    await listCards("abc", "scope");
     const body = getLastFetchBody();
-    expect(body.status).toBe("todo");
+    expect(body.status).toBe("scope");
   });
 });
 

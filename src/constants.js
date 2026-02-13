@@ -1,4 +1,4 @@
-export const STATUSES = ["backlog", "todo", "in_progress", "review", "qa", "done"];
+export const STATUSES = ["create", "scope", "implement", "code_review", "test", "test_review", "ship", "done"];
 
 export const PRIORITIES = ["low", "medium", "high", "critical"];
 

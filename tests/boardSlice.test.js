@@ -96,7 +96,7 @@ describe("fetchBoard thunk", () => {
 
 describe("createCard thunk", () => {
   test("appends new card to cards array on fulfilled", async () => {
-    const newCard = { cardId: "CARD-002", title: "New Card", status: "todo" };
+    const newCard = { cardId: "CARD-002", title: "New Card", status: "scope" };
     api.createCard.mockResolvedValue({ card: newCard });
 
     const store = createTestStore({
@@ -124,10 +124,10 @@ describe("createCard thunk", () => {
 describe("updateCard thunk", () => {
   test("updates card in array by cardId on fulfilled", async () => {
     const updatedCard = { cardId: "CARD-001", title: "Test", status: "done" };
-    api.updateCard.mockResolvedValue({ card: updatedCard, changes: "status: todo -> done" });
+    api.updateCard.mockResolvedValue({ card: updatedCard, changes: "status: scope -> done" });
 
     const store = createTestStore({
-      cards: [{ cardId: "CARD-001", title: "Test", status: "todo" }],
+      cards: [{ cardId: "CARD-001", title: "Test", status: "scope" }],
     });
     await store.dispatch(updateCard({ projectHash: "abc", cardId: "CARD-001", status: "done", author: "qa-1" }));
 
@@ -139,8 +139,8 @@ describe("updateCard thunk", () => {
     api.updateCard.mockResolvedValue({ card: updatedCard });
 
     const store = createTestStore({
-      cards: [{ cardId: "CARD-001", title: "Test", status: "todo" }],
-      selectedCard: { cardId: "CARD-001", title: "Test", status: "todo" },
+      cards: [{ cardId: "CARD-001", title: "Test", status: "scope" }],
+      selectedCard: { cardId: "CARD-001", title: "Test", status: "scope" },
     });
     await store.dispatch(updateCard({ projectHash: "abc", cardId: "CARD-001", status: "done", author: "qa-1" }));
 
