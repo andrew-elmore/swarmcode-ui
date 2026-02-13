@@ -16,35 +16,17 @@ if (LIVEQUERY_URL) {
 }
 
 
-// Session token for authenticated requests (set after login/signup)
-let _sessionToken = localStorage.getItem("sessionToken") || "";
-
-export function setSessionToken(token) {
-  _sessionToken = token || "";
-}
-
-export function clearSessionToken() {
-  _sessionToken = "";
-}
-
-function getHeaders() {
-  const headers = {
-    "X-Parse-Application-Id": APP_ID,
-    "Content-Type": "application/json",
-  };
-  if (_sessionToken) {
-    headers["X-Parse-Session-Token"] = _sessionToken;
-  }
-  // Legacy: keep REST API key and project token during Phase 1-2 migration
-  if (JS_KEY) headers["X-Parse-REST-API-Key"] = JS_KEY;
-  if (PROJECT_TOKEN) headers["X-Project-Token"] = PROJECT_TOKEN;
-  return headers;
-}
+const HEADERS = {
+  "X-Parse-Application-Id": APP_ID,
+  "X-Parse-REST-API-Key": JS_KEY,
+  "Content-Type": "application/json",
+  ...(PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {}),
+};
 
 async function callFunction(name, params = {}) {
   const res = await fetch(`${PARSE_URL}/functions/${name}`, {
     method: "POST",
-    headers: getHeaders(),
+    headers: HEADERS,
     body: JSON.stringify(params),
   });
 
@@ -347,35 +329,4 @@ export async function subscribeToPings(projectHash, onPing) {
     subscription.unsubscribe();
     _pingSubscription = null;
   };
-}
-
-
-// --- Auth ---
-
-export async function signUp({ email, password, displayName }) {
-  return callFunction("signUp", { email, password, displayName });
-}
-
-export async function logIn({ email, password }) {
-  return callFunction("logIn", { email, password });
-}
-
-export async function getMe() {
-  return callFunction("getMe", {});
-}
-
-export async function approvePairing(uuid) {
-  return callFunction("approvePairing", { uuid });
-}
-
-export async function listMachines() {
-  return callFunction("listMachines", {});
-}
-
-export async function revokeMachine(machineId) {
-  return callFunction("revokeMachine", { machineId });
-}
-
-export async function renameMachine(machineId, name) {
-  return callFunction("renameMachine", { machineId, name });
 }
