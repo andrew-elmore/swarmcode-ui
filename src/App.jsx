@@ -15,7 +15,10 @@ import SmartToyIcon from "@mui/icons-material/SmartToy";
 import HeadphonesIcon from "@mui/icons-material/Headphones";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import MenuIcon from "@mui/icons-material/Menu";
+import LogoutIcon from "@mui/icons-material/Logout";
+import Tooltip from "@mui/material/Tooltip";
 import { useAppDispatch, useAppSelector } from "./store";
+import { logout } from "./store/authSlice";
 import { fetchBoard } from "./store/boardSlice";
 import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
@@ -178,6 +181,13 @@ export default function App() {
             </Typography>
           )}
           {!isMobile && <ProjectSelector />}
+          {!isMobile && (
+            <Tooltip title="Sign Out">
+              <IconButton color="inherit" onClick={() => dispatch(logout())} sx={{ ml: 1 }}>
+                <LogoutIcon />
+              </IconButton>
+            </Tooltip>
+          )}
         </Toolbar>
         {isMobile && (
           <Toolbar
@@ -196,6 +206,9 @@ export default function App() {
             )}
             <Box sx={{ flex: 1 }} />
             <ProjectSelector />
+            <IconButton color="inherit" onClick={() => dispatch(logout())} size="small" sx={{ ml: 0.5 }}>
+              <LogoutIcon fontSize="small" />
+            </IconButton>
           </Toolbar>
         )}
       </AppBar>
