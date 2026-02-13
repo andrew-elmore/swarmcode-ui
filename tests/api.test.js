@@ -338,13 +338,18 @@ describe("api.getRecentProjects", () => {
 // ─── Headers and URL ─────────────────────────────────────────────────────────
 
 describe("api request configuration", () => {
-  test("includes X-Parse-Application-Id and X-Parse-REST-API-Key headers", async () => {
+  test("includes X-Parse-Application-Id and Content-Type headers", async () => {
     mockFetchSuccess({ projects: [] });
     await getRecentProjects();
     const headers = global.fetch.mock.calls[0][1].headers;
     expect(headers["X-Parse-Application-Id"]).toBe("swarmcode");
-    expect(headers["X-Parse-REST-API-Key"]).toBeDefined();
     expect(headers["Content-Type"]).toBe("application/json");
+    // X-Parse-REST-API-Key is conditionally included only when env var is set
+    if (process.env.REACT_APP_PARSE_REST_API_KEY) {
+      expect(headers["X-Parse-REST-API-Key"]).toBe(process.env.REACT_APP_PARSE_REST_API_KEY);
+    } else {
+      expect(headers["X-Parse-REST-API-Key"]).toBeUndefined();
+    }
   });
 
   test("uses POST method", async () => {
