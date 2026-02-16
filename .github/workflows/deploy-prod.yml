@@ -29,6 +29,46 @@ jobs:
       - name: Run tests
         run: npm test
 
+  e2e-test:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: test
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: swarmcode-ui
+
+      - uses: actions/checkout@v4
+        with:
+          repository: andrew-elmore/swarmcode-api
+          token: ${{ secrets.API_REPO_TOKEN }}
+          path: swarmcode-api
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install API dependencies
+        run: cd swarmcode-api && npm ci
+
+      - name: Install UI dependencies
+        run: cd swarmcode-ui && npm ci
+
+      - name: Install Playwright browsers
+        run: cd swarmcode-ui && npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: cd swarmcode-ui && npx playwright test --project=chromium
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: swarmcode-ui/test-results/
+          retention-days: 7
+
   deploy:
     name: Deploy to Firebase Hosting
     runs-on: ubuntu-latest
