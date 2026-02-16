@@ -44,6 +44,14 @@ export async function seedProject(path: string, name: string) {
   return callFunction('addRecentProject', { path, name });
 }
 
+export async function seedGlobalAgent(name: string, description: string) {
+  return callFunction('createAgent', { name, description });
+}
+
+export async function deleteGlobalAgent(name: string) {
+  return callFunction('deleteAgent', { name });
+}
+
 export async function seedAgent(projectHash: string, name: string, description: string) {
   await callFunction('createAgent', { name, description });
   await callFunction('assignAgentToProject', { projectHash, agentName: name });
