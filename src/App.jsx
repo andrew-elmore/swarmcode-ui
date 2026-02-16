@@ -132,6 +132,7 @@ export default function App() {
               onClick={() => dispatch(setMobileDrawerOpen(true))}
               size="small"
               sx={{ mr: 0.5 }}
+              data-testid="mobile-drawer-toggle"
             >
               <MenuIcon />
             </IconButton>
@@ -152,21 +153,21 @@ export default function App() {
           >
             {isMobile ? (
               [
-                <Tab key="messages" icon={<MailIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="agents" icon={<SmartToyIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="stream" icon={<HeadphonesIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="projects" icon={<FolderIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="commands" icon={<TerminalIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="messages" data-testid="tab-messages" icon={<MailIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="board" data-testid="tab-board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="projects" data-testid="tab-projects" icon={<FolderIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
               ]
             ) : (
               [
-                <Tab key="messages" icon={<MailIcon />} iconPosition="start" label="Messages" />,
-                <Tab key="board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
-                <Tab key="agents" icon={<SmartToyIcon />} iconPosition="start" label="Agents" />,
-                <Tab key="stream" icon={<HeadphonesIcon />} iconPosition="start" label="Stream" />,
-                <Tab key="projects" icon={<FolderIcon />} iconPosition="start" label="Projects" />,
-                <Tab key="commands" icon={<TerminalIcon />} iconPosition="start" label="Commands" />,
+                <Tab key="messages" data-testid="tab-messages" icon={<MailIcon />} iconPosition="start" label="Messages" />,
+                <Tab key="board" data-testid="tab-board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
+                <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} iconPosition="start" label="Agents" />,
+                <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} iconPosition="start" label="Stream" />,
+                <Tab key="projects" data-testid="tab-projects" icon={<FolderIcon />} iconPosition="start" label="Projects" />,
+                <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} iconPosition="start" label="Commands" />,
               ]
             )}
           </Tabs>

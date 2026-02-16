@@ -77,7 +77,7 @@ export default function ProjectsView() {
       )}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">Projects</Typography>
-        <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={() => setAddOpen(true)}>
+        <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={() => setAddOpen(true)} data-testid="add-project-button">
           Add Project
         </Button>
       </Box>
@@ -90,8 +90,9 @@ export default function ProjectsView() {
             <ListItem
               key={p.path}
               disablePadding
+              data-testid={`project-list-item-${p.name}`}
               secondaryAction={
-                <IconButton edge="end" title="Delete project" onClick={() => handleDeleteClick(p)}>
+                <IconButton edge="end" title="Delete project" onClick={() => handleDeleteClick(p)} data-testid="delete-project-button">
                   <DeleteIcon />
                 </IconButton>
               }

@@ -115,7 +115,7 @@ export default function ChatView() {
       >
         {hasMore && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
-            <Button size="small" onClick={handleLoadMore} disabled={loadingMore}>
+            <Button size="small" onClick={handleLoadMore} disabled={loadingMore} data-testid="load-older-button">
               {loadingMore ? "Loading..." : "Load older messages"}
             </Button>
           </Box>
@@ -142,6 +142,7 @@ export default function ChatView() {
             >
               <Paper
                 elevation={0}
+                data-testid="message-bubble"
                 sx={{
                   px: 2,
                   py: 1,
@@ -202,6 +203,7 @@ export default function ChatView() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
+          data-testid="message-input"
           sx={{
             "& .MuiOutlinedInput-root": {
               borderRadius: 2,
@@ -212,6 +214,7 @@ export default function ChatView() {
           color="primary"
           onClick={handleSend}
           disabled={sending || !input.trim()}
+          data-testid="message-send-button"
           sx={{
             bgcolor: "primary.main",
             color: "primary.contrastText",

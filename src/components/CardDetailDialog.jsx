@@ -81,7 +81,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" fullScreen={isMobile} data-testid="card-detail-dialog">
       <DialogTitle>
         <Typography variant="caption" color="text.secondary">
           {card.cardId}
@@ -102,6 +102,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
             onChange={(e) => handleStatusChange(e.target.value)}
             select
             size="small"
+            data-testid="card-status-select"
             sx={{ minWidth: 140, flex: isMobile ? "1 1 100%" : undefined }}
           >
             {STATUSES.map((s) => (
@@ -116,6 +117,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
             onChange={(e) => handlePriorityChange(e.target.value)}
             select
             size="small"
+            data-testid="card-priority-select"
             sx={{ minWidth: 120, flex: isMobile ? "1 1 100%" : undefined }}
           >
             {PRIORITIES.map((p) => (
@@ -190,6 +192,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
             onChange={(e) => setNewComment(e.target.value)}
             size="small"
             fullWidth
+            data-testid="card-comment-input"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();

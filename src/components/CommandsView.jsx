@@ -103,7 +103,7 @@ export default function CommandsView() {
       <Typography variant="h6">Remote Agent Control</Typography>
 
       {/* Orchestrator status */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }} data-testid="orchestrator-status">
         <Box
           sx={{
             width: 12,
@@ -112,7 +112,6 @@ export default function CommandsView() {
             bgcolor: isOnline ? "success.main" : "error.main",
             flexShrink: 0,
           }}
-          data-testid="status-light"
         />
         <Typography variant="body2" color="text.secondary">
           Orchestrator:{" "}
@@ -147,6 +146,7 @@ export default function CommandsView() {
           startIcon={<StopIcon />}
           onClick={() => handleCommand("stop_all")}
           disabled={sending}
+          data-testid="command-button-stop_all"
         >
           Stop All
         </Button>
@@ -156,6 +156,7 @@ export default function CommandsView() {
           startIcon={<PlayArrowIcon />}
           onClick={() => handleCommand("start_all")}
           disabled={sending}
+          data-testid="command-button-start_all"
         >
           Start All
         </Button>
@@ -165,6 +166,7 @@ export default function CommandsView() {
           startIcon={<RestartAltIcon />}
           onClick={() => handleCommand("restart_all")}
           disabled={sending}
+          data-testid="command-button-restart_all"
         >
           Restart All
         </Button>
@@ -196,6 +198,7 @@ export default function CommandsView() {
           {commands.map((cmd) => (
             <ListItem
               key={cmd.objectId}
+              data-testid="command-history-item"
               sx={{
                 borderLeft: `3px solid`,
                 borderColor: `${STATUS_COLORS[cmd.status] || "grey"}.main`,

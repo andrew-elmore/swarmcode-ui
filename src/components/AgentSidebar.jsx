@@ -35,6 +35,7 @@ export default function AgentSidebar({ selectedAgent, onSelectAgent, unreadCount
           selected={selectedAgent === "all"}
           onClick={() => onSelectAgent("all")}
           sx={{ py: isMobile ? 0.75 : 1.25, px: 2 }}
+          data-testid="agent-sidebar-item-all"
         >
           <ListItemIcon sx={{ minWidth: 36 }}>
             <Badge badgeContent={unreadCounts?.all || 0} color="error" max={99}>
@@ -56,6 +57,7 @@ export default function AgentSidebar({ selectedAgent, onSelectAgent, unreadCount
             selected={selectedAgent === agent.name}
             onClick={() => onSelectAgent(agent.name)}
             sx={{ py: isMobile ? 0.75 : 1.25, px: 2 }}
+            data-testid={`agent-sidebar-item-${agent.name}`}
           >
             <ListItemIcon sx={{ minWidth: 36 }}>
               <Badge badgeContent={unreadCounts?.[agent.name] || 0} color="error" max={99}>

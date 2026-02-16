@@ -61,6 +61,7 @@ export default function ProjectSelector() {
         size="small"
         value={activeProject?.path || ""}
         onChange={handleSelect}
+        data-testid="project-selector"
         sx={{
           minWidth: isMobile ? 0 : 200,
           flex: isMobile ? 1 : undefined,
@@ -80,7 +81,7 @@ export default function ProjectSelector() {
           </MenuItem>
         ))}
       </TextField>
-      <IconButton color="inherit" size="small" onClick={() => setAddOpen(true)} title="Add project">
+      <IconButton color="inherit" size="small" onClick={() => setAddOpen(true)} title="Add project" data-testid="add-project-button">
         <AddIcon />
       </IconButton>
 

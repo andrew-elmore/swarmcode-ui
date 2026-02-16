@@ -60,6 +60,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
           autoFocus
           fullWidth
           margin="dense"
+          data-testid="card-title-input"
         />
         <TextField
           label="Description"
@@ -75,6 +76,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
           onChange={(e) => setStatus(e.target.value)}
           select
           fullWidth
+          data-testid="card-status-select"
         >
           {STATUSES.map((s) => (
             <MenuItem key={s} value={s}>
@@ -88,6 +90,7 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
           onChange={(e) => setPriority(e.target.value)}
           select
           fullWidth
+          data-testid="card-priority-select"
         >
           {PRIORITIES.map((p) => (
             <MenuItem key={p} value={p}>

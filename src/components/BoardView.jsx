@@ -105,6 +105,7 @@ export default function BoardView() {
               onChange={(e) => dispatch(setSprintFilter(e.target.value || null))}
               sx={{ minWidth: 160 }}
               label="Sprint"
+              data-testid="sprint-filter"
             >
               <MenuItem value="">All Sprints</MenuItem>
               {sprints.map((s) => (
@@ -126,6 +127,7 @@ export default function BoardView() {
             startIcon={<AddIcon />}
             onClick={() => setCreateOpen(true)}
             size={isMobile ? "small" : "medium"}
+            data-testid="new-card-button"
           >
             New Card
           </Button>
@@ -168,6 +170,7 @@ export default function BoardView() {
           return (
             <Paper
               key={col.key}
+              data-testid={`board-column-${col.key}`}
               sx={{
                 minWidth: isMobile ? "100%" : 240,
                 maxWidth: isMobile ? "100%" : 280,
@@ -189,7 +192,7 @@ export default function BoardView() {
               </Typography>
               <Box sx={{ flex: 1, overflowY: "auto" }}>
                 {colCards.map((card) => (
-                  <Card key={card.cardId} sx={{ mb: 1 }} variant="outlined">
+                  <Card key={card.cardId} data-testid={`board-card-${card.cardId}`} sx={{ mb: 1 }} variant="outlined">
                     <CardActionArea onClick={() => setSelectedCardId(card.cardId)}>
                       <CardContent
                         sx={{

@@ -177,7 +177,7 @@ export default function AgentsView() {
 
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
         <Typography variant="h6">Agents</Typography>
-        <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={handleCreate}>
+        <Button startIcon={<AddIcon />} variant="contained" size="small" onClick={handleCreate} data-testid="add-agent-button">
           Add Agent
         </Button>
       </Box>
@@ -228,6 +228,7 @@ export default function AgentsView() {
                     <TableRow
                       key={agent.name}
                       sx={{ opacity: agent.isActive ? 1 : 0.5 }}
+                      data-testid={`agent-list-item-${agent.name}`}
                     >
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
@@ -293,7 +294,7 @@ export default function AgentsView() {
                 </TableHead>
                 <TableBody>
                   {unassignedAgents.map((agent) => (
-                    <TableRow key={agent.name} sx={{ opacity: 0.7 }}>
+                    <TableRow key={agent.name} sx={{ opacity: 0.7 }} data-testid={`agent-list-item-${agent.name}`}>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
                           {agent.name}
@@ -347,7 +348,7 @@ export default function AgentsView() {
                 </TableHead>
                 <TableBody>
                   {allAgents.map((agent) => (
-                    <TableRow key={agent.name}>
+                    <TableRow key={agent.name} data-testid={`agent-list-item-${agent.name}`}>
                       <TableCell>
                         <Typography variant="body2" fontWeight="bold">
                           {agent.name}

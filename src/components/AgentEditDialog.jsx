@@ -171,7 +171,7 @@ export default function AgentEditDialog({ open, onClose, agent, onSave }) {
   }
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" fullScreen={isMobile}>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" fullScreen={isMobile} data-testid="agent-edit-dialog">
       <DialogTitle>{isNew ? "Create Agent" : `Edit ${agent?.name}`}</DialogTitle>
       <DialogContent>
         <TextField
