@@ -2,19 +2,16 @@
  * CARD-086 QA Tests — Message error handling
  * Author: qa-1
  * Date: 2026-02-11
+ * Updated: 2026-02-16 (CARD-164: fetch -> Parse.Cloud.run migration)
  *
- * Root cause: callFunction() in api.js did not check res.ok before parsing
- * JSON. When the server returned HTTP 4xx/5xx, the code fell through to
- * data.result which was undefined, silently swallowing errors. ChatView had
- * no error display, and the input field was always cleared even on failure.
+ * Original root cause: callFunction() in api.js did not handle errors properly.
+ * Original fix: api.js checks res.ok, messagesSlice sets error state, ChatView shows Snackbar.
  *
- * Fix:
- * 1. api.js: callFunction() checks res.ok, extracts error from JSON body
- *    or falls back to "API error <status>".
- * 2. messagesSlice: sendMessage.rejected sets state.error, clearError action.
- * 3. ChatView: Snackbar+Alert shows error, input preserved on send failure.
+ * CARD-164 update: callFunction() now delegates to Parse.Cloud.run() which handles
+ * HTTP-level errors internally. Error propagation tests updated to use Parse.Cloud.run mocks.
  */
 
+import Parse from "parse";
 import {
   sendMessage as apiSendMessage,
   getConversation,
@@ -22,10 +19,8 @@ import {
   listCards,
 } from "../src/services/api.js";
 
-// --- Mock fetch globally ---
-
 beforeEach(() => {
-  global.fetch = jest.fn();
+  Parse.Cloud.run.mockReset();
 });
 
 afterEach(() => {
@@ -33,63 +28,36 @@ afterEach(() => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// api.js: callFunction() error handling
+// api.js: callFunction() error propagation via Parse.Cloud.run
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-086 QA: callFunction error handling", () => {
-  test("throws with JSON error message when res.ok is false and body has error", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      json: async () => ({ error: "Missing required field: message" }),
-    });
+  test("throws when Parse.Cloud.run rejects with error message", async () => {
+    Parse.Cloud.run.mockRejectedValueOnce(new Error("Missing required field: message"));
 
     await expect(
       apiSendMessage({ projectHash: "h", from: "owner", to: "pm-1", message: "test" })
     ).rejects.toThrow("Missing required field: message");
   });
 
-  test("throws 'API error <status>' when res.ok is false and body has no error field", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 502,
-      json: async () => ({ result: null }),
-    });
+  test("throws on server error", async () => {
+    Parse.Cloud.run.mockRejectedValueOnce(new Error("Internal server error"));
 
     await expect(
       apiSendMessage({ projectHash: "h", from: "owner", to: "pm-1", message: "test" })
-    ).rejects.toThrow("API error 502");
+    ).rejects.toThrow("Internal server error");
   });
 
-  test("throws 'API error <status>' when res.ok is false and body is not JSON", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-      json: async () => { throw new Error("Unexpected token"); },
-    });
+  test("throws on network/connection error", async () => {
+    Parse.Cloud.run.mockRejectedValueOnce(new Error("XMLHttpRequest failed"));
 
     await expect(
       apiSendMessage({ projectHash: "h", from: "owner", to: "pm-1", message: "test" })
-    ).rejects.toThrow("API error 503");
-  });
-
-  test("throws with error from data.error even when res.ok is true", async () => {
-    // Some Parse Server responses return 200 with an error field in the body
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ error: "Internal function error" }),
-    });
-
-    await expect(
-      apiSendMessage({ projectHash: "h", from: "owner", to: "pm-1", message: "test" })
-    ).rejects.toThrow("Internal function error");
+    ).rejects.toThrow("XMLHttpRequest failed");
   });
 
   test("returns result on successful response", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ result: { success: true, messageId: "m1" } }),
-    });
+    Parse.Cloud.run.mockResolvedValueOnce({ success: true, messageId: "m1" });
 
     const result = await apiSendMessage({
       projectHash: "h", from: "owner", to: "pm-1", message: "test",
@@ -97,36 +65,37 @@ describe("CARD-086 QA: callFunction error handling", () => {
     expect(result).toEqual({ success: true, messageId: "m1" });
   });
 
-  test("HTTP 404 error propagates correctly", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 404,
-      json: async () => ({ error: "Function not found" }),
-    });
+  test("getConversation error propagates correctly", async () => {
+    Parse.Cloud.run.mockRejectedValueOnce(new Error("Function not found"));
 
     await expect(getConversation("h", "owner", "pm-1")).rejects.toThrow("Function not found");
   });
 
-  test("HTTP 500 error propagates correctly", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      json: async () => ({ error: "Internal server error" }),
-    });
+  test("listCards error propagates correctly", async () => {
+    Parse.Cloud.run.mockRejectedValueOnce(new Error("Internal server error"));
 
     await expect(listCards("h")).rejects.toThrow("Internal server error");
   });
 
-  test("HTTP 401 unauthorized error propagates correctly", async () => {
-    global.fetch.mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-      json: async () => ({ error: "unauthorized" }),
-    });
+  test("createCard unauthorized error propagates correctly", async () => {
+    Parse.Cloud.run.mockRejectedValueOnce(new Error("unauthorized"));
 
     await expect(
       createCard({ projectHash: "h", title: "T", author: "qa-1" })
     ).rejects.toThrow("unauthorized");
+  });
+
+  test("calls Parse.Cloud.run with correct function name and params", async () => {
+    Parse.Cloud.run.mockResolvedValueOnce({ success: true });
+
+    await apiSendMessage({ projectHash: "h", from: "owner", to: "pm-1", message: "test" });
+
+    expect(Parse.Cloud.run).toHaveBeenCalledWith("sendMessage", {
+      projectHash: "h",
+      from: "owner",
+      to: "pm-1",
+      message: "test",
+    });
   });
 });
 
@@ -152,7 +121,6 @@ describe("CARD-086 QA: messagesSlice error handling", () => {
   });
 
   test("sendMessage.pending clears previous error", () => {
-    // First set an error via a rejected action, then verify pending clears it
     const errorState = messagesReducer(
       undefined,
       sendMessage.rejected(new Error("Old error"), "req0", { to: "pm-1", message: "x" })
@@ -177,7 +145,6 @@ describe("CARD-086 QA: messagesSlice error handling", () => {
   });
 
   test("sendMessage.fulfilled clears sending flag without error", () => {
-    // First set sending=true via pending action
     const pendingState = messagesReducer(
       undefined,
       sendMessage.pending("req1")
@@ -198,7 +165,6 @@ describe("CARD-086 QA: messagesSlice error handling", () => {
   });
 
   test("clearError action resets error to null", () => {
-    // First set an error via rejected action
     const errorState = messagesReducer(
       undefined,
       sendMessage.rejected(new Error("Something went wrong"), "req0", { to: "pm-1", message: "x" })
@@ -224,29 +190,28 @@ describe("CARD-086 QA: source code verification", () => {
   const fs = require("fs");
   const path = require("path");
 
-  test("api.js callFunction checks res.ok", () => {
+  test("api.js callFunction uses Parse.Cloud.run", () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, "../src/services/api.js"),
       "utf8"
     );
-    expect(src).toMatch(/if\s*\(\s*!res\.ok\s*\)/);
+    expect(src).toMatch(/Parse\.Cloud\.run/);
   });
 
-  test("api.js callFunction includes status code in fallback error", () => {
+  test("api.js callFunction does not use fetch()", () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, "../src/services/api.js"),
       "utf8"
     );
-    expect(src).toMatch(/API error.*res\.status/);
+    expect(src).not.toMatch(/\bfetch\s*\(/);
   });
 
-  test("api.js callFunction tries to extract error from JSON body", () => {
+  test("api.js does not define HEADERS constant", () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, "../src/services/api.js"),
       "utf8"
     );
-    // Should try parsing JSON and checking body.error
-    expect(src).toMatch(/body\.error/);
+    expect(src).not.toMatch(/const\s+HEADERS\s*=/);
   });
 
   test("ChatView imports Snackbar and Alert", () => {
@@ -281,7 +246,6 @@ describe("CARD-086 QA: source code verification", () => {
       path.resolve(__dirname, "../src/components/ChatView.jsx"),
       "utf8"
     );
-    // The setInput("") call should be inside an if (!result.error) block
     expect(src).toMatch(/if\s*\(\s*!result\.error\s*\)/);
     expect(src).toMatch(/setInput\s*\(\s*["'][\s]*["']\s*\)/);
   });

@@ -2,12 +2,10 @@
 
 import Parse from "parse";
 
-const PARSE_URL = process.env.REACT_APP_PARSE_URL || "/parse";
 const APP_ID = process.env.REACT_APP_PARSE_APP_ID || "swarmcode";
 const JS_KEY = process.env.REACT_APP_PARSE_REST_API_KEY || "";
-const PROJECT_TOKEN = process.env.REACT_APP_PROJECT_TOKEN || "";
+const PARSE_URL = process.env.REACT_APP_PARSE_URL || "/parse";
 
-// Initialize Parse SDK (needed for LiveQuery)
 Parse.initialize(APP_ID, JS_KEY);
 Parse.serverURL = PARSE_URL;
 const LIVEQUERY_URL = process.env.REACT_APP_PARSE_LIVEQUERY_URL;
@@ -15,37 +13,8 @@ if (LIVEQUERY_URL) {
   Parse.liveQueryServerURL = LIVEQUERY_URL;
 }
 
-
-const HEADERS = {
-  "X-Parse-Application-Id": APP_ID,
-  "X-Parse-REST-API-Key": JS_KEY,
-  "Content-Type": "application/json",
-  ...(PROJECT_TOKEN ? { "X-Project-Token": PROJECT_TOKEN } : {}),
-};
-
 async function callFunction(name, params = {}) {
-  const res = await fetch(`${PARSE_URL}/functions/${name}`, {
-    method: "POST",
-    headers: HEADERS,
-    body: JSON.stringify(params),
-  });
-
-  if (!res.ok) {
-    let msg = `API error ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body.error) msg = body.error;
-    } catch { /* non-JSON response */ }
-    throw new Error(msg);
-  }
-
-  const data = await res.json();
-
-  if (data.error) {
-    throw new Error(data.error);
-  }
-
-  return data.result;
+  return Parse.Cloud.run(name, params);
 }
 
 

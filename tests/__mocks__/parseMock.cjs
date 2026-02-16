@@ -8,6 +8,9 @@ const mockSubscription = {
 const Parse = {
   initialize: jest.fn(),
   serverURL: "",
+  Cloud: {
+    run: jest.fn(),
+  },
   Query: jest.fn().mockImplementation(() => ({
     subscribe: jest.fn().mockResolvedValue(mockSubscription),
   })),
