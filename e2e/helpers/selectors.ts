@@ -17,6 +17,7 @@ export const MESSAGE_INPUT = '[data-testid="message-input"]';
 export const MESSAGE_SEND_BUTTON = '[data-testid="message-send-button"]';
 export const MESSAGE_BUBBLE = '[data-testid="message-bubble"]';
 export const LOAD_OLDER_BUTTON = '[data-testid="load-older-button"]';
+export const CHAT_REFRESH_BUTTON = '[data-testid="chat-refresh-button"]';
 export const MOBILE_DRAWER_TOGGLE = '[data-testid="mobile-drawer-toggle"]';
 
 // Board

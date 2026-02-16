@@ -38,6 +38,18 @@ export const sendMessage = createAsyncThunk(
   }
 );
 
+export const refreshConversation = createAsyncThunk(
+  "messages/refreshConversation",
+  async (agent, { getState }) => {
+    if (agent === "all") {
+      return { agent, messages: [], hasMore: false };
+    }
+    const projectHash = getState().board.board?.projectHash;
+    const result = await api.getConversation(projectHash, "owner", agent, { limit: 30 });
+    return { agent, messages: result.messages, hasMore: result.hasMore };
+  }
+);
+
 export const loadMoreMessages = createAsyncThunk(
   "messages/loadMoreMessages",
   async (agent, { getState }) => {
@@ -62,6 +74,8 @@ const messagesSlice = createSlice({
     unreadCounts: { all: 0 },
     selectedAgent: null,
     sending: false,
+    refreshing: false,
+    liveQueryRefreshFlag: false,
     error: null,
     mobileDrawerOpen: false,
   },
@@ -113,6 +127,9 @@ const messagesSlice = createSlice({
     setMobileDrawerOpen(state, action) {
       state.mobileDrawerOpen = action.payload;
     },
+    refreshLiveQuery(state) {
+      state.liveQueryRefreshFlag = !state.liveQueryRefreshFlag;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(loadConversation.pending, (state) => {
@@ -147,6 +164,23 @@ const messagesSlice = createSlice({
       state.conversations[agent].loadingMore = false;
     });
 
+    builder.addCase(refreshConversation.pending, (state) => {
+      state.refreshing = true;
+      state.error = null;
+    });
+    builder.addCase(refreshConversation.fulfilled, (state, action) => {
+      state.refreshing = false;
+      const { agent, messages, hasMore } = action.payload;
+      ensureConvo(state, agent);
+      state.conversations[agent].messages = messages;
+      state.conversations[agent].loaded = true;
+      state.conversations[agent].hasMore = hasMore ?? false;
+    });
+    builder.addCase(refreshConversation.rejected, (state, action) => {
+      state.refreshing = false;
+      state.error = action.error.message;
+    });
+
     builder.addCase(sendMessage.pending, (state) => {
       state.sending = true;
       state.error = null;
@@ -168,5 +202,5 @@ const messagesSlice = createSlice({
   },
 });
 
-export const { selectAgent, appendMessage, clearError, setMobileDrawerOpen } = messagesSlice.actions;
+export const { selectAgent, appendMessage, clearError, setMobileDrawerOpen, refreshLiveQuery } = messagesSlice.actions;
 export default messagesSlice.reducer;

@@ -7,14 +7,18 @@ import Paper from "@mui/material/Paper";
 import Button from "@mui/material/Button";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import Tooltip from "@mui/material/Tooltip";
+import CircularProgress from "@mui/material/CircularProgress";
 import SendIcon from "@mui/icons-material/Send";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import { useAppDispatch, useAppSelector } from "../store";
-import { sendMessage, loadConversation, loadMoreMessages, clearError } from "../store/messagesSlice";
+import { sendMessage, loadConversation, loadMoreMessages, refreshConversation, refreshLiveQuery, clearError } from "../store/messagesSlice";
+import { getLiveQueryStatus } from "../services/api";
 import { buildAgentLabels } from "../constants";
 export default function ChatView() {
   const dispatch = useAppDispatch();
-  const { conversations, selectedAgent, sending, error } = useAppSelector((s) => s.messages);
+  const { conversations, selectedAgent, sending, refreshing, error } = useAppSelector((s) => s.messages);
   const agents = useAppSelector((s) => s.agents.agents);
   const agentLabels = buildAgentLabels(agents);
   const [input, setInput] = useState("");
@@ -71,6 +75,15 @@ export default function ChatView() {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!selectedAgent || refreshing) return;
+    await dispatch(refreshConversation(selectedAgent));
+    const status = await getLiveQueryStatus();
+    if (status !== "connected") {
+      dispatch(refreshLiveQuery());
     }
   };
 
@@ -194,6 +207,20 @@ export default function ChatView() {
           flexShrink: 0,
         }}
       >
+        <Tooltip title="Refresh messages">
+          <IconButton
+            onClick={handleRefresh}
+            disabled={refreshing}
+            data-testid="chat-refresh-button"
+            sx={{
+              width: 40,
+              height: 40,
+              flexShrink: 0,
+            }}
+          >
+            {refreshing ? <CircularProgress size={20} /> : <RefreshIcon />}
+          </IconButton>
+        </Tooltip>
         <TextField
           fullWidth
           multiline

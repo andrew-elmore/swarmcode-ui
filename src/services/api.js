@@ -271,6 +271,21 @@ export async function subscribeToCommands(projectHash, onCommand) {
 
 let _pingSubscription = null;
 
+/**
+ * Check the actual LiveQuery WebSocket client state via Parse internals.
+ * Returns the client state string: 'connected', 'disconnected', 'closed', etc.
+ * Returns 'disconnected' if no client exists.
+ */
+export async function getLiveQueryStatus() {
+  try {
+    const client = await Parse.CoreManager.getLiveQueryController().getDefaultLiveQueryClient();
+    return client.state || "disconnected";
+  } catch {
+    return "disconnected";
+  }
+}
+
+
 export async function subscribeToPings(projectHash, onPing) {
   if (_pingSubscription) {
     _pingSubscription.unsubscribe();

@@ -39,6 +39,7 @@ export default function App() {
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
   const projectHash = useAppSelector((s) => s.board.board?.projectHash);
+  const liveQueryRefreshFlag = useAppSelector((s) => s.messages.liveQueryRefreshFlag);
   const tts = useAppSelector((s) => s.tts);
   const ttsRef = useRef(tts);
 
@@ -65,6 +66,7 @@ export default function App() {
   }, [dispatch, activeProject]);
 
   // LiveQuery subscription lives in App so it stays active across all tabs.
+  // Re-subscribes when liveQueryRefreshFlag flips (triggered by chat refresh button).
   useEffect(() => {
     let unsubscribe = null;
 
@@ -93,7 +95,7 @@ export default function App() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [dispatch]);
+  }, [dispatch, liveQueryRefreshFlag]);
 
   // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {
@@ -113,7 +115,7 @@ export default function App() {
       if (unsubCmd) unsubCmd();
       if (unsubPing) unsubPing();
     };
-  }, [dispatch, projectHash]);
+  }, [dispatch, projectHash, liveQueryRefreshFlag]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
