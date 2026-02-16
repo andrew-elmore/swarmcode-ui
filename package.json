@@ -9,7 +9,9 @@
     "build:win": "set NODE_ENV=production&& webpack --config webpack.config.cjs",
     "lint": "eslint .",
     "preview": "npx serve dist -l 3000",
-    "test": "npx jest --config jest.config.cjs --runInBand"
+    "test": "npx jest --config jest.config.cjs --runInBand",
+    "test:e2e": "npx playwright test --config e2e/playwright.config.ts",
+    "test:e2e:headed": "npx playwright test --config e2e/playwright.config.ts --headed"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -28,6 +30,7 @@
     "@babel/preset-env": "^7.29.0",
     "@babel/preset-react": "^7.28.5",
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
