@@ -103,12 +103,12 @@ export async function listCards(projectHash: string) {
   return callFunction('listCards', { projectHash });
 }
 
-export async function getConversation(projectHash: string, agent: string) {
-  return callFunction('getConversation', { projectHash, agent });
+export async function getConversation(projectHash: string, user1: string, user2: string) {
+  return callFunction('getConversation', { projectHash, user1, user2 });
 }
 
-export async function deleteProject(projectHash: string) {
-  return callFunction('deleteProject', { projectHash });
+export async function deleteProject(path: string) {
+  return callFunction('deleteProject', { path });
 }
 
 // Batch delete objects of a Parse class using master key
