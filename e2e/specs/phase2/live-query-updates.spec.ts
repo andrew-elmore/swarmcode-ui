@@ -1,16 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { createTestProject, seedDefaultAgents, seedBoardCards, teardownProject } from '../../fixtures/seed';
+import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { AgentSimulator } from '../../fixtures/agent-simulator';
-import { seedCommand } from '../../helpers/api-client';
 import {
   TAB_MESSAGES,
-  TAB_BOARD,
   TAB_COMMANDS,
   agentSidebarItem,
   MESSAGE_INPUT,
   MESSAGE_BUBBLE,
-  boardColumn,
-  boardCard,
   ORCHESTRATOR_STATUS,
   commandButton,
   COMMAND_HISTORY_ITEM,
