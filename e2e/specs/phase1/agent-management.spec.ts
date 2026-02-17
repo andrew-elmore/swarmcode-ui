@@ -161,3 +161,75 @@ test.describe('Agent Management', () => {
     await expect(page.locator(agentListItem('e2e-test-agent'))).not.toBeVisible({ timeout: 5000 });
   });
 });
+
+test.describe('Agent editing', () => {
+  test.beforeAll(async () => {
+    // Seed a global agent with a known description for editing tests
+    try { await seedGlobalAgent('e2e-edit-agent', 'Original description'); } catch { /* already exists */ }
+  });
+
+  test.afterAll(async () => {
+    try { await deleteGlobalAgent('e2e-edit-agent'); } catch { /* may not exist */ }
+  });
+
+  test('edit agent description via dialog and verify persistence', async ({ page }) => {
+    await page.goto('/');
+    await page.locator(TAB_AGENTS).click();
+    await expect(page.locator(agentListItem('e2e-edit-agent'))).toBeVisible({ timeout: 10_000 });
+
+    // Click Edit button on the agent row
+    await page.locator(agentListItem('e2e-edit-agent')).getByTitle('Edit').click();
+    await expect(page.locator(AGENT_EDIT_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Verify dialog title says 'Edit e2e-edit-agent'
+    await expect(page.locator(AGENT_EDIT_DIALOG).getByText('Edit e2e-edit-agent')).toBeVisible();
+
+    // Verify Name field is disabled (agent name is the identifier)
+    await expect(page.locator(AGENT_EDIT_DIALOG).getByLabel('Name')).toBeDisabled();
+
+    // Verify Description is pre-populated with original value
+    await expect(page.locator(AGENT_EDIT_DIALOG).getByLabel('Description')).toHaveValue(
+      'Original description',
+    );
+
+    // Clear and type new description
+    await page.locator(AGENT_EDIT_DIALOG).getByLabel('Description').fill('Updated description via E2E');
+
+    // Click Save
+    await page.locator(AGENT_EDIT_DIALOG).getByRole('button', { name: 'Save' }).click();
+
+    // Dialog should close
+    await expect(page.locator(AGENT_EDIT_DIALOG)).not.toBeVisible({ timeout: 5000 });
+
+    // Verify updated description is visible on the agent row
+    await expect(page.getByText('Updated description via E2E')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('edit dialog cancel discards changes', async ({ page }) => {
+    await page.goto('/');
+    await page.locator(TAB_AGENTS).click();
+    await expect(page.locator(agentListItem('e2e-edit-agent'))).toBeVisible({ timeout: 10_000 });
+
+    // Open edit dialog
+    await page.locator(agentListItem('e2e-edit-agent')).getByTitle('Edit').click();
+    await expect(page.locator(AGENT_EDIT_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Verify current description (should be 'Updated description via E2E' from previous test)
+    await expect(page.locator(AGENT_EDIT_DIALOG).getByLabel('Description')).toHaveValue(
+      'Updated description via E2E',
+    );
+
+    // Change description to something else
+    await page.locator(AGENT_EDIT_DIALOG).getByLabel('Description').fill('This should be discarded');
+
+    // Click Cancel
+    await page.locator(AGENT_EDIT_DIALOG).getByRole('button', { name: 'Cancel' }).click();
+
+    // Dialog should close
+    await expect(page.locator(AGENT_EDIT_DIALOG)).not.toBeVisible({ timeout: 3000 });
+
+    // Verify agent row still shows the previously saved description
+    await expect(page.getByText('Updated description via E2E')).toBeVisible();
+    await expect(page.getByText('This should be discarded')).not.toBeVisible();
+  });
+});
