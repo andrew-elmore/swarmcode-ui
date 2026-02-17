@@ -156,3 +156,115 @@ test.describe('Messaging — mobile', () => {
     await expect(page.locator(MESSAGE_INPUT)).toBeVisible({ timeout: 5000 });
   });
 });
+
+test.describe('Multi-agent conversation isolation', () => {
+  let projectHash: string;
+
+  test.beforeAll(async () => {
+    const project = await createTestProject('Conversation Isolation Test');
+    projectHash = project.projectHash;
+    await seedDefaultAgents(projectHash);
+  });
+
+  test.afterAll(async () => {
+    if (projectHash) await teardownProject(projectHash);
+  });
+
+  test('switching agents shows correct conversation history', async ({ page }) => {
+    // Seed 3 messages to developer-1 and 2 messages to qa-1 (different counts for verification)
+    await seedConversation(projectHash, 'owner', 'developer-1', 3);
+    await seedConversation(projectHash, 'owner', 'qa-1', 2);
+
+    await page.goto('/');
+    await page.locator(TAB_MESSAGES).click();
+    await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
+
+    // Select developer-1 and verify its messages are visible
+    await page.locator(agentSidebarItem('developer-1')).click();
+    await expect(page.locator(MESSAGE_INPUT)).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(MESSAGE_BUBBLE).first()).toBeVisible({ timeout: 5000 });
+    const devBubbleCount = await page.locator(MESSAGE_BUBBLE).count();
+    expect(devBubbleCount).toBeGreaterThanOrEqual(3);
+
+    // Switch to qa-1 and verify its messages are visible
+    await page.locator(agentSidebarItem('qa-1')).click();
+    await expect(page.locator(MESSAGE_INPUT)).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(MESSAGE_BUBBLE).first()).toBeVisible({ timeout: 5000 });
+    const qaBubbleCount = await page.locator(MESSAGE_BUBBLE).count();
+    expect(qaBubbleCount).toBeGreaterThanOrEqual(2);
+
+    // Switch back to developer-1 and verify messages still correct
+    await page.locator(agentSidebarItem('developer-1')).click();
+    await expect(page.locator(MESSAGE_BUBBLE).first()).toBeVisible({ timeout: 5000 });
+    const devBubbleCountAgain = await page.locator(MESSAGE_BUBBLE).count();
+    expect(devBubbleCountAgain).toBeGreaterThanOrEqual(3);
+  });
+
+  test('sending a message to one agent does not appear in another', async ({ page }) => {
+    await page.goto('/');
+    await page.locator(TAB_MESSAGES).click();
+    await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
+
+    // Select developer-1 and send a unique message
+    await page.locator(agentSidebarItem('developer-1')).click();
+    await expect(page.locator(MESSAGE_INPUT)).toBeVisible({ timeout: 5000 });
+    await page.locator(MESSAGE_INPUT).locator('textarea').fill('Unique isolation test message XYZ');
+    await page.locator(MESSAGE_SEND_BUTTON).click();
+
+    // Verify message appears in developer-1's conversation
+    await expect(page.locator(MESSAGE_BUBBLE).last()).toContainText('Unique isolation test message XYZ', {
+      timeout: 5000,
+    });
+
+    // Switch to qa-1 — the unique message should NOT be visible
+    await page.locator(agentSidebarItem('qa-1')).click();
+    await expect(page.locator(MESSAGE_INPUT)).toBeVisible({ timeout: 5000 });
+    // Wait a moment for messages to load (or not)
+    await page.waitForTimeout(1000);
+    await expect(page.getByText('Unique isolation test message XYZ')).not.toBeVisible();
+
+    // Switch back to developer-1 — the message should still be there
+    await page.locator(agentSidebarItem('developer-1')).click();
+    await expect(page.locator(MESSAGE_BUBBLE).last()).toContainText('Unique isolation test message XYZ', {
+      timeout: 5000,
+    });
+  });
+
+  test('empty conversation displays after switching from populated', async ({ page }) => {
+    // Create a fresh project to ensure clean state
+    const isolationProject = await createTestProject('Empty Conv Isolation Test');
+    const isoHash = isolationProject.projectHash;
+    await seedDefaultAgents(isoHash);
+
+    // Seed messages to developer-1 only — qa-1 has no messages
+    await seedConversation(isoHash, 'owner', 'developer-1', 3);
+
+    await page.goto('/');
+    await page.locator(TAB_MESSAGES).click();
+    await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
+
+    // Select developer-1 and verify messages are visible
+    await page.locator(agentSidebarItem('developer-1')).click();
+    await expect(page.locator(MESSAGE_INPUT)).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(MESSAGE_BUBBLE).first()).toBeVisible({ timeout: 5000 });
+    const populatedCount = await page.locator(MESSAGE_BUBBLE).count();
+    expect(populatedCount).toBeGreaterThanOrEqual(3);
+
+    // Switch to qa-1 (no messages) — should show empty conversation
+    await page.locator(agentSidebarItem('qa-1')).click();
+    await expect(page.locator(MESSAGE_INPUT)).toBeVisible({ timeout: 5000 });
+    // Wait for any messages to load
+    await page.waitForTimeout(1000);
+    const emptyCount = await page.locator(MESSAGE_BUBBLE).count();
+    expect(emptyCount).toBe(0);
+
+    // Switch back to developer-1 — messages should reappear
+    await page.locator(agentSidebarItem('developer-1')).click();
+    await expect(page.locator(MESSAGE_BUBBLE).first()).toBeVisible({ timeout: 5000 });
+    const reloadedCount = await page.locator(MESSAGE_BUBBLE).count();
+    expect(reloadedCount).toBeGreaterThanOrEqual(3);
+
+    // Cleanup isolation project
+    await teardownProject(isoHash);
+  });
+});
