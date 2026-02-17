@@ -119,6 +119,7 @@ export default function BoardView() {
             variant="outlined"
             onClick={() => setSprintManagerOpen(true)}
             size={isMobile ? "small" : "medium"}
+            data-testid="manage-sprints-button"
           >
             Manage Sprints
           </Button>

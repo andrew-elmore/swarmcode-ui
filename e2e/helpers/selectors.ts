@@ -81,3 +81,14 @@ export const STREAM_VOLUME = '[data-testid="stream-volume"]';
 export const STREAM_SPEED = '[data-testid="stream-speed"]';
 export const MIC_BUTTON = '[data-testid="mic-button"]';
 export const MIC_STATUS = '[data-testid="mic-status"]';
+
+// Sprint Manager
+export const MANAGE_SPRINTS_BUTTON = '[data-testid="manage-sprints-button"]';
+export const SPRINT_MANAGER_DIALOG = '[data-testid="sprint-manager-dialog"]';
+export const SPRINT_NEW_NAME = '[data-testid="sprint-new-name"]';
+export const SPRINT_ADD_BUTTON = '[data-testid="sprint-add-button"]';
+export const SPRINT_LIST_ITEM = '[data-testid="sprint-list-item"]';
+export const SPRINT_MOVE_UP = '[data-testid="sprint-move-up"]';
+export const SPRINT_MOVE_DOWN = '[data-testid="sprint-move-down"]';
+export const SPRINT_DELETE = '[data-testid="sprint-delete"]';
+export const SPRINT_EDIT_NAME = '[data-testid="sprint-edit-name"]';

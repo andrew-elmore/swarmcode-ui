@@ -64,7 +64,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm" data-testid="sprint-manager-dialog">
       <DialogTitle>Manage Sprints</DialogTitle>
       <DialogContent>
         <Box sx={{ display: "flex", gap: 1, mb: 2, mt: 1 }}>
@@ -74,6 +74,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
             onChange={(e) => setNewName(e.target.value)}
             size="small"
             fullWidth
+            data-testid="sprint-new-name"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 e.preventDefault();
@@ -85,6 +86,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
             variant="contained"
             onClick={handleCreate}
             disabled={!newName.trim()}
+            data-testid="sprint-add-button"
           >
             Add
           </Button>
@@ -99,6 +101,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
             {sorted.map((sprint, index) => (
               <ListItem
                 key={sprint.objectId}
+                data-testid="sprint-list-item"
                 secondaryAction={
                   <Box sx={{ display: "flex", gap: 0.5 }}>
                     <IconButton
@@ -106,6 +109,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
                       onClick={() => handleReorder(index, -1)}
                       disabled={index === 0}
                       title="Move up"
+                      data-testid="sprint-move-up"
                     >
                       <ArrowUpwardIcon fontSize="small" />
                     </IconButton>
@@ -114,6 +118,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
                       onClick={() => handleReorder(index, 1)}
                       disabled={index === sorted.length - 1}
                       title="Move down"
+                      data-testid="sprint-move-down"
                     >
                       <ArrowDownwardIcon fontSize="small" />
                     </IconButton>
@@ -121,6 +126,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
                       size="small"
                       onClick={() => handleDelete(sprint)}
                       title="Delete sprint"
+                      data-testid="sprint-delete"
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -133,6 +139,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
                     onChange={(e) => setEditName(e.target.value)}
                     size="small"
                     autoFocus
+                    data-testid="sprint-edit-name"
                     onBlur={() => handleRename(sprint)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
