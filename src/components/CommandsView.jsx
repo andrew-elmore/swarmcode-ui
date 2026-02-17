@@ -173,7 +173,7 @@ export default function CommandsView() {
       </Box>
 
       {error && (
-        <Alert severity="error" variant="outlined">
+        <Alert severity="error" variant="outlined" data-testid="error-alert">
           {error}
         </Alert>
       )}

@@ -71,7 +71,7 @@ export default function BoardView() {
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error">{error}</Alert>
+        <Alert severity="error" data-testid="error-alert">{error}</Alert>
       </Box>
     );
   }

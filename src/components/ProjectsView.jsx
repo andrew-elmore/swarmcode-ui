@@ -71,7 +71,7 @@ export default function ProjectsView() {
   return (
     <Box sx={{ p: 2, maxWidth: 700, mx: "auto" }}>
       {error && (
-        <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }}>
+        <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }} data-testid="error-alert">
           {error}
         </Alert>
       )}

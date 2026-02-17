@@ -200,7 +200,7 @@ export default function ArticlesView() {
     return (
       <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto" }} data-testid="article-detail">
         {error && (
-          <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }}>
+          <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }} data-testid="error-alert">
             {error}
           </Alert>
         )}
@@ -273,7 +273,7 @@ export default function ArticlesView() {
   return (
     <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto" }} data-testid="articles-view">
       {error && (
-        <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }}>
+        <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }} data-testid="error-alert">
           {error}
         </Alert>
       )}
