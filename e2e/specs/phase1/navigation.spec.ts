@@ -8,6 +8,7 @@ import {
   TAB_STREAM,
   TAB_PROJECTS,
   TAB_COMMANDS,
+  TAB_ARTICLES,
   MESSAGE_INPUT,
   MOBILE_DRAWER_TOGGLE,
 } from '../../helpers/selectors';
@@ -25,7 +26,7 @@ test.describe('Navigation', () => {
     if (projectHash) await teardownProject(projectHash);
   });
 
-  test('all 6 tabs render without errors', async ({ page }) => {
+  test('all 7 tabs render without errors', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
@@ -37,6 +38,7 @@ test.describe('Navigation', () => {
       { selector: TAB_STREAM, expects: 'Stream' },
       { selector: TAB_PROJECTS, expects: 'Projects' },
       { selector: TAB_COMMANDS, expects: 'Remote Agent Control' },
+      { selector: TAB_ARTICLES, expects: 'Articles' },
     ];
 
     for (const tab of tabs) {
@@ -100,7 +102,7 @@ test.describe('Navigation — mobile', () => {
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
     // Tabs should be visible as icons
-    const tabSelectors = [TAB_MESSAGES, TAB_BOARD, TAB_AGENTS, TAB_STREAM, TAB_PROJECTS, TAB_COMMANDS];
+    const tabSelectors = [TAB_MESSAGES, TAB_BOARD, TAB_AGENTS, TAB_STREAM, TAB_PROJECTS, TAB_COMMANDS, TAB_ARTICLES];
     for (const sel of tabSelectors) {
       await expect(page.locator(sel)).toBeVisible();
     }
