@@ -207,6 +207,38 @@ export async function deleteSprint(projectHash, sprintId) {
 }
 
 
+export async function createArticle({ projectHash, title, text, keywords }) {
+  return callFunction("createArticle", { projectHash, title, text, keywords });
+}
+
+export async function getArticle(projectHash, title) {
+  return callFunction("getArticle", { projectHash, title });
+}
+
+export async function updateArticle({ projectHash, title, text, keywords, newTitle }) {
+  const params = { projectHash, title };
+  if (text !== undefined) params.text = text;
+  if (keywords !== undefined) params.keywords = keywords;
+  if (newTitle !== undefined) params.newTitle = newTitle;
+  return callFunction("updateArticle", params);
+}
+
+export async function deleteArticle(projectHash, title) {
+  return callFunction("deleteArticle", { projectHash, title });
+}
+
+export async function listArticles(projectHash) {
+  return callFunction("listArticles", { projectHash });
+}
+
+export async function searchArticles(projectHash, { query, keywords } = {}) {
+  const params = { projectHash };
+  if (query) params.query = query;
+  if (keywords) params.keywords = keywords;
+  return callFunction("searchArticles", params);
+}
+
+
 export async function createCommand(projectHash, action) {
   return callFunction("createCommand", { projectHash, action });
 }

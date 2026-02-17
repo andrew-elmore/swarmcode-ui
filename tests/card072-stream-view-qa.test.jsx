@@ -12,6 +12,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import ttsReducer from "../src/store/ttsSlice";
 import agentsReducer from "../src/store/agentsSlice";
+import articlesReducer from "../src/store/articlesSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
@@ -84,6 +85,7 @@ function createTestStore(overrides = {}) {
     reducer: {
       tts: ttsReducer,
       agents: agentsReducer,
+      articles: articlesReducer,
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,

@@ -11,6 +11,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
+import articlesReducer from "../src/store/articlesSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
@@ -47,6 +48,12 @@ jest.mock("../src/services/api", () => ({
   getSprints: jest.fn(),
   updateSprint: jest.fn(),
   deleteSprint: jest.fn(),
+  listArticles: jest.fn(),
+  createArticle: jest.fn(),
+  updateArticle: jest.fn(),
+  deleteArticle: jest.fn(),
+  searchArticles: jest.fn(),
+  getArticle: jest.fn(),
 }));
 
 const theme = createTheme({
@@ -57,6 +64,7 @@ function createTestStore(preloadedState = {}) {
   return configureStore({
     reducer: {
       agents: agentsReducer,
+      articles: articlesReducer,
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,

@@ -18,6 +18,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
+import articlesReducer from "../src/store/articlesSlice";
 import boardReducer from "../src/store/boardSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import agentsReducer from "../src/store/agentsSlice";
@@ -61,6 +62,7 @@ function createTestStore(boardState = {}) {
   return configureStore({
     reducer: {
       agents: agentsReducer,
+      articles: articlesReducer,
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,

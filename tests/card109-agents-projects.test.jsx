@@ -27,6 +27,7 @@ import agentsReducer, {
   updateAgent,
   deleteAgent,
 } from "../src/store/agentsSlice";
+import articlesReducer from "../src/store/articlesSlice";
 import boardReducer from "../src/store/boardSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
@@ -106,6 +107,7 @@ function createTestStore(overrides = {}) {
   return configureStore({
     reducer: {
       agents: agentsReducer,
+      articles: articlesReducer,
       board: boardReducer,
       messages: messagesReducer,
       projects: projectsReducer,

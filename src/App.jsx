@@ -14,6 +14,7 @@ import FolderIcon from "@mui/icons-material/Folder";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import HeadphonesIcon from "@mui/icons-material/Headphones";
 import TerminalIcon from "@mui/icons-material/Terminal";
+import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
 import { fetchBoard } from "./store/boardSlice";
@@ -22,6 +23,7 @@ import { enqueueMessage } from "./store/ttsSlice";
 import { updateCommand, setPing } from "./store/commandsSlice";
 import { subscribeToMessages, subscribeToCommands, subscribeToPings } from "./services/api";
 import AgentsView from "./components/AgentsView";
+import ArticlesView from "./components/ArticlesView";
 import BoardView from "./components/BoardView";
 import CommandsView from "./components/CommandsView";
 import MessagesView from "./components/MessagesView";
@@ -161,6 +163,7 @@ export default function App() {
                 <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="projects" data-testid="tab-projects" icon={<FolderIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
               ]
             ) : (
               [
@@ -170,6 +173,7 @@ export default function App() {
                 <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} iconPosition="start" label="Stream" />,
                 <Tab key="projects" data-testid="tab-projects" icon={<FolderIcon />} iconPosition="start" label="Projects" />,
                 <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} iconPosition="start" label="Commands" />,
+                <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} iconPosition="start" label="Articles" />,
               ]
             )}
           </Tabs>
@@ -210,6 +214,7 @@ export default function App() {
         {tab === 3 && <StreamView />}
         {tab === 4 && <ProjectsView />}
         {tab === 5 && <CommandsView />}
+        {tab === 6 && <ArticlesView />}
       </Box>
     </Box>
   );

@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import agentsReducer from "./agentsSlice";
+import articlesReducer from "./articlesSlice";
 import boardReducer from "./boardSlice";
 import commandsReducer from "./commandsSlice";
 import messagesReducer from "./messagesSlice";
@@ -10,6 +11,7 @@ import ttsReducer from "./ttsSlice";
 const store = configureStore({
   reducer: {
     agents: agentsReducer,
+    articles: articlesReducer,
     board: boardReducer,
     commands: commandsReducer,
     messages: messagesReducer,

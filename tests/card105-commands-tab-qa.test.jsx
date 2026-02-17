@@ -18,6 +18,7 @@ import CommandsView from "../src/components/CommandsView";
 import commandsReducer, { updateCommand, setPing } from "../src/store/commandsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import agentsReducer from "../src/store/agentsSlice";
+import articlesReducer from "../src/store/articlesSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import boardReducer from "../src/store/boardSlice";
 import projectsReducer from "../src/store/projectsSlice";
@@ -104,6 +105,7 @@ function createTestStore(overrides = {}) {
       commands: commandsReducer,
       tts: ttsReducer,
       agents: agentsReducer,
+      articles: articlesReducer,
       messages: messagesReducer,
       board: boardReducer,
       projects: projectsReducer,
