@@ -110,3 +110,82 @@ test.describe('Project CRUD', () => {
     });
   });
 });
+
+test.describe('Project selector edge cases', () => {
+  test('empty state shows No projects in selector and empty message in ProjectsView', async ({ page }) => {
+    // Intercept getRecentProjects to return empty projects array
+    await page.route('**/parse/functions/getRecentProjects', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: [] }),
+      }),
+    );
+
+    await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+
+    // Open the selector dropdown — should show disabled 'No projects' option
+    await page.locator(PROJECT_SELECTOR).click();
+    await expect(page.getByRole('option', { name: 'No projects' })).toBeVisible();
+
+    // Close dropdown by pressing Escape
+    await page.keyboard.press('Escape');
+
+    // Navigate to Projects tab and verify empty state message
+    await page.locator(TAB_PROJECTS).click();
+    await expect(page.getByText('No projects yet. Add one to get started.')).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
+  test('auto-selects first project on load', async ({ page }) => {
+    // Seed a project via API
+    const project = await createTestProject('Auto Select Project');
+
+    await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+
+    // Verify the project selector displays the seeded project name without manual selection
+    await expect(page.locator(PROJECT_SELECTOR)).toContainText('Auto Select Project', {
+      timeout: 5000,
+    });
+
+    // Navigate to Board tab to verify board data loaded for auto-selected project
+    await page.locator('[data-testid="tab-board"]').click();
+    await expect(page.getByText('Board')).toBeVisible({ timeout: 5000 });
+
+    // Cleanup
+    await teardownProject(project.projectHash);
+  });
+
+  test('selecting same project twice is idempotent', async ({ page }) => {
+    // Seed a project
+    const project = await createTestProject('Idempotent Select Project');
+
+    await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+
+    // Select the project
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: 'Idempotent Select Project' }).click();
+
+    // Verify project is selected
+    await expect(page.locator(PROJECT_SELECTOR)).toContainText('Idempotent Select Project');
+
+    // Navigate to Board tab to verify board loads
+    await page.locator('[data-testid="tab-board"]').click();
+    await expect(page.getByText('Board')).toBeVisible({ timeout: 5000 });
+
+    // Open dropdown and select the same project again
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: 'Idempotent Select Project' }).click();
+
+    // Verify no errors — project still selected and board still displays
+    await expect(page.locator(PROJECT_SELECTOR)).toContainText('Idempotent Select Project');
+    await expect(page.getByText('Board')).toBeVisible({ timeout: 5000 });
+
+    // Cleanup
+    await teardownProject(project.projectHash);
+  });
+});
