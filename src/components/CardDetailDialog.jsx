@@ -22,12 +22,17 @@ import { STATUSES, PRIORITIES, PRIORITY_COLORS, getSprintDisplayName } from "../
 export default function CardDetailDialog({ open, onClose, card, projectHash }) {
   const dispatch = useAppDispatch();
   const { sprints } = useAppSelector((s) => s.board);
+  const { agents } = useAppSelector((s) => s.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [newComment, setNewComment] = useState("");
   const [editStatus, setEditStatus] = useState("");
   const [editPriority, setEditPriority] = useState("");
   const [editSprint, setEditSprint] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
 
   if (!card) return null;
 
@@ -67,6 +72,34 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
     );
   };
 
+  const handleTitleSave = async () => {
+    if (!editTitle.trim() || editTitle.trim() === card.title) {
+      setEditingTitle(false);
+      return;
+    }
+    await dispatch(
+      updateCard({ projectHash, cardId: card.cardId, title: editTitle.trim(), author: "human" })
+    );
+    setEditingTitle(false);
+  };
+
+  const handleDescriptionSave = async () => {
+    if (editDescription.trim() === (card.description || "")) {
+      setEditingDescription(false);
+      return;
+    }
+    await dispatch(
+      updateCard({ projectHash, cardId: card.cardId, description: editDescription.trim(), author: "human" })
+    );
+    setEditingDescription(false);
+  };
+
+  const handleAssigneeChange = async (newAssignee) => {
+    await dispatch(
+      updateCard({ projectHash, cardId: card.cardId, assignee: newAssignee || null, author: "human" })
+    );
+  };
+
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     await dispatch(
@@ -86,12 +119,69 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
         <Typography variant="caption" color="text.secondary">
           {card.cardId}
         </Typography>
-        <Typography variant="h6">{card.title}</Typography>
+        {editingTitle ? (
+          <TextField
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            size="small"
+            fullWidth
+            autoFocus
+            data-testid="card-title-edit"
+            onBlur={handleTitleSave}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleTitleSave();
+              }
+              if (e.key === "Escape") {
+                setEditingTitle(false);
+              }
+            }}
+          />
+        ) : (
+          <Typography
+            variant="h6"
+            onClick={() => {
+              setEditingTitle(true);
+              setEditTitle(card.title);
+            }}
+            sx={{ cursor: "pointer" }}
+            data-testid="card-title-display"
+          >
+            {card.title}
+          </Typography>
+        )}
       </DialogTitle>
       <DialogContent>
-        {card.description && (
-          <Typography variant="body2" sx={{ mb: 2 }}>
-            {card.description}
+        {editingDescription ? (
+          <TextField
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            size="small"
+            fullWidth
+            multiline
+            minRows={2}
+            autoFocus
+            data-testid="card-description-edit"
+            sx={{ mb: 2 }}
+            onBlur={handleDescriptionSave}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                setEditingDescription(false);
+              }
+            }}
+          />
+        ) : (
+          <Typography
+            variant="body2"
+            onClick={() => {
+              setEditingDescription(true);
+              setEditDescription(card.description || "");
+            }}
+            sx={{ mb: 2, cursor: "pointer", color: card.description ? "text.primary" : "text.secondary", fontStyle: card.description ? "normal" : "italic" }}
+            data-testid="card-description-display"
+          >
+            {card.description || "(No description)"}
           </Typography>
         )}
 
@@ -143,10 +233,23 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
           </TextField>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 0.5, mb: 2, flexWrap: "wrap" }}>
-          {card.assignee && (
-            <Chip label={`Assignee: ${card.assignee}`} size="small" />
-          )}
+        <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: "wrap", alignItems: "center" }}>
+          <TextField
+            label="Assignee"
+            value={card.assignee || ""}
+            onChange={(e) => handleAssigneeChange(e.target.value)}
+            select
+            size="small"
+            data-testid="card-assignee-select"
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="">Unassigned</MenuItem>
+            {agents.map((a) => (
+              <MenuItem key={a.name} value={a.name}>
+                {a.name}
+              </MenuItem>
+            ))}
+          </TextField>
           <Chip
             label={card.priority}
             size="small"

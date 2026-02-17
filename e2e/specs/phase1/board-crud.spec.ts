@@ -12,6 +12,11 @@ import {
   CARD_DETAIL_DIALOG,
   CARD_COMMENT_INPUT,
   SPRINT_FILTER,
+  CARD_TITLE_DISPLAY,
+  CARD_TITLE_EDIT,
+  CARD_DESCRIPTION_DISPLAY,
+  CARD_DESCRIPTION_EDIT,
+  CARD_ASSIGNEE_SELECT,
 } from '../../helpers/selectors';
 
 test.describe('Board CRUD', () => {
@@ -209,5 +214,203 @@ test.describe('Board CRUD — mobile', () => {
 
     // Mobile Card B should be visible (it's in Scope)
     await expect(page.getByText('Mobile Card B')).toBeVisible({ timeout: 3000 });
+  });
+});
+
+test.describe('Card Detail Editing', () => {
+  let projectHash: string;
+
+  test.beforeAll(async () => {
+    const project = await createTestProject('Card Detail Editing Test');
+    projectHash = project.projectHash;
+    await seedDefaultAgents(projectHash);
+  });
+
+  test.afterAll(async () => {
+    if (projectHash) await teardownProject(projectHash);
+  });
+
+  test('edit card title inline', async ({ page }) => {
+    const cards = await seedBoardCards(projectHash, [
+      { title: 'Original Title', status: 'create', priority: 'medium' },
+    ]);
+    const cardId = cards[0].cardId;
+
+    await page.goto('/');
+    await page.locator(TAB_BOARD).click();
+    await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
+
+    // Open card detail
+    await page.locator(boardCard(cardId)).click();
+    await expect(page.locator(CARD_DETAIL_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Click title text to enter edit mode
+    await page.locator(CARD_TITLE_DISPLAY).click();
+
+    // Verify TextField appears with current title
+    await expect(page.locator(CARD_TITLE_EDIT)).toBeVisible({ timeout: 3000 });
+    await expect(page.locator(CARD_TITLE_EDIT).locator('input')).toHaveValue('Original Title');
+
+    // Clear and type new title, press Enter to save
+    await page.locator(CARD_TITLE_EDIT).locator('input').fill('Updated Title');
+    await page.locator(CARD_TITLE_EDIT).locator('input').press('Enter');
+
+    // Verify title updated in dialog
+    await expect(page.locator(CARD_TITLE_DISPLAY)).toContainText('Updated Title', { timeout: 5000 });
+
+    // Close dialog and verify title on board
+    await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.locator(boardCard(cardId)).getByText('Updated Title')).toBeVisible({
+      timeout: 5000,
+    });
+  });
+
+  test('edit card description', async ({ page }) => {
+    // Test editing existing description
+    const cards = await seedBoardCards(projectHash, [
+      { title: 'Desc Card With', status: 'scope', priority: 'low', description: 'Original description' },
+    ]);
+    const cardId = cards[0].cardId;
+
+    await page.goto('/');
+    await page.locator(TAB_BOARD).click();
+    await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
+
+    // Open card detail
+    await page.locator(boardCard(cardId)).click();
+    await expect(page.locator(CARD_DETAIL_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Verify current description is shown
+    await expect(page.locator(CARD_DESCRIPTION_DISPLAY)).toContainText('Original description');
+
+    // Click description to enter edit mode
+    await page.locator(CARD_DESCRIPTION_DISPLAY).click();
+    await expect(page.locator(CARD_DESCRIPTION_EDIT)).toBeVisible({ timeout: 3000 });
+
+    // Change description and blur to save
+    await page.locator(CARD_DESCRIPTION_EDIT).locator('textarea').first().fill('Updated description');
+    await page.locator(CARD_TITLE_DISPLAY).click(); // blur by clicking elsewhere
+
+    // Verify updated description displays
+    await expect(page.locator(CARD_DESCRIPTION_DISPLAY)).toContainText('Updated description', {
+      timeout: 5000,
+    });
+
+    // Close dialog
+    await page.getByRole('button', { name: 'Close' }).click();
+
+    // Test editing from empty — seed a card without description
+    const emptyCards = await seedBoardCards(projectHash, [
+      { title: 'Desc Card Empty', status: 'create', priority: 'medium' },
+    ]);
+    const emptyCardId = emptyCards[0].cardId;
+
+    await page.goto('/');
+    await page.locator(TAB_BOARD).click();
+    await expect(page.locator(boardCard(emptyCardId))).toBeVisible({ timeout: 5000 });
+
+    // Open card detail
+    await page.locator(boardCard(emptyCardId)).click();
+    await expect(page.locator(CARD_DETAIL_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Verify placeholder text
+    await expect(page.locator(CARD_DESCRIPTION_DISPLAY)).toContainText('(No description)');
+
+    // Click placeholder to enter edit mode
+    await page.locator(CARD_DESCRIPTION_DISPLAY).click();
+    await expect(page.locator(CARD_DESCRIPTION_EDIT)).toBeVisible({ timeout: 3000 });
+
+    // Type new description and blur to save
+    await page.locator(CARD_DESCRIPTION_EDIT).locator('textarea').first().fill('New description from empty');
+    await page.locator(CARD_TITLE_DISPLAY).click(); // blur
+
+    // Verify new description displays
+    await expect(page.locator(CARD_DESCRIPTION_DISPLAY)).toContainText('New description from empty', {
+      timeout: 5000,
+    });
+
+    await page.getByRole('button', { name: 'Close' }).click();
+  });
+
+  test('change card assignee', async ({ page }) => {
+    const cards = await seedBoardCards(projectHash, [
+      { title: 'Assignee Card', status: 'implement', priority: 'high' },
+    ]);
+    const cardId = cards[0].cardId;
+
+    await page.goto('/');
+    await page.locator(TAB_BOARD).click();
+    await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
+
+    // Open card detail
+    await page.locator(boardCard(cardId)).click();
+    await expect(page.locator(CARD_DETAIL_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Select an assignee from dropdown
+    await page.locator(CARD_ASSIGNEE_SELECT).click();
+    await page.getByRole('option', { name: 'developer-1' }).click();
+
+    // Verify assignee updates in the select
+    await expect(page.locator(CARD_ASSIGNEE_SELECT)).toContainText('developer-1', { timeout: 5000 });
+
+    // Change to Unassigned
+    await page.locator(CARD_ASSIGNEE_SELECT).click();
+    await page.getByRole('option', { name: 'Unassigned' }).click();
+
+    // Verify assignee cleared
+    await expect(page.locator(CARD_ASSIGNEE_SELECT)).not.toContainText('developer-1', {
+      timeout: 5000,
+    });
+
+    await page.getByRole('button', { name: 'Close' }).click();
+  });
+
+  test('edits persist after closing and reopening dialog', async ({ page }) => {
+    const cards = await seedBoardCards(projectHash, [
+      { title: 'Persist Card', status: 'create', priority: 'medium' },
+    ]);
+    const cardId = cards[0].cardId;
+
+    await page.goto('/');
+    await page.locator(TAB_BOARD).click();
+    await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
+
+    // Open card detail
+    await page.locator(boardCard(cardId)).click();
+    await expect(page.locator(CARD_DETAIL_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Edit title
+    await page.locator(CARD_TITLE_DISPLAY).click();
+    await page.locator(CARD_TITLE_EDIT).locator('input').fill('Persisted Title');
+    await page.locator(CARD_TITLE_EDIT).locator('input').press('Enter');
+    await expect(page.locator(CARD_TITLE_DISPLAY)).toContainText('Persisted Title', { timeout: 5000 });
+
+    // Edit description
+    await page.locator(CARD_DESCRIPTION_DISPLAY).click();
+    await page.locator(CARD_DESCRIPTION_EDIT).locator('textarea').first().fill('Persisted description');
+    await page.locator(CARD_TITLE_DISPLAY).click(); // blur to save
+    await expect(page.locator(CARD_DESCRIPTION_DISPLAY)).toContainText('Persisted description', {
+      timeout: 5000,
+    });
+
+    // Edit assignee
+    await page.locator(CARD_ASSIGNEE_SELECT).click();
+    await page.getByRole('option', { name: 'qa-1' }).click();
+    await expect(page.locator(CARD_ASSIGNEE_SELECT)).toContainText('qa-1', { timeout: 5000 });
+
+    // Close dialog
+    await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.locator(CARD_DETAIL_DIALOG)).not.toBeVisible({ timeout: 3000 });
+
+    // Reopen the same card
+    await page.locator(boardCard(cardId)).click();
+    await expect(page.locator(CARD_DETAIL_DIALOG)).toBeVisible({ timeout: 3000 });
+
+    // Verify all edits persisted
+    await expect(page.locator(CARD_TITLE_DISPLAY)).toContainText('Persisted Title');
+    await expect(page.locator(CARD_DESCRIPTION_DISPLAY)).toContainText('Persisted description');
+    await expect(page.locator(CARD_ASSIGNEE_SELECT)).toContainText('qa-1');
+
+    await page.getByRole('button', { name: 'Close' }).click();
   });
 });

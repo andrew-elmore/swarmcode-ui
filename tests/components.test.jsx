@@ -775,11 +775,11 @@ describe("CardDetailDialog", () => {
     expect(screen.getByText(/no comments yet/i)).toBeInTheDocument();
   });
 
-  test("renders assignee chip", () => {
+  test("renders assignee dropdown", () => {
     renderWithProviders(
       <CardDetailDialog open={true} onClose={jest.fn()} card={sampleCard} projectHash="abc" />
     );
-    expect(screen.getByText("Assignee: qa-1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Assignee")).toBeInTheDocument();
   });
 
   test("renders add comment input and send button", () => {

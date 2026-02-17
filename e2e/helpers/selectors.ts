@@ -92,3 +92,10 @@ export const SPRINT_MOVE_UP = '[data-testid="sprint-move-up"]';
 export const SPRINT_MOVE_DOWN = '[data-testid="sprint-move-down"]';
 export const SPRINT_DELETE = '[data-testid="sprint-delete"]';
 export const SPRINT_EDIT_NAME = '[data-testid="sprint-edit-name"]';
+
+// Card Detail Editing
+export const CARD_TITLE_DISPLAY = '[data-testid="card-title-display"]';
+export const CARD_TITLE_EDIT = '[data-testid="card-title-edit"]';
+export const CARD_DESCRIPTION_DISPLAY = '[data-testid="card-description-display"]';
+export const CARD_DESCRIPTION_EDIT = '[data-testid="card-description-edit"]';
+export const CARD_ASSIGNEE_SELECT = '[data-testid="card-assignee-select"]';

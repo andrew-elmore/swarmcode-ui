@@ -70,7 +70,7 @@ export async function seedDefaultAgents(projectHash: string): Promise<void> {
  */
 export async function seedBoardCards(
   projectHash: string,
-  cards?: Array<{ title: string; status?: string; priority?: string; assignee?: string }>
+  cards?: Array<{ title: string; status?: string; priority?: string; assignee?: string; description?: string }>
 ): Promise<TestCard[]> {
   const defaultCards = cards || [
     { title: 'Card in Create', status: 'create', priority: 'medium' },
@@ -86,6 +86,7 @@ export async function seedBoardCards(
       status: card.status,
       priority: card.priority,
       assignee: card.assignee,
+      description: card.description,
     });
     results.push({
       cardId: result.card.cardId,

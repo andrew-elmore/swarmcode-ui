@@ -60,7 +60,7 @@ export async function seedAgent(projectHash: string, name: string, description: 
 export async function seedCard(
   projectHash: string,
   title: string,
-  options: { status?: string; priority?: string; assignee?: string } = {}
+  options: { status?: string; priority?: string; assignee?: string; description?: string } = {}
 ) {
   return callFunction('createCard', {
     projectHash,
@@ -68,6 +68,7 @@ export async function seedCard(
     status: options.status || 'create',
     priority: options.priority || 'medium',
     assignee: options.assignee || null,
+    ...(options.description !== undefined && { description: options.description }),
     author: 'e2e-test',
   });
 }
