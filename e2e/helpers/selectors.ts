@@ -8,6 +8,7 @@ export const TAB_AGENTS = '[data-testid="tab-agents"]';
 export const TAB_STREAM = '[data-testid="tab-stream"]';
 export const TAB_PROJECTS = '[data-testid="tab-projects"]';
 export const TAB_COMMANDS = '[data-testid="tab-commands"]';
+export const TAB_ARTICLES = '[data-testid="tab-articles"]';
 export const PROJECT_SELECTOR = '[data-testid="project-selector"]';
 
 // Messages
@@ -50,3 +51,22 @@ export const ORCHESTRATOR_STATUS = '[data-testid="orchestrator-status"]';
 export const commandButton = (action: string) =>
   `[data-testid="command-button-${action}"]`;
 export const COMMAND_HISTORY_ITEM = '[data-testid="command-history-item"]';
+
+// Articles
+export const ARTICLES_VIEW = '[data-testid="articles-view"]';
+export const ARTICLE_DETAIL = '[data-testid="article-detail"]';
+export const NEW_ARTICLE_BUTTON = '[data-testid="new-article-button"]';
+export const ARTICLE_EDIT_DIALOG = '[data-testid="article-edit-dialog"]';
+export const ARTICLE_EDIT_TITLE = '[data-testid="article-edit-title"]';
+export const ARTICLE_EDIT_TEXT = '[data-testid="article-edit-text"]';
+export const ARTICLE_EDIT_KEYWORDS = '[data-testid="article-edit-keywords"]';
+export const ARTICLE_EDIT_SAVE = '[data-testid="article-edit-save"]';
+export const ARTICLE_BACK_BUTTON = '[data-testid="article-back-button"]';
+export const ARTICLE_EDIT_BUTTON = '[data-testid="article-edit-button"]';
+export const ARTICLE_DELETE_BUTTON = '[data-testid="article-delete-button"]';
+export const ARTICLE_SEARCH_TITLE = '[data-testid="article-search-title"]';
+export const ARTICLE_SEARCH_KEYWORDS = '[data-testid="article-search-keywords"]';
+export const articleRow = (id: string) =>
+  `[data-testid="article-row-${id}"]`;
+export const articleRef = (title: string) =>
+  `[data-testid="article-ref-${title}"]`;

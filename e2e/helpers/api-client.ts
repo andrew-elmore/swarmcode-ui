@@ -103,6 +103,24 @@ export async function seedPing(projectHash: string, agentStatus: Record<string, 
   return callFunction('recordPing', { projectHash, agentStatus });
 }
 
+export async function seedArticle(
+  projectHash: string,
+  title: string,
+  text?: string,
+  keywords?: string[]
+) {
+  return callFunction('createArticle', {
+    projectHash,
+    title,
+    ...(text !== undefined && { text }),
+    ...(keywords !== undefined && { keywords }),
+  });
+}
+
+export async function listArticles(projectHash: string) {
+  return callFunction('listArticles', { projectHash });
+}
+
 export async function getBoard(projectPath: string) {
   return callFunction('getOrCreateBoard', { projectPath });
 }
@@ -148,6 +166,7 @@ export async function cleanupProject(projectHash: string) {
   await batchDelete('Command', { projectHash });
   await batchDelete('Ping', { projectHash });
   await batchDelete('Sprint', { projectHash });
+  await batchDelete('Article', { projectHash });
   await batchDelete('ProjectAgent', { projectHash });
   await batchDelete('Board', { projectHash });
   await batchDelete('Project', { projectHash });

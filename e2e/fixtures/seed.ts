@@ -8,6 +8,7 @@ import {
   seedMessages,
   seedSprint,
   seedPing,
+  seedArticle,
   getBoard,
   cleanupProject,
 } from '../helpers/api-client';
@@ -127,6 +128,21 @@ export async function seedOrchestratorOnline(
     'developer-1': 'running',
     'qa-1': 'idle',
   });
+}
+
+/**
+ * Seed a set of articles into a project.
+ */
+export async function seedArticles(
+  projectHash: string,
+  articles: Array<{ title: string; text?: string; keywords?: string[] }>
+) {
+  const results = [];
+  for (const article of articles) {
+    const result = await seedArticle(projectHash, article.title, article.text, article.keywords);
+    results.push(result);
+  }
+  return results;
 }
 
 /**
