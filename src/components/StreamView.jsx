@@ -311,6 +311,7 @@ export default function StreamView() {
 
   return (
     <Box
+      data-testid="stream-view"
       sx={{
         p: isMobile ? 2 : 3,
         maxWidth: 480,
@@ -335,6 +336,7 @@ export default function StreamView() {
           borderColor: tts.enabled ? "error.main" : "primary.main",
         }}
         aria-label={tts.enabled ? "Stop stream" : "Start stream"}
+        data-testid="stream-toggle"
       >
         {tts.enabled ? (
           <StopIcon sx={{ fontSize: 40 }} />
@@ -343,7 +345,7 @@ export default function StreamView() {
         )}
       </IconButton>
 
-      <Typography variant="body2" color="text.secondary">
+      <Typography variant="body2" color="text.secondary" data-testid="stream-status">
         {tts.enabled
           ? tts.currentIndex >= 0
             ? "Speaking..."
@@ -363,6 +365,7 @@ export default function StreamView() {
           bgcolor: theme.palette.background.paper,
         }}
         ref={queueListRef}
+        data-testid="stream-queue"
       >
         {tts.queue.length === 0 ? (
           <Typography
@@ -378,6 +381,7 @@ export default function StreamView() {
               <ListItemButton
                 key={item.id}
                 data-queue-item
+                data-testid="stream-queue-item"
                 selected={index === tts.currentIndex}
                 onClick={() => handleSkip(index)}
                 disabled={item.status === "done"}
@@ -426,7 +430,7 @@ export default function StreamView() {
       </Box>
 
       {/* Volume */}
-      <Box sx={{ width: "100%", maxWidth: 300 }}>
+      <Box sx={{ width: "100%", maxWidth: 300 }} data-testid="stream-volume">
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Typography variant="body2" sx={{ minWidth: 60 }}>
             Volume
@@ -454,6 +458,7 @@ export default function StreamView() {
           value={tts.rate}
           onChange={handleSpeedChange}
           sx={{ minWidth: 80 }}
+          data-testid="stream-speed"
         >
           {SPEED_OPTIONS.map((opt) => (
             <MenuItem key={opt.value} value={opt.value}>
@@ -502,6 +507,7 @@ export default function StreamView() {
         variant="body2"
         color={micError ? "error" : sentConfirmation ? "success.main" : "text.secondary"}
         sx={{ minHeight: 24, textAlign: "center", maxWidth: 340 }}
+        data-testid="mic-status"
       >
         {micError
           || sentConfirmation

@@ -70,3 +70,14 @@ export const articleRow = (id: string) =>
   `[data-testid="article-row-${id}"]`;
 export const articleRef = (title: string) =>
   `[data-testid="article-ref-${title}"]`;
+
+// Stream
+export const STREAM_VIEW = '[data-testid="stream-view"]';
+export const STREAM_TOGGLE = '[data-testid="stream-toggle"]';
+export const STREAM_STATUS = '[data-testid="stream-status"]';
+export const STREAM_QUEUE = '[data-testid="stream-queue"]';
+export const STREAM_QUEUE_ITEM = '[data-testid="stream-queue-item"]';
+export const STREAM_VOLUME = '[data-testid="stream-volume"]';
+export const STREAM_SPEED = '[data-testid="stream-speed"]';
+export const MIC_BUTTON = '[data-testid="mic-button"]';
+export const MIC_STATUS = '[data-testid="mic-status"]';
