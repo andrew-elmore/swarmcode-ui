@@ -168,7 +168,7 @@ export default function AgentsView() {
   }
 
   return (
-    <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto" }}>
+    <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto", height: "100%", overflow: "auto" }}>
       {error && (
         <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }} data-testid="error-alert">
           {error}

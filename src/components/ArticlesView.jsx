@@ -214,7 +214,7 @@ export default function ArticlesView() {
   // Detail view
   if (selectedArticle) {
     return (
-      <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto" }} data-testid="article-detail">
+      <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto", height: "100%", overflow: "auto" }} data-testid="article-detail">
         {error && (
           <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }} data-testid="error-alert">
             {error}
@@ -287,7 +287,7 @@ export default function ArticlesView() {
 
   // List view
   return (
-    <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto" }} data-testid="articles-view">
+    <Box sx={{ p: isMobile ? 1 : 2, maxWidth: 900, mx: "auto", height: "100%", overflow: "auto" }} data-testid="articles-view">
       {error && (
         <Alert severity="error" onClose={() => dispatch(clearError())} sx={{ mb: 2 }} data-testid="error-alert">
           {error}

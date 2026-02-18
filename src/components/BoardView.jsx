@@ -91,7 +91,7 @@ export default function BoardView() {
     : COLUMNS;
 
   return (
-    <Box sx={{ p: isMobile ? 1 : 2 }}>
+    <Box sx={{ p: isMobile ? 1 : 2, height: "100%", overflow: "auto" }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2, gap: 1, flexWrap: "wrap" }}>
         <Typography variant="h5" sx={{ fontSize: isMobile ? "1.2rem" : undefined }}>
           Board
@@ -163,7 +163,8 @@ export default function BoardView() {
           gap: isMobile ? 0 : 2,
           overflowX: isMobile ? "hidden" : "auto",
           pb: 2,
-          minHeight: isMobile ? "auto" : "calc(100vh - 180px)",
+          flex: 1,
+          minHeight: 0,
         }}
       >
         {visibleColumns.map((col) => {
