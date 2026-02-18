@@ -52,6 +52,9 @@ jest.mock("../src/services/api", () => ({
   getRequestedCommands: jest.fn(),
   subscribeToCommands: jest.fn(),
   subscribeToPings: jest.fn(),
+  linkArticleToProject: jest.fn(),
+  unlinkArticleFromProject: jest.fn(),
+  getProjectArticles: jest.fn(),
 }));
 
 const theme = createTheme();
@@ -92,6 +95,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       articles: {
         articles: [],
+        linkedArticleTitles: [],
         selectedArticle: null,
         searchResults: [],
         loading: false,
@@ -130,6 +134,9 @@ beforeEach(() => {
   api.searchArticles.mockResolvedValue({ articles: [] });
   api.deleteArticle.mockResolvedValue({ deleted: true });
   api.getArticle.mockResolvedValue({ article: MOCK_ARTICLES[0] });
+  api.getProjectArticles.mockResolvedValue({ articles: [] });
+  api.linkArticleToProject.mockResolvedValue({ success: true, linked: true, article: MOCK_ARTICLES[0] });
+  api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
 });
 
 afterEach(() => jest.restoreAllMocks());
@@ -441,5 +448,135 @@ describe("ArticlesView — search", () => {
     await waitFor(() => {
       expect(screen.getByText(/No articles matched your search/)).toBeInTheDocument();
     });
+  });
+});
+
+// ─── Link/Unlink Toggle ─────────────────────────────────────────────────────
+
+describe("ArticlesView — link/unlink toggle", () => {
+  test("renders article-link-toggle for each article row", async () => {
+    renderWithProviders(<ArticlesView />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+    });
+
+    const toggles = screen.getAllByTestId("article-link-toggle");
+    expect(toggles).toHaveLength(3);
+  });
+
+  test("toggle is checked when article is in linkedArticleTitles", async () => {
+    // Mock getProjectArticles to return linked articles so fetchLinkedArticles
+    // populates linkedArticleTitles after mount
+    api.getProjectArticles.mockResolvedValue({
+      articles: [
+        { objectId: "art1", title: "Alpha Guide" },
+        { objectId: "art3", title: "Charlie FAQ" },
+      ],
+    });
+    const store = createTestStore({
+      articles: {
+        articles: MOCK_ARTICLES,
+        linkedArticleTitles: ["Alpha Guide", "Charlie FAQ"],
+      },
+    });
+    renderWithProviders(<ArticlesView />, { store });
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+    });
+
+    const toggles = screen.getAllByTestId("article-link-toggle");
+    // Alpha Guide (index 0) — linked
+    expect(toggles[0].querySelector("input")).toBeChecked();
+    // Bravo Reference (index 1) — not linked
+    expect(toggles[1].querySelector("input")).not.toBeChecked();
+    // Charlie FAQ (index 2) — linked
+    expect(toggles[2].querySelector("input")).toBeChecked();
+  });
+
+  test("clicking toggle on unlinked article dispatches linkArticle", async () => {
+    api.linkArticleToProject.mockResolvedValue({
+      success: true,
+      linked: true,
+      article: { objectId: "art1", title: "Alpha Guide" },
+    });
+
+    renderWithProviders(<ArticlesView />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+    });
+
+    const toggles = screen.getAllByTestId("article-link-toggle");
+    fireEvent.click(toggles[0].querySelector("input"));
+
+    await waitFor(() => {
+      expect(api.linkArticleToProject).toHaveBeenCalledWith({
+        projectHash: "test-hash-180",
+        articleTitle: "Alpha Guide",
+      });
+    });
+  });
+
+  test("clicking toggle on linked article dispatches unlinkArticle", async () => {
+    // Mock getProjectArticles so fetchLinkedArticles keeps Alpha Guide linked
+    api.getProjectArticles.mockResolvedValue({
+      articles: [{ objectId: "art1", title: "Alpha Guide" }],
+    });
+    const store = createTestStore({
+      articles: {
+        articles: MOCK_ARTICLES,
+        linkedArticleTitles: ["Alpha Guide"],
+      },
+    });
+    renderWithProviders(<ArticlesView />, { store });
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+    });
+
+    const toggles = screen.getAllByTestId("article-link-toggle");
+    fireEvent.click(toggles[0].querySelector("input"));
+
+    await waitFor(() => {
+      expect(api.unlinkArticleFromProject).toHaveBeenCalledWith({
+        projectHash: "test-hash-180",
+        articleTitle: "Alpha Guide",
+      });
+    });
+  });
+
+  test("clicking toggle does not navigate to detail view", async () => {
+    renderWithProviders(<ArticlesView />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+    });
+
+    const toggles = screen.getAllByTestId("article-link-toggle");
+    fireEvent.click(toggles[0].querySelector("input"));
+
+    // Should still be in list view (not detail view)
+    expect(screen.getByTestId("articles-view")).toBeInTheDocument();
+    expect(screen.queryByTestId("article-detail")).not.toBeInTheDocument();
+  });
+
+  test("fetchLinkedArticles is dispatched on mount", async () => {
+    renderWithProviders(<ArticlesView />);
+
+    await waitFor(() => {
+      expect(api.getProjectArticles).toHaveBeenCalledWith("test-hash-180");
+    });
+  });
+
+  test("Linked column header is rendered", async () => {
+    renderWithProviders(<ArticlesView />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Linked")).toBeInTheDocument();
   });
 });

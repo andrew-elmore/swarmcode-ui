@@ -44,10 +44,33 @@ export const getArticle = createAsyncThunk(
   }
 );
 
+export const fetchLinkedArticles = createAsyncThunk(
+  "articles/fetchLinkedArticles",
+  async (projectHash) => {
+    return api.getProjectArticles(projectHash);
+  }
+);
+
+export const linkArticle = createAsyncThunk(
+  "articles/linkArticle",
+  async ({ projectHash, articleTitle }) => {
+    return api.linkArticleToProject({ projectHash, articleTitle });
+  }
+);
+
+export const unlinkArticle = createAsyncThunk(
+  "articles/unlinkArticle",
+  async ({ projectHash, articleTitle }) => {
+    await api.unlinkArticleFromProject({ projectHash, articleTitle });
+    return { articleTitle };
+  }
+);
+
 const articlesSlice = createSlice({
   name: "articles",
   initialState: {
     articles: [],
+    linkedArticleTitles: [],
     selectedArticle: null,
     searchResults: [],
     loading: false,
@@ -134,6 +157,32 @@ const articlesSlice = createSlice({
       state.selectedArticle = action.payload.article;
     });
     builder.addCase(getArticle.rejected, (state, action) => {
+      state.error = action.error.message;
+    });
+
+    // fetchLinkedArticles
+    builder.addCase(fetchLinkedArticles.fulfilled, (state, action) => {
+      state.linkedArticleTitles = action.payload.articles.map((a) => a.title);
+    });
+
+    // linkArticle
+    builder.addCase(linkArticle.fulfilled, (state, action) => {
+      const title = action.payload.article.title;
+      if (!state.linkedArticleTitles.includes(title)) {
+        state.linkedArticleTitles.push(title);
+      }
+    });
+    builder.addCase(linkArticle.rejected, (state, action) => {
+      state.error = action.error.message;
+    });
+
+    // unlinkArticle
+    builder.addCase(unlinkArticle.fulfilled, (state, action) => {
+      state.linkedArticleTitles = state.linkedArticleTitles.filter(
+        (t) => t !== action.payload.articleTitle
+      );
+    });
+    builder.addCase(unlinkArticle.rejected, (state, action) => {
       state.error = action.error.message;
     });
   },

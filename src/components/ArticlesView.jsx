@@ -20,6 +20,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogContentText from "@mui/material/DialogContentText";
 import DialogActions from "@mui/material/DialogActions";
+import Switch from "@mui/material/Switch";
+import Tooltip from "@mui/material/Tooltip";
 import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -31,6 +33,9 @@ import Markdown from "react-markdown";
 import { useAppDispatch, useAppSelector } from "../store";
 import {
   fetchArticles,
+  fetchLinkedArticles,
+  linkArticle,
+  unlinkArticle,
   searchArticles,
   deleteArticle,
   getArticle,
@@ -90,7 +95,7 @@ function ArticleContent({ text, knownTitles, onRefClick }) {
 
 export default function ArticlesView() {
   const dispatch = useAppDispatch();
-  const { articles, selectedArticle, searchResults, loading, error } = useAppSelector((s) => s.articles);
+  const { articles, linkedArticleTitles, selectedArticle, searchResults, loading, error } = useAppSelector((s) => s.articles);
   const projectHash = useAppSelector((s) => s.board.board?.projectHash);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -122,9 +127,20 @@ export default function ArticlesView() {
     }
   }, [dispatch, projectHash, articles]);
 
+  const handleToggleLink = (article) => {
+    if (!projectHash) return;
+    const isLinked = linkedArticleTitles.includes(article.title);
+    if (isLinked) {
+      dispatch(unlinkArticle({ projectHash, articleTitle: article.title }));
+    } else {
+      dispatch(linkArticle({ projectHash, articleTitle: article.title }));
+    }
+  };
+
   useEffect(() => {
     if (projectHash) {
       dispatch(fetchArticles(projectHash));
+      dispatch(fetchLinkedArticles(projectHash));
     }
   }, [dispatch, projectHash]);
 
@@ -333,10 +349,13 @@ export default function ArticlesView() {
                 <TableCell>Title</TableCell>
                 {!isMobile && <TableCell>Keywords</TableCell>}
                 <TableCell>Updated</TableCell>
+                <TableCell align="center">Linked</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {displayArticles.map((article) => (
+              {displayArticles.map((article) => {
+                const isLinked = linkedArticleTitles.includes(article.title);
+                return (
                 <TableRow
                   key={article.objectId}
                   hover
@@ -363,8 +382,19 @@ export default function ArticlesView() {
                       {formatDate(article.updatedAt)}
                     </Typography>
                   </TableCell>
+                  <TableCell align="center" onClick={(e) => e.stopPropagation()}>
+                    <Tooltip title={isLinked ? "Unlink from project" : "Link to project"}>
+                      <Switch
+                        size="small"
+                        checked={isLinked}
+                        onChange={() => handleToggleLink(article)}
+                        data-testid="article-link-toggle"
+                      />
+                    </Tooltip>
+                  </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>

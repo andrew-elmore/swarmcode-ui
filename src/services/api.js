@@ -238,6 +238,18 @@ export async function searchArticles(projectHash, { query, keywords } = {}) {
   return callFunction("searchArticles", params);
 }
 
+export async function linkArticleToProject({ projectHash, articleTitle }) {
+  return callFunction("linkArticleToProject", { projectHash, articleTitle });
+}
+
+export async function unlinkArticleFromProject({ projectHash, articleTitle }) {
+  return callFunction("unlinkArticleFromProject", { projectHash, articleTitle });
+}
+
+export async function getProjectArticles(projectHash) {
+  return callFunction("getProjectArticles", { projectHash });
+}
+
 
 export async function createCommand(projectHash, action) {
   return callFunction("createCommand", { projectHash, action });

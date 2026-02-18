@@ -168,6 +168,7 @@ export async function cleanupProject(projectHash: string) {
   await batchDelete('Ping', { projectHash });
   await batchDelete('Sprint', { projectHash });
   await batchDelete('Article', { projectHash });
+  await batchDelete('ProjectArticle', { projectHash });
   await batchDelete('ProjectAgent', { projectHash });
   await batchDelete('Board', { projectHash });
   await batchDelete('Project', { projectHash });

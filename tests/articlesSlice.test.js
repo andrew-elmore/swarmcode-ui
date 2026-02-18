@@ -13,6 +13,9 @@ import articlesReducer, {
   deleteArticle,
   searchArticles,
   getArticle,
+  fetchLinkedArticles,
+  linkArticle,
+  unlinkArticle,
   clearError,
   setSelectedArticle,
   clearSearch,
@@ -25,6 +28,9 @@ jest.mock("../src/services/api", () => ({
   deleteArticle: jest.fn(),
   searchArticles: jest.fn(),
   getArticle: jest.fn(),
+  getProjectArticles: jest.fn(),
+  linkArticleToProject: jest.fn(),
+  unlinkArticleFromProject: jest.fn(),
 }));
 
 function createTestStore(preloadedArticles) {
@@ -45,6 +51,7 @@ describe("articlesSlice initial state", () => {
     const store = createTestStore();
     const state = store.getState().articles;
     expect(state.articles).toEqual([]);
+    expect(state.linkedArticleTitles).toEqual([]);
     expect(state.selectedArticle).toBeNull();
     expect(state.searchResults).toEqual([]);
     expect(state.loading).toBe(false);
@@ -302,5 +309,102 @@ describe("getArticle thunk", () => {
     await store.dispatch(getArticle({ projectHash: "h1", title: "Ghost" }));
 
     expect(store.getState().articles.error).toBe("Article 'Ghost' not found");
+  });
+});
+
+// ─── fetchLinkedArticles ────────────────────────────────────────────────────
+
+describe("fetchLinkedArticles thunk", () => {
+  test("populates linkedArticleTitles on fulfilled", async () => {
+    api.getProjectArticles.mockResolvedValue({
+      articles: [
+        { objectId: "a1", title: "Alpha" },
+        { objectId: "a2", title: "Bravo" },
+      ],
+    });
+
+    const store = createTestStore();
+    await store.dispatch(fetchLinkedArticles("hash123"));
+
+    expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha", "Bravo"]);
+  });
+
+  test("sets empty array when no articles linked", async () => {
+    api.getProjectArticles.mockResolvedValue({ articles: [] });
+
+    const store = createTestStore();
+    await store.dispatch(fetchLinkedArticles("hash123"));
+
+    expect(store.getState().articles.linkedArticleTitles).toEqual([]);
+  });
+});
+
+// ─── linkArticle ────────────────────────────────────────────────────────────
+
+describe("linkArticle thunk", () => {
+  test("adds title to linkedArticleTitles on fulfilled", async () => {
+    api.linkArticleToProject.mockResolvedValue({
+      success: true,
+      linked: true,
+      article: { objectId: "a3", title: "Charlie" },
+    });
+
+    const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
+    await store.dispatch(linkArticle({ projectHash: "h1", articleTitle: "Charlie" }));
+
+    expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha", "Charlie"]);
+  });
+
+  test("deduplicates — does not add title if already present", async () => {
+    api.linkArticleToProject.mockResolvedValue({
+      success: true,
+      linked: true,
+      article: { objectId: "a1", title: "Alpha" },
+    });
+
+    const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
+    await store.dispatch(linkArticle({ projectHash: "h1", articleTitle: "Alpha" }));
+
+    expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha"]);
+  });
+
+  test("sets error on rejected", async () => {
+    api.linkArticleToProject.mockRejectedValue(new Error("Article not found"));
+
+    const store = createTestStore();
+    await store.dispatch(linkArticle({ projectHash: "h1", articleTitle: "Ghost" }));
+
+    expect(store.getState().articles.error).toBe("Article not found");
+  });
+});
+
+// ─── unlinkArticle ──────────────────────────────────────────────────────────
+
+describe("unlinkArticle thunk", () => {
+  test("removes title from linkedArticleTitles on fulfilled", async () => {
+    api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
+
+    const store = createTestStore({ linkedArticleTitles: ["Alpha", "Bravo", "Charlie"] });
+    await store.dispatch(unlinkArticle({ projectHash: "h1", articleTitle: "Bravo" }));
+
+    expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha", "Charlie"]);
+  });
+
+  test("no-op when title not in list", async () => {
+    api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
+
+    const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
+    await store.dispatch(unlinkArticle({ projectHash: "h1", articleTitle: "Ghost" }));
+
+    expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha"]);
+  });
+
+  test("sets error on rejected", async () => {
+    api.unlinkArticleFromProject.mockRejectedValue(new Error("Unlink failed"));
+
+    const store = createTestStore();
+    await store.dispatch(unlinkArticle({ projectHash: "h1", articleTitle: "Alpha" }));
+
+    expect(store.getState().articles.error).toBe("Unlink failed");
   });
 });
