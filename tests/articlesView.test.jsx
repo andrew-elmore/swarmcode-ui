@@ -483,7 +483,7 @@ describe("ArticlesView — link/unlink toggle", () => {
     renderWithProviders(<ArticlesView />, { store });
 
     await waitFor(() => {
-      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+      expect(screen.getAllByText("Alpha Guide").length).toBeGreaterThan(0);
     });
 
     const toggles = screen.getAllByTestId("article-link-toggle");
@@ -533,7 +533,7 @@ describe("ArticlesView — link/unlink toggle", () => {
     renderWithProviders(<ArticlesView />, { store });
 
     await waitFor(() => {
-      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+      expect(screen.getAllByText("Alpha Guide").length).toBeGreaterThan(0);
     });
 
     const toggles = screen.getAllByTestId("article-link-toggle");
@@ -578,5 +578,156 @@ describe("ArticlesView — link/unlink toggle", () => {
     });
 
     expect(screen.getByText("Linked")).toBeInTheDocument();
+  });
+});
+
+// ─── Linked Articles Section (CARD-194) ─────────────────────────────────────
+
+describe("ArticlesView — linked articles section", () => {
+  test("renders linked-articles-section with correct count", async () => {
+    api.getProjectArticles.mockResolvedValue({
+      articles: [
+        { objectId: "art1", title: "Alpha Guide" },
+        { objectId: "art3", title: "Charlie FAQ" },
+      ],
+    });
+    const store = createTestStore({
+      articles: {
+        articles: MOCK_ARTICLES,
+        linkedArticleTitles: ["Alpha Guide", "Charlie FAQ"],
+      },
+    });
+    renderWithProviders(<ArticlesView />, { store });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("linked-articles-section")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Linked to this project (2)")).toBeInTheDocument();
+  });
+
+  test("renders linked article rows with correct data-testid", async () => {
+    api.getProjectArticles.mockResolvedValue({
+      articles: [
+        { objectId: "art1", title: "Alpha Guide" },
+        { objectId: "art3", title: "Charlie FAQ" },
+      ],
+    });
+    const store = createTestStore({
+      articles: {
+        articles: MOCK_ARTICLES,
+        linkedArticleTitles: ["Alpha Guide", "Charlie FAQ"],
+      },
+    });
+    renderWithProviders(<ArticlesView />, { store });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("linked-articles-section")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("linked-article-row-art1")).toBeInTheDocument();
+    expect(screen.getByTestId("linked-article-row-art3")).toBeInTheDocument();
+    expect(screen.queryByTestId("linked-article-row-art2")).not.toBeInTheDocument();
+  });
+
+  test("shows empty state text when no articles are linked", async () => {
+    renderWithProviders(<ArticlesView />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("linked-articles-section")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText("Linked to this project (0)")).toBeInTheDocument();
+    expect(screen.getByText(/No articles linked\. Toggle Linked on articles below to link them\./)).toBeInTheDocument();
+  });
+
+  test("unlink button dispatches unlinkArticle", async () => {
+    api.getProjectArticles.mockResolvedValue({
+      articles: [{ objectId: "art1", title: "Alpha Guide" }],
+    });
+    api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
+    const store = createTestStore({
+      articles: {
+        articles: MOCK_ARTICLES,
+        linkedArticleTitles: ["Alpha Guide"],
+      },
+    });
+    renderWithProviders(<ArticlesView />, { store });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("linked-article-row-art1")).toBeInTheDocument();
+    });
+
+    const row = screen.getByTestId("linked-article-row-art1");
+    const unlinkBtn = within(row).getByTestId("unlink-article-button");
+    fireEvent.click(unlinkBtn);
+
+    await waitFor(() => {
+      expect(api.unlinkArticleFromProject).toHaveBeenCalledWith({
+        projectHash: "test-hash-180",
+        articleTitle: "Alpha Guide",
+      });
+    });
+  });
+
+  test("clicking linked article row navigates to detail view", async () => {
+    api.getProjectArticles.mockResolvedValue({
+      articles: [{ objectId: "art1", title: "Alpha Guide" }],
+    });
+    const store = createTestStore({
+      articles: {
+        articles: MOCK_ARTICLES,
+        linkedArticleTitles: ["Alpha Guide"],
+      },
+    });
+    renderWithProviders(<ArticlesView />, { store });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("linked-article-row-art1")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("linked-article-row-art1"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("article-detail")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+  });
+
+  test("linked articles section is hidden during search", async () => {
+    api.searchArticles.mockResolvedValue({ articles: [MOCK_ARTICLES[0]] });
+    api.getProjectArticles.mockResolvedValue({
+      articles: [{ objectId: "art1", title: "Alpha Guide" }],
+    });
+    const store = createTestStore({
+      articles: {
+        articles: MOCK_ARTICLES,
+        linkedArticleTitles: ["Alpha Guide"],
+      },
+    });
+    renderWithProviders(<ArticlesView />, { store });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("linked-articles-section")).toBeInTheDocument();
+    });
+
+    // Trigger search
+    const titleField = screen.getByTestId("article-search-title").querySelector("input");
+    fireEvent.change(titleField, { target: { value: "Alpha" } });
+    fireEvent.click(screen.getByText("Search"));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("linked-articles-section")).not.toBeInTheDocument();
+    });
+  });
+
+  test("All articles header shows count in list view", async () => {
+    renderWithProviders(<ArticlesView />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(`All articles (${MOCK_ARTICLES.length})`)).toBeInTheDocument();
   });
 });

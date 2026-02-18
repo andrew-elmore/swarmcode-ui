@@ -96,6 +96,7 @@ const DEFAULT_AGENTS = {
 
 const DEFAULT_ARTICLES = {
   articles: [],
+  linkedArticleTitles: [],
   selectedArticle: null,
   searchResults: [],
   loading: false,

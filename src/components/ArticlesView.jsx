@@ -27,6 +27,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import SearchIcon from "@mui/icons-material/Search";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import Markdown from "react-markdown";
@@ -113,6 +114,11 @@ export default function ArticlesView() {
   const knownTitles = useMemo(
     () => new Set(articles.map((a) => a.title.toLowerCase())),
     [articles]
+  );
+
+  const linkedArticles = useMemo(
+    () => articles.filter((a) => linkedArticleTitles.includes(a.title)),
+    [articles, linkedArticleTitles]
   );
 
   const handleRefClick = useCallback((refTitle) => {
@@ -334,6 +340,64 @@ export default function ArticlesView() {
       {isSearching && (
         <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           {searchResults.length} result{searchResults.length !== 1 ? "s" : ""} found
+        </Typography>
+      )}
+
+      {/* Linked articles section */}
+      {!isSearching && (
+        <Box sx={{ mb: 3 }} data-testid="linked-articles-section">
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            Linked to this project ({linkedArticles.length})
+          </Typography>
+          {linkedArticles.length === 0 ? (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              No articles linked. Toggle Linked on articles below to link them.
+            </Typography>
+          ) : (
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 1 }}>
+              <Table size="small">
+                <TableBody>
+                  {linkedArticles.map((article) => (
+                    <TableRow
+                      key={article.objectId}
+                      hover
+                      sx={{ cursor: "pointer" }}
+                      onClick={() => handleRowClick(article)}
+                      data-testid={`linked-article-row-${article.objectId}`}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold">
+                          {article.title}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatDate(article.updatedAt)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right" sx={{ width: 48 }} onClick={(e) => e.stopPropagation()}>
+                        <IconButton
+                          size="small"
+                          title="Unlink from project"
+                          onClick={() => handleToggleLink(article)}
+                          data-testid="unlink-article-button"
+                        >
+                          <RemoveCircleOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Box>
+      )}
+
+      {/* All articles header */}
+      {!isSearching && displayArticles.length > 0 && (
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          All articles ({displayArticles.length})
         </Typography>
       )}
 
