@@ -12,7 +12,7 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { createCard } from "../store/boardSlice";
 import { STATUSES, PRIORITIES } from "../constants";
 
-export default function CreateCardDialog({ open, onClose, projectHash }) {
+export default function CreateCardDialog({ open, onClose, boardId }) {
   const dispatch = useAppDispatch();
   const { sprints } = useAppSelector((s) => s.board);
   const agents = useAppSelector((s) => s.agents.agents);
@@ -26,10 +26,10 @@ export default function CreateCardDialog({ open, onClose, projectHash }) {
   const [sprint, setSprint] = useState("");
 
   const handleSubmit = async () => {
-    if (!title.trim() || !projectHash) return;
+    if (!title.trim() || !boardId) return;
     await dispatch(
       createCard({
-        projectHash,
+        boardId,
         title: title.trim(),
         description: description.trim(),
         status,

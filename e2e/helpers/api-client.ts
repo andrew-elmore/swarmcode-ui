@@ -52,18 +52,18 @@ export async function deleteGlobalAgent(name: string) {
   return callFunction('deleteAgent', { name });
 }
 
-export async function seedAgent(projectHash: string, name: string, description: string) {
+export async function seedAgent(boardId: string, name: string, description: string) {
   await callFunction('createAgent', { name, description });
-  await callFunction('assignAgentToProject', { projectHash, agentName: name });
+  await callFunction('assignAgentToProject', { boardId, agentName: name });
 }
 
 export async function seedCard(
-  projectHash: string,
+  boardId: string,
   title: string,
   options: { status?: string; priority?: string; assignee?: string; description?: string } = {}
 ) {
   return callFunction('createCard', {
-    projectHash,
+    boardId,
     title,
     status: options.status || 'create',
     priority: options.priority || 'medium',
@@ -74,7 +74,7 @@ export async function seedCard(
 }
 
 export async function seedMessages(
-  projectHash: string,
+  boardId: string,
   from: string,
   to: string,
   count: number
@@ -82,7 +82,7 @@ export async function seedMessages(
   const messages = [];
   for (let i = 0; i < count; i++) {
     const msg = await callFunction('sendMessage', {
-      projectHash,
+      boardId,
       from,
       to,
       message: `Test message ${i + 1}`,
@@ -92,46 +92,46 @@ export async function seedMessages(
   return messages;
 }
 
-export async function seedSprint(projectHash: string, name: string) {
-  return callFunction('createSprint', { projectHash, name });
+export async function seedSprint(boardId: string, name: string) {
+  return callFunction('createSprint', { boardId, name });
 }
 
-export async function seedCommand(projectHash: string, action: string) {
-  return callFunction('createCommand', { projectHash, action });
+export async function seedCommand(boardId: string, action: string) {
+  return callFunction('createCommand', { boardId, action });
 }
 
-export async function seedPing(projectHash: string, agentStatus: Record<string, string> = {}) {
-  return callFunction('recordPing', { projectHash, agentStatus });
+export async function seedPing(boardId: string, agentStatus: Record<string, string> = {}) {
+  return callFunction('recordPing', { boardId, agentStatus });
 }
 
 export async function seedArticle(
-  projectHash: string,
+  boardId: string,
   title: string,
   text?: string,
   keywords?: string[]
 ) {
   return callFunction('createArticle', {
-    projectHash,
+    boardId,
     title,
     ...(text !== undefined && { text }),
     ...(keywords !== undefined && { keywords }),
   });
 }
 
-export async function listArticles(projectHash: string) {
-  return callFunction('listArticles', { projectHash });
+export async function listArticles(boardId: string) {
+  return callFunction('listArticles', { boardId });
 }
 
 export async function getBoard(projectPath: string) {
   return callFunction('getOrCreateBoard', { projectPath });
 }
 
-export async function listCards(projectHash: string) {
-  return callFunction('listCards', { projectHash });
+export async function listCards(boardId: string) {
+  return callFunction('listCards', { boardId });
 }
 
-export async function getConversation(projectHash: string, user1: string, user2: string) {
-  return callFunction('getConversation', { projectHash, user1, user2 });
+export async function getConversation(boardId: string, user1: string, user2: string) {
+  return callFunction('getConversation', { boardId, user1, user2 });
 }
 
 export async function deleteProject(path: string) {
@@ -161,17 +161,8 @@ export async function batchDelete(className: string, where: Record<string, unkno
   return results.length;
 }
 
-export async function cleanupProject(projectHash: string) {
-  await batchDelete('Card', { projectHash });
-  await batchDelete('Message', { projectHash });
-  await batchDelete('Command', { projectHash });
-  await batchDelete('Ping', { projectHash });
-  await batchDelete('Sprint', { projectHash });
-  await batchDelete('Article', { projectHash });
-  await batchDelete('ProjectArticle', { projectHash });
-  await batchDelete('ProjectAgent', { projectHash });
-  await batchDelete('Board', { projectHash });
-  await batchDelete('Project', { projectHash });
+export async function cleanupProject(projectPath: string) {
+  await callFunction('deleteProject', { path: projectPath });
 }
 
 export async function healthCheck(): Promise<boolean> {

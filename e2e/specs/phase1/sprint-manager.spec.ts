@@ -15,15 +15,17 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Sprint Manager CRUD', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Sprint Manager Test');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('empty state shows no sprints message', async ({ page }) => {
@@ -185,15 +187,17 @@ test.describe('Sprint Manager CRUD', () => {
 });
 
 test.describe('Sprint Manager — Board Integration', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Sprint Board Integration Test');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('created sprint appears in board filter', async ({ page }) => {

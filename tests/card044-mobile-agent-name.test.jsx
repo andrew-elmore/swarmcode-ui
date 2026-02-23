@@ -60,7 +60,7 @@ function createTestStore() {
     },
     preloadedState: {
       agents: { agents: TEST_AGENTS, loading: false, error: null },
-      board: { board: { projectHash: "test-hash" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      board: { board: { projectHash: "test-hash", objectId: "board-044-1" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
     },
   });
 }

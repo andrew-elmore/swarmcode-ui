@@ -5,8 +5,8 @@ import * as api from "../services/api";
 // Fetch agents assigned to the current project (via ProjectAgent join table)
 export const fetchAgents = createAsyncThunk(
   "agents/fetchAgents",
-  async (projectHash) => {
-    return api.getAgents(projectHash);
+  async (boardId) => {
+    return api.getAgents(boardId);
   }
 );
 
@@ -18,7 +18,7 @@ export const fetchAllAgents = createAsyncThunk(
   }
 );
 
-// Create a global agent (no projectHash)
+// Create a global agent (no boardId)
 export const createAgent = createAsyncThunk(
   "agents/createAgent",
   async (agentData) => {
@@ -26,7 +26,7 @@ export const createAgent = createAsyncThunk(
   }
 );
 
-// Update a global agent (no projectHash)
+// Update a global agent (no boardId)
 export const updateAgent = createAsyncThunk(
   "agents/updateAgent",
   async (agentData) => {
@@ -46,16 +46,16 @@ export const deleteAgent = createAsyncThunk(
 // Assign a global agent to a project
 export const assignAgent = createAsyncThunk(
   "agents/assignAgent",
-  async ({ projectHash, agentName }) => {
-    return api.assignAgentToProject({ projectHash, agentName });
+  async ({ boardId, agentName }) => {
+    return api.assignAgentToProject({ boardId, agentName });
   }
 );
 
 // Unassign an agent from a project
 export const unassignAgent = createAsyncThunk(
   "agents/unassignAgent",
-  async ({ projectHash, agentName }) => {
-    await api.unassignAgentFromProject({ projectHash, agentName });
+  async ({ boardId, agentName }) => {
+    await api.unassignAgentFromProject({ boardId, agentName });
     return { agentName };
   }
 );
@@ -63,8 +63,8 @@ export const unassignAgent = createAsyncThunk(
 // Update per-project agent overrides (isActive, sortOrder)
 export const updateProjectAgent = createAsyncThunk(
   "agents/updateProjectAgent",
-  async ({ projectHash, agentName, isActive, sortOrder }) => {
-    return api.updateProjectAgent({ projectHash, agentName, isActive, sortOrder });
+  async ({ boardId, agentName, isActive, sortOrder }) => {
+    return api.updateProjectAgent({ boardId, agentName, isActive, sortOrder });
   }
 );
 

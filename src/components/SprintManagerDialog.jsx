@@ -17,7 +17,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppDispatch, useAppSelector } from "../store";
 import { createSprint, updateSprint, deleteSprint } from "../store/boardSlice";
 
-export default function SprintManagerDialog({ open, onClose, projectHash }) {
+export default function SprintManagerDialog({ open, onClose, boardId }) {
   const dispatch = useAppDispatch();
   const { sprints } = useAppSelector((s) => s.board);
   const [newName, setNewName] = useState("");
@@ -27,9 +27,9 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
   const sorted = [...sprints].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const handleCreate = async () => {
-    if (!newName.trim() || !projectHash) return;
+    if (!newName.trim() || !boardId) return;
     await dispatch(
-      createSprint({ projectHash, name: newName.trim(), order: sprints.length })
+      createSprint({ boardId, name: newName.trim(), order: sprints.length })
     );
     setNewName("");
   };
@@ -40,7 +40,7 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
       return;
     }
     await dispatch(
-      updateSprint({ projectHash, sprintId: sprint.objectId, name: editName.trim() })
+      updateSprint({ boardId, sprintId: sprint.objectId, name: editName.trim() })
     );
     setEditingId(null);
   };
@@ -51,16 +51,16 @@ export default function SprintManagerDialog({ open, onClose, projectHash }) {
     const a = sorted[index];
     const b = sorted[targetIndex];
     await dispatch(
-      updateSprint({ projectHash, sprintId: a.objectId, order: b.order ?? targetIndex })
+      updateSprint({ boardId, sprintId: a.objectId, order: b.order ?? targetIndex })
     );
     await dispatch(
-      updateSprint({ projectHash, sprintId: b.objectId, order: a.order ?? index })
+      updateSprint({ boardId, sprintId: b.objectId, order: a.order ?? index })
     );
   };
 
   const handleDelete = async (sprint) => {
     if (!window.confirm(`Delete sprint "${sprint.name}"?`)) return;
-    await dispatch(deleteSprint({ projectHash, sprintId: sprint.objectId }));
+    await dispatch(deleteSprint({ boardId, sprintId: sprint.objectId }));
   };
 
   return (

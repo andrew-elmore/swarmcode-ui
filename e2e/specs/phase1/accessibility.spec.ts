@@ -14,16 +14,18 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Accessibility audit', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('A11y Audit Test');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('axe scan passes on each main view', async ({ page }) => {

@@ -11,7 +11,7 @@ import { useTheme } from "@mui/material/styles";
 import { useAppDispatch } from "../store";
 import { createArticle, updateArticle, fetchArticles } from "../store/articlesSlice";
 
-export default function ArticleEditDialog({ open, onClose, article, projectHash }) {
+export default function ArticleEditDialog({ open, onClose, article, boardId }) {
   const dispatch = useAppDispatch();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -36,22 +36,22 @@ export default function ArticleEditDialog({ open, onClose, article, projectHash 
   }, [article, open]);
 
   const handleSubmit = async () => {
-    if (!title.trim() || !projectHash) return;
+    if (!title.trim() || !boardId) return;
     setSaving(true);
     try {
       const kw = keywords.trim()
         ? keywords.split(",").map((k) => k.trim()).filter(Boolean)
         : [];
       if (isNew) {
-        await dispatch(createArticle({ projectHash, title: title.trim(), text, keywords: kw })).unwrap();
+        await dispatch(createArticle({ boardId, title: title.trim(), text, keywords: kw })).unwrap();
       } else {
-        const params = { projectHash, title: article.title };
+        const params = { boardId, title: article.title };
         if (title.trim() !== article.title) params.newTitle = title.trim();
         params.text = text;
         params.keywords = kw;
         await dispatch(updateArticle(params)).unwrap();
       }
-      dispatch(fetchArticles(projectHash));
+      dispatch(fetchArticles(boardId));
       onClose();
     } catch {
       // Error handled by Redux slice

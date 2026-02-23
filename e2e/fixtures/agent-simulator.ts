@@ -42,7 +42,7 @@ export interface PollCommand {
 }
 
 export class AgentSimulator {
-  readonly projectHash: string;
+  readonly boardId: string;
   readonly agentName: string;
 
   private responseMap: Map<string, string>;
@@ -69,11 +69,11 @@ export class AgentSimulator {
   readonly receivedCommands: PollCommand[] = [];
 
   constructor(
-    projectHash: string,
+    boardId: string,
     agentName: string,
     options: AgentSimulatorOptions = {}
   ) {
-    this.projectHash = projectHash;
+    this.boardId = boardId;
     this.agentName = agentName;
 
     this.responseMap = new Map(Object.entries(options.responseMap || {}));
@@ -123,7 +123,7 @@ export class AgentSimulator {
   /** Send a message from this agent to another agent. */
   async sendMessage(to: string, message: string, subject?: string): Promise<void> {
     await callFunction('sendMessage', {
-      projectHash: this.projectHash,
+      boardId: this.boardId,
       from: this.agentName,
       to,
       subject: subject || '',
@@ -138,7 +138,7 @@ export class AgentSimulator {
     options: { status?: string; priority?: string; description?: string } = {}
   ) {
     return callFunction('createCard', {
-      projectHash: this.projectHash,
+      boardId: this.boardId,
       title,
       status: options.status || 'create',
       priority: options.priority || 'medium',
@@ -150,7 +150,7 @@ export class AgentSimulator {
   /** Update a board card. */
   async updateCard(cardId: string, updates: Record<string, string>) {
     return callFunction('updateCard', {
-      projectHash: this.projectHash,
+      boardId: this.boardId,
       cardId,
       ...updates,
       author: this.agentName,
@@ -160,7 +160,7 @@ export class AgentSimulator {
   /** Add a comment to a board card. */
   async addComment(cardId: string, message: string) {
     return callFunction('addComment', {
-      projectHash: this.projectHash,
+      boardId: this.boardId,
       cardId,
       message,
       author: this.agentName,
@@ -170,7 +170,7 @@ export class AgentSimulator {
   /** Send a heartbeat ping. */
   async sendHeartbeat(): Promise<void> {
     await callFunction('recordPing', {
-      projectHash: this.projectHash,
+      boardId: this.boardId,
       agentStatus: this.agentStatus,
     });
   }
@@ -258,7 +258,7 @@ export class AgentSimulator {
     if (!this.running) return;
 
     const result = await callFunction('getRequestedCommands', {
-      projectHash: this.projectHash,
+      boardId: this.boardId,
     });
     const commands: PollCommand[] = result?.commands || [];
 
@@ -286,10 +286,10 @@ export class AgentSimulator {
 
 /** Create multiple simulators for different agents in one project. */
 export function createSimulatorTeam(
-  projectHash: string,
+  boardId: string,
   agents: Array<{ name: string; options?: AgentSimulatorOptions }>
 ): AgentSimulator[] {
-  return agents.map(({ name, options }) => new AgentSimulator(projectHash, name, options));
+  return agents.map(({ name, options }) => new AgentSimulator(boardId, name, options));
 }
 
 /** Start all simulators and return a cleanup function. */

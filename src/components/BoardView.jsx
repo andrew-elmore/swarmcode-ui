@@ -256,20 +256,20 @@ export default function BoardView() {
       <CreateCardDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        projectHash={board?.projectHash}
+        boardId={board?.objectId}
       />
 
       <CardDetailDialog
         open={!!selectedCard}
         onClose={() => setSelectedCardId(null)}
         card={selectedCard}
-        projectHash={board?.projectHash}
+        boardId={board?.objectId}
       />
 
       <SprintManagerDialog
         open={sprintManagerOpen}
         onClose={() => setSprintManagerOpen(false)}
-        projectHash={board?.projectHash}
+        boardId={board?.objectId}
       />
     </Box>
   );

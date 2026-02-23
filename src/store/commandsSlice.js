@@ -6,22 +6,22 @@ import * as api from "../services/api";
 
 export const fetchRecentCommands = createAsyncThunk(
   "commands/fetchRecentCommands",
-  async (projectHash) => {
-    return api.listRecentCommands(projectHash);
+  async (boardId) => {
+    return api.listRecentCommands(boardId);
   }
 );
 
 export const createCommand = createAsyncThunk(
   "commands/createCommand",
-  async ({ projectHash, action }) => {
-    return api.createCommand(projectHash, action);
+  async ({ boardId, action }) => {
+    return api.createCommand(boardId, action);
   }
 );
 
 export const fetchLatestPing = createAsyncThunk(
   "commands/fetchLatestPing",
-  async (projectHash) => {
-    return api.getLatestPing(projectHash);
+  async (boardId) => {
+    return api.getLatestPing(boardId);
   }
 );
 

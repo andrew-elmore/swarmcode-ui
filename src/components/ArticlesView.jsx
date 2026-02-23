@@ -97,7 +97,7 @@ function ArticleContent({ text, knownTitles, onRefClick }) {
 export default function ArticlesView() {
   const dispatch = useAppDispatch();
   const { articles, linkedArticleTitles, selectedArticle, searchResults, loading, error } = useAppSelector((s) => s.articles);
-  const projectHash = useAppSelector((s) => s.board.board?.projectHash);
+  const boardId = useAppSelector((s) => s.board.board?.objectId);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -122,36 +122,36 @@ export default function ArticlesView() {
   );
 
   const handleRefClick = useCallback((refTitle) => {
-    if (!projectHash) return;
+    if (!boardId) return;
     // Check if article is already loaded in the list
     const found = articles.find((a) => a.title.toLowerCase() === refTitle.toLowerCase());
     if (found) {
       dispatch(setSelectedArticle(found));
     } else {
       // Fetch from API (may not exist — getArticle.rejected will set error)
-      dispatch(getArticle({ projectHash, title: refTitle }));
+      dispatch(getArticle({ boardId, title: refTitle }));
     }
-  }, [dispatch, projectHash, articles]);
+  }, [dispatch, boardId, articles]);
 
   const handleToggleLink = (article) => {
-    if (!projectHash) return;
+    if (!boardId) return;
     const isLinked = linkedArticleTitles.includes(article.title);
     if (isLinked) {
-      dispatch(unlinkArticle({ projectHash, articleTitle: article.title }));
+      dispatch(unlinkArticle({ boardId, articleTitle: article.title }));
     } else {
-      dispatch(linkArticle({ projectHash, articleTitle: article.title }));
+      dispatch(linkArticle({ boardId, articleTitle: article.title }));
     }
   };
 
   useEffect(() => {
-    if (projectHash) {
-      dispatch(fetchArticles(projectHash));
-      dispatch(fetchLinkedArticles(projectHash));
+    if (boardId) {
+      dispatch(fetchArticles(boardId));
+      dispatch(fetchLinkedArticles(boardId));
     }
-  }, [dispatch, projectHash]);
+  }, [dispatch, boardId]);
 
   const handleSearch = () => {
-    if (!projectHash) return;
+    if (!boardId) return;
     const query = searchQuery.trim() || undefined;
     const keywords = searchKeywords.trim()
       ? searchKeywords.split(",").map((k) => k.trim()).filter(Boolean)
@@ -162,7 +162,7 @@ export default function ArticlesView() {
       return;
     }
     setIsSearching(true);
-    dispatch(searchArticles({ projectHash, query, keywords }));
+    dispatch(searchArticles({ boardId, query, keywords }));
   };
 
   const handleClearSearch = () => {
@@ -196,9 +196,9 @@ export default function ArticlesView() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget || deleting || !projectHash) return;
+    if (!deleteTarget || deleting || !boardId) return;
     setDeleting(true);
-    const result = await dispatch(deleteArticle({ projectHash, title: deleteTarget.title }));
+    const result = await dispatch(deleteArticle({ boardId, title: deleteTarget.title }));
     setDeleting(false);
     if (!result.error) {
       setDeleteOpen(false);
@@ -264,7 +264,7 @@ export default function ArticlesView() {
           open={editOpen}
           onClose={() => setEditOpen(false)}
           article={editArticle}
-          projectHash={projectHash}
+          boardId={boardId}
         />
 
         <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} fullWidth maxWidth="xs">
@@ -468,7 +468,7 @@ export default function ArticlesView() {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         article={editArticle}
-        projectHash={projectHash}
+        boardId={boardId}
       />
     </Box>
   );

@@ -77,7 +77,7 @@ function createTestStore(boardState = {}) {
         error: null,
       },
       board: {
-        board: { projectHash: "abc123" },
+        board: { projectHash: "abc123", objectId: "b1" },
         cards: [],
         sprints: [],
         sprintFilter: null,

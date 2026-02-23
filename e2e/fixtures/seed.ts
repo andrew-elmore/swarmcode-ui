@@ -16,7 +16,7 @@ import {
 export interface TestProject {
   path: string;
   name: string;
-  projectHash: string;
+  boardId: string;
 }
 
 export interface TestCard {
@@ -38,7 +38,7 @@ const DEFAULT_AGENTS = [
 let projectCounter = 0;
 
 /**
- * Create a test project with a unique path and return its projectHash.
+ * Create a test project with a unique path and return its boardId.
  * Each test file should call this in beforeAll() to get an isolated project.
  */
 export async function createTestProject(
@@ -51,17 +51,17 @@ export async function createTestProject(
 
   await seedProject(uniquePath, projectName);
   const board = await getBoard(uniquePath);
-  const projectHash = board.board.projectHash;
+  const boardId = board.board.objectId;
 
-  return { path: uniquePath, name: projectName, projectHash };
+  return { path: uniquePath, name: projectName, boardId };
 }
 
 /**
  * Seed the default team agents and assign them to the project.
  */
-export async function seedDefaultAgents(projectHash: string): Promise<void> {
+export async function seedDefaultAgents(boardId: string): Promise<void> {
   for (const agent of DEFAULT_AGENTS) {
-    await seedAgent(projectHash, agent.name, agent.description);
+    await seedAgent(boardId, agent.name, agent.description);
   }
 }
 
@@ -69,7 +69,7 @@ export async function seedDefaultAgents(projectHash: string): Promise<void> {
  * Seed a set of cards across different statuses for board testing.
  */
 export async function seedBoardCards(
-  projectHash: string,
+  boardId: string,
   cards?: Array<{ title: string; status?: string; priority?: string; assignee?: string; description?: string }>
 ): Promise<TestCard[]> {
   const defaultCards = cards || [
@@ -82,7 +82,7 @@ export async function seedBoardCards(
 
   const results: TestCard[] = [];
   for (const card of defaultCards) {
-    const result = await seedCard(projectHash, card.title, {
+    const result = await seedCard(boardId, card.title, {
       status: card.status,
       priority: card.priority,
       assignee: card.assignee,
@@ -102,30 +102,30 @@ export async function seedBoardCards(
  * Seed a conversation with N messages for pagination testing.
  */
 export async function seedConversation(
-  projectHash: string,
+  boardId: string,
   from: string,
   to: string,
   count: number
 ) {
-  return seedMessages(projectHash, from, to, count);
+  return seedMessages(boardId, from, to, count);
 }
 
 /**
  * Seed a sprint and return its data.
  */
-export async function createTestSprint(projectHash: string, name?: string) {
+export async function createTestSprint(boardId: string, name?: string) {
   const sprintName = name || `Sprint ${Date.now()}`;
-  return seedSprint(projectHash, sprintName);
+  return seedSprint(boardId, sprintName);
 }
 
 /**
  * Seed a heartbeat ping to make orchestrator appear online.
  */
 export async function seedOrchestratorOnline(
-  projectHash: string,
+  boardId: string,
   agentStatus?: Record<string, string>
 ) {
-  return seedPing(projectHash, agentStatus || {
+  return seedPing(boardId, agentStatus || {
     'developer-1': 'running',
     'qa-1': 'idle',
   });
@@ -135,12 +135,12 @@ export async function seedOrchestratorOnline(
  * Seed a set of articles into a project.
  */
 export async function seedArticles(
-  projectHash: string,
+  boardId: string,
   articles: Array<{ title: string; text?: string; keywords?: string[] }>
 ) {
   const results = [];
   for (const article of articles) {
-    const result = await seedArticle(projectHash, article.title, article.text, article.keywords);
+    const result = await seedArticle(boardId, article.title, article.text, article.keywords);
     results.push(result);
   }
   return results;
@@ -152,14 +152,14 @@ export async function seedArticles(
  */
 export async function setupFullTestEnvironment(projectName?: string) {
   const project = await createTestProject(projectName);
-  await seedDefaultAgents(project.projectHash);
-  const cards = await seedBoardCards(project.projectHash);
+  await seedDefaultAgents(project.boardId);
+  const cards = await seedBoardCards(project.boardId);
   return { project, cards };
 }
 
 /**
  * Cleanup all data for a project. Call in afterAll().
  */
-export async function teardownProject(projectHash: string) {
-  await cleanupProject(projectHash);
+export async function teardownProject(projectPath: string) {
+  await cleanupProject(projectPath);
 }

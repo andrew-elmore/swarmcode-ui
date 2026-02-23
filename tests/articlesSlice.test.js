@@ -132,7 +132,7 @@ describe("createArticle thunk", () => {
         { objectId: "a2", title: "Charlie" },
       ],
     });
-    await store.dispatch(createArticle({ projectHash: "h1", title: "Bravo" }));
+    await store.dispatch(createArticle({ boardId: "h1", title: "Bravo" }));
 
     const titles = store.getState().articles.articles.map((a) => a.title);
     expect(titles).toEqual(["Alpha", "Bravo", "Charlie"]);
@@ -142,7 +142,7 @@ describe("createArticle thunk", () => {
     api.createArticle.mockRejectedValue(new Error("Article with title 'X' already exists"));
 
     const store = createTestStore();
-    await store.dispatch(createArticle({ projectHash: "h1", title: "X" }));
+    await store.dispatch(createArticle({ boardId: "h1", title: "X" }));
 
     expect(store.getState().articles.error).toBe("Article with title 'X' already exists");
   });
@@ -161,7 +161,7 @@ describe("updateArticle thunk", () => {
         { objectId: "a2", title: "Bravo", text: "" },
       ],
     });
-    await store.dispatch(updateArticle({ projectHash: "h1", title: "Alpha", newTitle: "Zeta", text: "New text" }));
+    await store.dispatch(updateArticle({ boardId: "h1", title: "Alpha", newTitle: "Zeta", text: "New text" }));
 
     const articles = store.getState().articles.articles;
     expect(articles[0].title).toBe("Bravo");
@@ -177,7 +177,7 @@ describe("updateArticle thunk", () => {
       articles: [{ objectId: "a1", title: "Alpha", text: "Original" }],
       selectedArticle: { objectId: "a1", title: "Alpha", text: "Original" },
     });
-    await store.dispatch(updateArticle({ projectHash: "h1", title: "Alpha", text: "Edited" }));
+    await store.dispatch(updateArticle({ boardId: "h1", title: "Alpha", text: "Edited" }));
 
     expect(store.getState().articles.selectedArticle.text).toBe("Edited");
   });
@@ -190,7 +190,7 @@ describe("updateArticle thunk", () => {
       articles: [{ objectId: "a2", title: "Bravo", text: "Old" }],
       selectedArticle: { objectId: "a1", title: "Alpha", text: "Untouched" },
     });
-    await store.dispatch(updateArticle({ projectHash: "h1", title: "Bravo", text: "Changed" }));
+    await store.dispatch(updateArticle({ boardId: "h1", title: "Bravo", text: "Changed" }));
 
     expect(store.getState().articles.selectedArticle.text).toBe("Untouched");
   });
@@ -199,7 +199,7 @@ describe("updateArticle thunk", () => {
     api.updateArticle.mockRejectedValue(new Error("No changes specified"));
 
     const store = createTestStore();
-    await store.dispatch(updateArticle({ projectHash: "h1", title: "Alpha" }));
+    await store.dispatch(updateArticle({ boardId: "h1", title: "Alpha" }));
 
     expect(store.getState().articles.error).toBe("No changes specified");
   });
@@ -217,7 +217,7 @@ describe("deleteArticle thunk", () => {
         { objectId: "a2", title: "Bravo" },
       ],
     });
-    await store.dispatch(deleteArticle({ projectHash: "h1", title: "Alpha" }));
+    await store.dispatch(deleteArticle({ boardId: "h1", title: "Alpha" }));
 
     const articles = store.getState().articles.articles;
     expect(articles).toHaveLength(1);
@@ -231,7 +231,7 @@ describe("deleteArticle thunk", () => {
       articles: [{ objectId: "a1", title: "Alpha" }],
       selectedArticle: { objectId: "a1", title: "Alpha" },
     });
-    await store.dispatch(deleteArticle({ projectHash: "h1", title: "Alpha" }));
+    await store.dispatch(deleteArticle({ boardId: "h1", title: "Alpha" }));
 
     expect(store.getState().articles.selectedArticle).toBeNull();
   });
@@ -246,7 +246,7 @@ describe("deleteArticle thunk", () => {
       ],
       selectedArticle: { objectId: "a2", title: "Bravo" },
     });
-    await store.dispatch(deleteArticle({ projectHash: "h1", title: "Alpha" }));
+    await store.dispatch(deleteArticle({ boardId: "h1", title: "Alpha" }));
 
     expect(store.getState().articles.selectedArticle.title).toBe("Bravo");
   });
@@ -255,7 +255,7 @@ describe("deleteArticle thunk", () => {
     api.deleteArticle.mockRejectedValue(new Error("Article 'X' not found"));
 
     const store = createTestStore();
-    await store.dispatch(deleteArticle({ projectHash: "h1", title: "X" }));
+    await store.dispatch(deleteArticle({ boardId: "h1", title: "X" }));
 
     expect(store.getState().articles.error).toBe("Article 'X' not found");
   });
@@ -269,7 +269,7 @@ describe("searchArticles thunk", () => {
     api.searchArticles.mockResolvedValue({ articles: results });
 
     const store = createTestStore();
-    await store.dispatch(searchArticles({ projectHash: "h1", query: "API" }));
+    await store.dispatch(searchArticles({ boardId: "h1", query: "API" }));
 
     const state = store.getState().articles;
     expect(state.loading).toBe(false);
@@ -281,7 +281,7 @@ describe("searchArticles thunk", () => {
     api.searchArticles.mockRejectedValue(new Error("At least one of query or keywords is required"));
 
     const store = createTestStore();
-    await store.dispatch(searchArticles({ projectHash: "h1" }));
+    await store.dispatch(searchArticles({ boardId: "h1" }));
 
     const state = store.getState().articles;
     expect(state.loading).toBe(false);
@@ -297,7 +297,7 @@ describe("getArticle thunk", () => {
     api.getArticle.mockResolvedValue({ article });
 
     const store = createTestStore();
-    await store.dispatch(getArticle({ projectHash: "h1", title: "Found Article" }));
+    await store.dispatch(getArticle({ boardId: "h1", title: "Found Article" }));
 
     expect(store.getState().articles.selectedArticle).toEqual(article);
   });
@@ -306,7 +306,7 @@ describe("getArticle thunk", () => {
     api.getArticle.mockRejectedValue(new Error("Article 'Ghost' not found"));
 
     const store = createTestStore();
-    await store.dispatch(getArticle({ projectHash: "h1", title: "Ghost" }));
+    await store.dispatch(getArticle({ boardId: "h1", title: "Ghost" }));
 
     expect(store.getState().articles.error).toBe("Article 'Ghost' not found");
   });
@@ -350,7 +350,7 @@ describe("linkArticle thunk", () => {
     });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
-    await store.dispatch(linkArticle({ projectHash: "h1", articleTitle: "Charlie" }));
+    await store.dispatch(linkArticle({ boardId: "h1", articleTitle: "Charlie" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha", "Charlie"]);
   });
@@ -363,7 +363,7 @@ describe("linkArticle thunk", () => {
     });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
-    await store.dispatch(linkArticle({ projectHash: "h1", articleTitle: "Alpha" }));
+    await store.dispatch(linkArticle({ boardId: "h1", articleTitle: "Alpha" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha"]);
   });
@@ -372,7 +372,7 @@ describe("linkArticle thunk", () => {
     api.linkArticleToProject.mockRejectedValue(new Error("Article not found"));
 
     const store = createTestStore();
-    await store.dispatch(linkArticle({ projectHash: "h1", articleTitle: "Ghost" }));
+    await store.dispatch(linkArticle({ boardId: "h1", articleTitle: "Ghost" }));
 
     expect(store.getState().articles.error).toBe("Article not found");
   });
@@ -385,7 +385,7 @@ describe("unlinkArticle thunk", () => {
     api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha", "Bravo", "Charlie"] });
-    await store.dispatch(unlinkArticle({ projectHash: "h1", articleTitle: "Bravo" }));
+    await store.dispatch(unlinkArticle({ boardId: "h1", articleTitle: "Bravo" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha", "Charlie"]);
   });
@@ -394,7 +394,7 @@ describe("unlinkArticle thunk", () => {
     api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
-    await store.dispatch(unlinkArticle({ projectHash: "h1", articleTitle: "Ghost" }));
+    await store.dispatch(unlinkArticle({ boardId: "h1", articleTitle: "Ghost" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha"]);
   });
@@ -403,7 +403,7 @@ describe("unlinkArticle thunk", () => {
     api.unlinkArticleFromProject.mockRejectedValue(new Error("Unlink failed"));
 
     const store = createTestStore();
-    await store.dispatch(unlinkArticle({ projectHash: "h1", articleTitle: "Alpha" }));
+    await store.dispatch(unlinkArticle({ boardId: "h1", articleTitle: "Alpha" }));
 
     expect(store.getState().articles.error).toBe("Unlink failed");
   });

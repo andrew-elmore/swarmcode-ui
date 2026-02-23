@@ -65,7 +65,7 @@ describe("boardSlice reducers", () => {
 
 describe("fetchBoard thunk", () => {
   test("sets loading on pending, populates board and cards on fulfilled", async () => {
-    const mockBoard = { objectId: "b1", projectHash: "abc", nextId: 3 };
+    const mockBoard = { objectId: "b1", nextId: 3 };
     const mockCards = [{ cardId: "CARD-001", title: "Test" }];
     api.getOrCreateBoard.mockResolvedValue({ board: mockBoard, cards: mockCards });
 
@@ -102,7 +102,7 @@ describe("createCard thunk", () => {
     const store = createTestStore({
       cards: [{ cardId: "CARD-001", title: "Existing" }],
     });
-    await store.dispatch(createCard({ projectHash: "abc", title: "New Card", author: "qa-1" }));
+    await store.dispatch(createCard({ boardId: "abc", title: "New Card", author: "qa-1" }));
 
     const cards = store.getState().board.cards;
     expect(cards).toHaveLength(2);
@@ -113,7 +113,7 @@ describe("createCard thunk", () => {
     api.createCard.mockRejectedValue(new Error("Title is required"));
 
     const store = createTestStore();
-    await store.dispatch(createCard({ projectHash: "abc", author: "qa-1" }));
+    await store.dispatch(createCard({ boardId: "abc", author: "qa-1" }));
 
     expect(store.getState().board.error).toBe("Title is required");
   });
@@ -129,7 +129,7 @@ describe("updateCard thunk", () => {
     const store = createTestStore({
       cards: [{ cardId: "CARD-001", title: "Test", status: "scope" }],
     });
-    await store.dispatch(updateCard({ projectHash: "abc", cardId: "CARD-001", status: "done", author: "qa-1" }));
+    await store.dispatch(updateCard({ boardId: "abc", cardId: "CARD-001", status: "done", author: "qa-1" }));
 
     expect(store.getState().board.cards[0].status).toBe("done");
   });
@@ -142,7 +142,7 @@ describe("updateCard thunk", () => {
       cards: [{ cardId: "CARD-001", title: "Test", status: "scope" }],
       selectedCard: { cardId: "CARD-001", title: "Test", status: "scope" },
     });
-    await store.dispatch(updateCard({ projectHash: "abc", cardId: "CARD-001", status: "done", author: "qa-1" }));
+    await store.dispatch(updateCard({ boardId: "abc", cardId: "CARD-001", status: "done", author: "qa-1" }));
 
     expect(store.getState().board.selectedCard.status).toBe("done");
   });
@@ -151,7 +151,7 @@ describe("updateCard thunk", () => {
     api.updateCard.mockRejectedValue(new Error("No changes specified"));
 
     const store = createTestStore();
-    await store.dispatch(updateCard({ projectHash: "abc", cardId: "CARD-001", author: "qa-1" }));
+    await store.dispatch(updateCard({ boardId: "abc", cardId: "CARD-001", author: "qa-1" }));
 
     expect(store.getState().board.error).toBe("No changes specified");
   });
@@ -167,7 +167,7 @@ describe("addComment thunk", () => {
     const store = createTestStore({
       selectedCard: { cardId: "CARD-001", comments: [] },
     });
-    await store.dispatch(addComment({ projectHash: "abc", cardId: "CARD-001", message: "Test", author: "qa-1" }));
+    await store.dispatch(addComment({ boardId: "abc", cardId: "CARD-001", message: "Test", author: "qa-1" }));
 
     expect(store.getState().board.selectedCard.comments).toHaveLength(1);
     expect(store.getState().board.selectedCard.comments[0]).toEqual(newComment);
@@ -177,7 +177,7 @@ describe("addComment thunk", () => {
     api.addComment.mockRejectedValue(new Error("message is required"));
 
     const store = createTestStore();
-    await store.dispatch(addComment({ projectHash: "abc", cardId: "CARD-001", message: "", author: "qa-1" }));
+    await store.dispatch(addComment({ boardId: "abc", cardId: "CARD-001", message: "", author: "qa-1" }));
 
     expect(store.getState().board.error).toBe("message is required");
   });
@@ -191,7 +191,7 @@ describe("fetchCards thunk", () => {
     api.listCards.mockResolvedValue({ cards });
 
     const store = createTestStore({ cards: [{ cardId: "OLD" }] });
-    await store.dispatch(fetchCards({ projectHash: "abc" }));
+    await store.dispatch(fetchCards({ boardId: "abc" }));
 
     expect(store.getState().board.cards).toEqual(cards);
   });
@@ -205,7 +205,7 @@ describe("fetchCard thunk", () => {
     api.showCard.mockResolvedValue({ card });
 
     const store = createTestStore();
-    await store.dispatch(fetchCard({ projectHash: "abc", cardId: "CARD-001" }));
+    await store.dispatch(fetchCard({ boardId: "abc", cardId: "CARD-001" }));
 
     expect(store.getState().board.selectedCard).toEqual(card);
   });

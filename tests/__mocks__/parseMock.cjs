@@ -14,6 +14,11 @@ const Parse = {
   Query: jest.fn().mockImplementation(() => ({
     subscribe: jest.fn().mockResolvedValue(mockSubscription),
   })),
+  Object: {
+    extend: jest.fn().mockImplementation((className) => ({
+      createWithoutData: jest.fn((id) => ({ id, className })),
+    })),
+  },
 };
 
 module.exports = Parse;

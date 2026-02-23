@@ -19,7 +19,7 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { updateCard, addComment } from "../store/boardSlice";
 import { STATUSES, PRIORITIES, PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 
-export default function CardDetailDialog({ open, onClose, card, projectHash }) {
+export default function CardDetailDialog({ open, onClose, card, boardId }) {
   const dispatch = useAppDispatch();
   const { sprints } = useAppSelector((s) => s.board);
   const { agents } = useAppSelector((s) => s.agents);
@@ -40,7 +40,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
     setEditStatus(newStatus);
     await dispatch(
       updateCard({
-        projectHash,
+        boardId,
         cardId: card.cardId,
         status: newStatus,
         author: "human",
@@ -52,7 +52,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
     setEditPriority(newPriority);
     await dispatch(
       updateCard({
-        projectHash,
+        boardId,
         cardId: card.cardId,
         priority: newPriority,
         author: "human",
@@ -64,7 +64,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
     setEditSprint(newSprint);
     await dispatch(
       updateCard({
-        projectHash,
+        boardId,
         cardId: card.cardId,
         sprint: newSprint || null,
         author: "human",
@@ -78,7 +78,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
       return;
     }
     await dispatch(
-      updateCard({ projectHash, cardId: card.cardId, title: editTitle.trim(), author: "human" })
+      updateCard({ boardId, cardId: card.cardId, title: editTitle.trim(), author: "human" })
     );
     setEditingTitle(false);
   };
@@ -89,14 +89,14 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
       return;
     }
     await dispatch(
-      updateCard({ projectHash, cardId: card.cardId, description: editDescription.trim(), author: "human" })
+      updateCard({ boardId, cardId: card.cardId, description: editDescription.trim(), author: "human" })
     );
     setEditingDescription(false);
   };
 
   const handleAssigneeChange = async (newAssignee) => {
     await dispatch(
-      updateCard({ projectHash, cardId: card.cardId, assignee: newAssignee || null, author: "human" })
+      updateCard({ boardId, cardId: card.cardId, assignee: newAssignee || null, author: "human" })
     );
   };
 
@@ -104,7 +104,7 @@ export default function CardDetailDialog({ open, onClose, card, projectHash }) {
     if (!newComment.trim()) return;
     await dispatch(
       addComment({
-        projectHash,
+        boardId,
         cardId: card.cardId,
         message: newComment.trim(),
         author: "human",

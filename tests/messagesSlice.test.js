@@ -22,11 +22,11 @@ jest.mock("../src/services/api", () => ({
   deleteProject: jest.fn(),
 }));
 
-const TEST_PROJECT_HASH = "test-hash-abc";
+const TEST_BOARD_ID = "test-board-id-abc";
 
 function createTestStore(preloadedState) {
   const boardState = {
-    board: { projectHash: TEST_PROJECT_HASH },
+    board: { objectId: TEST_BOARD_ID },
     cards: [],
     selectedCard: null,
     loading: false,
@@ -242,8 +242,8 @@ describe("loadMoreMessages thunk", () => {
     api.getConversation.mockResolvedValueOnce({ messages: [], hasMore: false });
     await store.dispatch(loadMoreMessages("developer-1"));
 
-    // Should pass projectHash, userA, userB, and the 'before' cursor
-    expect(api.getConversation).toHaveBeenLastCalledWith(TEST_PROJECT_HASH, "owner", "developer-1", {
+    // Should pass boardId, userA, userB, and the 'before' cursor
+    expect(api.getConversation).toHaveBeenLastCalledWith(TEST_BOARD_ID, "owner", "developer-1", {
       before: "2026-02-09T09:00:00Z",
     });
   });

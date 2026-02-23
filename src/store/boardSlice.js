@@ -32,15 +32,15 @@ export const addComment = createAsyncThunk(
 
 export const fetchCards = createAsyncThunk(
   "board/fetchCards",
-  async ({ projectHash, status }) => {
-    return api.listCards(projectHash, status);
+  async ({ boardId, status }) => {
+    return api.listCards(boardId, status);
   }
 );
 
 export const fetchCard = createAsyncThunk(
   "board/fetchCard",
-  async ({ projectHash, cardId }) => {
-    return api.showCard(projectHash, cardId);
+  async ({ boardId, cardId }) => {
+    return api.showCard(boardId, cardId);
   }
 );
 
@@ -60,8 +60,8 @@ export const updateSprint = createAsyncThunk(
 
 export const deleteSprint = createAsyncThunk(
   "board/deleteSprint",
-  async ({ projectHash, sprintId }) => {
-    return api.deleteSprint(projectHash, sprintId);
+  async ({ boardId, sprintId }) => {
+    return api.deleteSprint(boardId, sprintId);
   }
 );
 

@@ -3,65 +3,65 @@ import * as api from "../services/api";
 
 export const fetchArticles = createAsyncThunk(
   "articles/fetchArticles",
-  async (projectHash) => {
-    return api.listArticles(projectHash);
+  async (boardId) => {
+    return api.listArticles(boardId);
   }
 );
 
 export const createArticle = createAsyncThunk(
   "articles/createArticle",
-  async ({ projectHash, title, text, keywords }) => {
-    return api.createArticle({ projectHash, title, text, keywords });
+  async ({ boardId, title, text, keywords }) => {
+    return api.createArticle({ boardId, title, text, keywords });
   }
 );
 
 export const updateArticle = createAsyncThunk(
   "articles/updateArticle",
-  async ({ projectHash, title, text, keywords, newTitle }) => {
-    return api.updateArticle({ projectHash, title, text, keywords, newTitle });
+  async ({ boardId, title, text, keywords, newTitle }) => {
+    return api.updateArticle({ boardId, title, text, keywords, newTitle });
   }
 );
 
 export const deleteArticle = createAsyncThunk(
   "articles/deleteArticle",
-  async ({ projectHash, title }) => {
-    await api.deleteArticle(projectHash, title);
+  async ({ boardId, title }) => {
+    await api.deleteArticle(boardId, title);
     return { title };
   }
 );
 
 export const searchArticles = createAsyncThunk(
   "articles/searchArticles",
-  async ({ projectHash, query, keywords }) => {
-    return api.searchArticles(projectHash, { query, keywords });
+  async ({ boardId, query, keywords }) => {
+    return api.searchArticles(boardId, { query, keywords });
   }
 );
 
 export const getArticle = createAsyncThunk(
   "articles/getArticle",
-  async ({ projectHash, title }) => {
-    return api.getArticle(projectHash, title);
+  async ({ boardId, title }) => {
+    return api.getArticle(boardId, title);
   }
 );
 
 export const fetchLinkedArticles = createAsyncThunk(
   "articles/fetchLinkedArticles",
-  async (projectHash) => {
-    return api.getProjectArticles(projectHash);
+  async (boardId) => {
+    return api.getProjectArticles(boardId);
   }
 );
 
 export const linkArticle = createAsyncThunk(
   "articles/linkArticle",
-  async ({ projectHash, articleTitle }) => {
-    return api.linkArticleToProject({ projectHash, articleTitle });
+  async ({ boardId, articleTitle }) => {
+    return api.linkArticleToProject({ boardId, articleTitle });
   }
 );
 
 export const unlinkArticle = createAsyncThunk(
   "articles/unlinkArticle",
-  async ({ projectHash, articleTitle }) => {
-    await api.unlinkArticleFromProject({ projectHash, articleTitle });
+  async ({ boardId, articleTitle }) => {
+    await api.unlinkArticleFromProject({ boardId, articleTitle });
     return { articleTitle };
   }
 );

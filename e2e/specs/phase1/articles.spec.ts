@@ -22,15 +22,17 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Article CRUD', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article CRUD Test');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('create article via New Article dialog', async ({ page }) => {
@@ -59,7 +61,7 @@ test.describe('Article CRUD', () => {
 
   test('click article row opens detail view', async ({ page }) => {
     // Seed an article
-    const result = await seedArticle(projectHash, 'Architecture Overview', 'This describes the system architecture.', ['arch', 'design']);
+    const result = await seedArticle(boardId, 'Architecture Overview', 'This describes the system architecture.', ['arch', 'design']);
     const articleId = result.article.objectId;
 
     await page.goto('/');
@@ -84,7 +86,7 @@ test.describe('Article CRUD', () => {
 
   test('edit article (title rename + text + keywords)', async ({ page }) => {
     // Seed an article to edit
-    const result = await seedArticle(projectHash, 'Old Title', 'Old content.', ['old']);
+    const result = await seedArticle(boardId, 'Old Title', 'Old content.', ['old']);
     const articleId = result.article.objectId;
 
     await page.goto('/');
@@ -124,7 +126,7 @@ test.describe('Article CRUD', () => {
 
   test('delete article with confirmation', async ({ page }) => {
     // Seed an article to delete
-    const result = await seedArticle(projectHash, 'To Be Deleted', 'Temporary article.', ['temp']);
+    const result = await seedArticle(boardId, 'To Be Deleted', 'Temporary article.', ['temp']);
     const articleId = result.article.objectId;
 
     await page.goto('/');
@@ -177,13 +179,15 @@ test.describe('Article CRUD', () => {
 });
 
 test.describe('Article List & Search', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article Search Test');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
     // Seed 3 articles with distinct titles and keywords
-    await seedArticles(projectHash, [
+    await seedArticles(boardId, [
       { title: 'Bravo Guide', text: 'Bravo content.', keywords: ['guide', 'bravo'] },
       { title: 'Alpha Guide', text: 'Alpha content.', keywords: ['guide', 'alpha'] },
       { title: 'Charlie Notes', text: 'Charlie content.', keywords: ['notes', 'charlie'] },
@@ -191,7 +195,7 @@ test.describe('Article List & Search', () => {
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('list view shows all articles alphabetically', async ({ page }) => {
@@ -300,12 +304,14 @@ test.describe('Article List & Search', () => {
 });
 
 test.describe('Inline [[references]]', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article References Test');
-    projectHash = project.projectHash;
-    await seedArticles(projectHash, [
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedArticles(boardId, [
       { title: 'Article A', text: 'See [[Article B]] for details.', keywords: ['ref-test'] },
       { title: 'Article B', text: 'This is Article B content.', keywords: ['ref-test'] },
       { title: 'Has Missing Ref', text: 'See [[Nonexistent]] article.', keywords: ['ref-test'] },
@@ -315,7 +321,7 @@ test.describe('Inline [[references]]', () => {
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('clicking a [[reference]] navigates to referenced article', async ({ page }) => {
@@ -387,15 +393,17 @@ test.describe('Inline [[references]]', () => {
 });
 
 test.describe('Articles Tab Navigation', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article Tab Nav Test');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('articles tab is visible and clickable', async ({ page }) => {
@@ -413,7 +421,7 @@ test.describe('Articles Tab Navigation', () => {
 
   test('tab shows article content after switching tabs', async ({ page }) => {
     // Seed articles so there's content to verify
-    await seedArticles(projectHash, [
+    await seedArticles(boardId, [
       { title: 'Persistent Article', text: 'Still here.', keywords: ['nav'] },
     ]);
 
@@ -447,18 +455,20 @@ test.describe('Articles — mobile', () => {
     isMobile: true,
   });
 
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article Mobile Test');
-    projectHash = project.projectHash;
-    await seedArticles(projectHash, [
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedArticles(boardId, [
       { title: 'Mobile Article', text: 'Mobile content.', keywords: ['mobile', 'test'] },
     ]);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('mobile article list hides Keywords column', async ({ page }) => {

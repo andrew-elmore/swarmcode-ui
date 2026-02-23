@@ -14,15 +14,17 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Stream View — UI and Controls', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream UI Test');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test.beforeEach(async ({ page }) => {
@@ -148,17 +150,19 @@ test.describe('Stream View — UI and Controls', () => {
 });
 
 test.describe('Stream View — Message Queue', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream Queue Test');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test.afterEach(async () => {
@@ -177,7 +181,7 @@ test.describe('Stream View — Message Queue', () => {
       window.speechSynthesis.getVoices = () => [];
     });
 
-    simulator = new AgentSimulator(projectHash, 'developer-1', {
+    simulator = new AgentSimulator(boardId, 'developer-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -217,7 +221,7 @@ test.describe('Stream View — Message Queue', () => {
       window.speechSynthesis.getVoices = () => [];
     });
 
-    simulator = new AgentSimulator(projectHash, 'qa-1', {
+    simulator = new AgentSimulator(boardId, 'qa-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -260,7 +264,7 @@ test.describe('Stream View — Message Queue', () => {
       window.speechSynthesis.getVoices = () => [];
     });
 
-    simulator = new AgentSimulator(projectHash, 'senior-dev-1', {
+    simulator = new AgentSimulator(boardId, 'senior-dev-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -301,15 +305,17 @@ test.describe('Stream View — mobile', () => {
     isMobile: true,
   });
 
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream Mobile Test');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test.beforeEach(async ({ page }) => {

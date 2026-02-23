@@ -13,17 +13,19 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('LiveQuery Real-Time Updates', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('LiveQuery Test');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test.afterEach(async () => {
@@ -41,7 +43,7 @@ test.describe('LiveQuery Real-Time Updates', () => {
     const initialCount = await page.locator(MESSAGE_BUBBLE).count();
 
     // Start simulator that will send a message after a delay
-    simulator = new AgentSimulator(projectHash, 'developer-1', {
+    simulator = new AgentSimulator(boardId, 'developer-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -65,7 +67,7 @@ test.describe('LiveQuery Real-Time Updates', () => {
 
   test('command status transitions appear in real-time via LiveQuery', async ({ page }) => {
     // Start simulator with heartbeat + command polling
-    simulator = new AgentSimulator(projectHash, 'developer-1', {
+    simulator = new AgentSimulator(boardId, 'developer-1', {
       heartbeatInterval: 2000,
       agentStatus: { 'developer-1': 'running' },
       pollInterval: 5000,
@@ -106,7 +108,7 @@ test.describe('LiveQuery Real-Time Updates', () => {
     });
 
     // Start simulator with heartbeat
-    simulator = new AgentSimulator(projectHash, 'developer-1', {
+    simulator = new AgentSimulator(boardId, 'developer-1', {
       heartbeatInterval: 2000,
       agentStatus: { 'developer-1': 'running' },
       pollInterval: 5000,

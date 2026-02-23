@@ -81,7 +81,7 @@ function createTestStore(overrides = {}) {
       tts: DEFAULT_TTS_STATE,
       agents: overrides.agents || { agents: DEFAULT_AGENTS, loading: false, error: null },
       board: overrides.board || {
-        board: { projectHash: "test-hash-055" },
+        board: { objectId: "test-hash-055" },
         cards: [],
         selectedCard: null,
         loading: false,

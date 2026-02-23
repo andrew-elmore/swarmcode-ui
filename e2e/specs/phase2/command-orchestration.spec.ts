@@ -9,17 +9,19 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Command Orchestration', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Command Test');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test.afterEach(async () => {
@@ -28,7 +30,7 @@ test.describe('Command Orchestration', () => {
 
   test('agent heartbeat pings show orchestrator as online', async ({ page }) => {
     // Start simulator with heartbeat pings every 2 seconds
-    simulator = new AgentSimulator(projectHash, 'developer-1', {
+    simulator = new AgentSimulator(boardId, 'developer-1', {
       heartbeatInterval: 2000,
       agentStatus: { 'developer-1': 'running', 'qa-1': 'idle' },
       pollInterval: 5000,
@@ -55,7 +57,7 @@ test.describe('Command Orchestration', () => {
 
   test('user clicks Stop All, simulator receives and fulfills command', async ({ page }) => {
     // Start simulator with command polling
-    simulator = new AgentSimulator(projectHash, 'developer-1', {
+    simulator = new AgentSimulator(boardId, 'developer-1', {
       heartbeatInterval: 2000,
       agentStatus: { 'developer-1': 'running' },
       pollInterval: 5000,
@@ -92,7 +94,7 @@ test.describe('Command Orchestration', () => {
 
   test('Start All and Restart All commands work end-to-end', async ({ page }) => {
     // Start simulator with command polling
-    simulator = new AgentSimulator(projectHash, 'developer-1', {
+    simulator = new AgentSimulator(boardId, 'developer-1', {
       heartbeatInterval: 2000,
       agentStatus: { 'developer-1': 'running' },
       pollInterval: 5000,

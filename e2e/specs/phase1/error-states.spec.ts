@@ -17,16 +17,18 @@ const ERROR_RESPONSE = {
 };
 
 test.describe('Error/Failure States', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Error States Test');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('board shows error alert on fetch failure', async ({ page }) => {

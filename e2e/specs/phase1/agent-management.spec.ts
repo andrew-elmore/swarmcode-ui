@@ -9,18 +9,20 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Agent Management', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Agent Mgmt Test');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
     // Clean up any test-created global agents
     try { await deleteGlobalAgent('e2e-test-agent'); } catch { /* may not exist */ }
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('open Agents tab and see assigned agents', async ({ page }) => {

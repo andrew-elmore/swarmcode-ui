@@ -14,16 +14,18 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Navigation', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Nav Test Project');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('all 7 tabs render without errors', async ({ page }) => {
@@ -52,7 +54,7 @@ test.describe('Navigation', () => {
 
   test('tab switching preserves message state', async ({ page }) => {
     // Seed a message so there's content to verify
-    await seedMessages(projectHash, 'owner', 'developer-1', 1);
+    await seedMessages(boardId, 'owner', 'developer-1', 1);
 
     await page.goto('/');
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
@@ -85,16 +87,18 @@ test.describe('Navigation — mobile', () => {
     isMobile: true,
   });
 
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Nav Mobile Test');
-    projectHash = project.projectHash;
-    await seedDefaultAgents(projectHash);
+    boardId = project.boardId;
+    projectPath = project.path;
+    await seedDefaultAgents(boardId);
   });
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('mobile tabs show icon-only and are navigable', async ({ page }) => {

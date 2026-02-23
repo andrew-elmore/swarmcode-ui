@@ -9,10 +9,11 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Project CRUD', () => {
-  let projectHash: string;
+  let boardId: string;
+  let projectPath: string;
 
   test.afterAll(async () => {
-    if (projectHash) await teardownProject(projectHash);
+    if (projectPath) await teardownProject(projectPath);
   });
 
   test('add a new project via Add Project dialog', async ({ page }) => {
@@ -38,7 +39,8 @@ test.describe('Project CRUD', () => {
   test('project appears in project selector dropdown', async ({ page }) => {
     // Seed a project via API for a clean state
     const project = await createTestProject('Selector Test Project');
-    projectHash = project.projectHash;
+    boardId = project.boardId;
+    projectPath = project.path;
 
     await page.goto('/');
 
@@ -77,8 +79,8 @@ test.describe('Project CRUD', () => {
     await expect(page.getByText('Board')).toBeVisible();
 
     // Cleanup both projects
-    await teardownProject(project1.projectHash);
-    await teardownProject(project2.projectHash);
+    await teardownProject(project1.path);
+    await teardownProject(project2.path);
   });
 
   test('delete a project with confirmation dialog', async ({ page }) => {
@@ -156,7 +158,7 @@ test.describe('Project selector edge cases', () => {
     await expect(page.getByText('Board')).toBeVisible({ timeout: 5000 });
 
     // Cleanup
-    await teardownProject(project.projectHash);
+    await teardownProject(project.path);
   });
 
   test('selecting same project twice is idempotent', async ({ page }) => {
@@ -186,6 +188,6 @@ test.describe('Project selector edge cases', () => {
     await expect(page.getByText('Board')).toBeVisible({ timeout: 5000 });
 
     // Cleanup
-    await teardownProject(project.projectHash);
+    await teardownProject(project.path);
   });
 });

@@ -130,7 +130,7 @@ function createTestStore(overrides = {}) {
       tts: { ...DEFAULT_TTS_STATE, ...(overrides.tts || {}) },
       agents: overrides.agents || { agents: TEST_AGENTS, loading: false, error: null },
       board: overrides.board || {
-        board: { projectHash: "test-hash-123" },
+        board: { projectHash: "test-hash-123", objectId: "board-096-1" },
         cards: [],
         sprints: [],
         sprintFilter: null,

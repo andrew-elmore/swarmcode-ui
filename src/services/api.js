@@ -18,13 +18,13 @@ async function callFunction(name, params = {}) {
 }
 
 
-export async function sendMessage({ projectHash, from, to, message }) {
-  return callFunction("sendMessage", { projectHash, from, to, message });
+export async function sendMessage({ boardId, from, to, message }) {
+  return callFunction("sendMessage", { boardId, from, to, message });
 }
 
 
-export async function getConversation(projectHash, userA, userB, { limit, before } = {}) {
-  const params = { projectHash, user1: userA, user2: userB };
+export async function getConversation(boardId, userA, userB, { limit, before } = {}) {
+  const params = { boardId, user1: userA, user2: userB };
   if (limit) params.limit = limit;
   if (before) params.before = before;
   return callFunction("getConversation", params);
@@ -85,14 +85,14 @@ export async function getOrCreateBoard(projectPath) {
   return callFunction("getOrCreateBoard", { projectPath });
 }
 
-export async function createCard({ projectHash, title, description, status, assignee, priority, sprint, author }) {
-  const params = { projectHash, title, description, status, assignee, priority, author };
+export async function createCard({ boardId, title, description, status, assignee, priority, sprint, author }) {
+  const params = { boardId, title, description, status, assignee, priority, author };
   if (sprint !== undefined) params.sprint = sprint;
   return callFunction("createCard", params);
 }
 
-export async function updateCard({ projectHash, cardId, status, assignee, priority, title, description, sprint, author }) {
-  const params = { projectHash, cardId, author };
+export async function updateCard({ boardId, cardId, status, assignee, priority, title, description, sprint, author }) {
+  const params = { boardId, cardId, author };
   if (status !== undefined) params.status = status;
   if (assignee !== undefined) params.assignee = assignee;
   if (priority !== undefined) params.priority = priority;
@@ -102,19 +102,19 @@ export async function updateCard({ projectHash, cardId, status, assignee, priori
   return callFunction("updateCard", params);
 }
 
-export async function addComment({ projectHash, cardId, message, author }) {
-  return callFunction("addComment", { projectHash, cardId, message, author });
+export async function addComment({ boardId, cardId, message, author }) {
+  return callFunction("addComment", { boardId, cardId, message, author });
 }
 
-export async function listCards(projectHash, status, sprint) {
-  const params = { projectHash };
+export async function listCards(boardId, status, sprint) {
+  const params = { boardId };
   if (status) params.status = status;
   if (sprint) params.sprint = sprint;
   return callFunction("listCards", params);
 }
 
-export async function showCard(projectHash, cardId) {
-  return callFunction("showCard", { projectHash, cardId });
+export async function showCard(boardId, cardId) {
+  return callFunction("showCard", { boardId, cardId });
 }
 
 
@@ -132,8 +132,8 @@ export async function deleteProject(path) {
 
 
 // Fetch agents assigned to a specific project (via ProjectAgent join table)
-export async function getAgents(projectHash) {
-  return callFunction("getAgents", { projectHash });
+export async function getAgents(boardId) {
+  return callFunction("getAgents", { boardId });
 }
 
 // Fetch ALL global agents regardless of project
@@ -141,7 +141,7 @@ export async function getAllAgents() {
   return callFunction("getAllAgents", {});
 }
 
-// Create a global agent (no projectHash needed)
+// Create a global agent (no boardId needed)
 export async function createAgent({ name, description, openingInstructions, permanentMemory, permissions, isActive, sortOrder }) {
   return callFunction("createAgent", {
     name,
@@ -154,7 +154,7 @@ export async function createAgent({ name, description, openingInstructions, perm
   });
 }
 
-// Update a global agent (no projectHash needed)
+// Update a global agent (no boardId needed)
 export async function updateAgent({ name, ...updates }) {
   const params = { name };
   for (const key of ["description", "openingInstructions", "permanentMemory", "permissions", "isActive", "sortOrder", "voice"]) {
@@ -169,112 +169,113 @@ export async function deleteAgent(name) {
 }
 
 // Assign a global agent to a project
-export async function assignAgentToProject({ projectHash, agentName }) {
-  return callFunction("assignAgentToProject", { projectHash, agentName });
+export async function assignAgentToProject({ boardId, agentName }) {
+  return callFunction("assignAgentToProject", { boardId, agentName });
 }
 
 // Unassign an agent from a project
-export async function unassignAgentFromProject({ projectHash, agentName }) {
-  return callFunction("unassignAgentFromProject", { projectHash, agentName });
+export async function unassignAgentFromProject({ boardId, agentName }) {
+  return callFunction("unassignAgentFromProject", { boardId, agentName });
 }
 
 // Update per-project agent overrides (isActive, sortOrder)
-export async function updateProjectAgent({ projectHash, agentName, isActive, sortOrder }) {
-  const params = { projectHash, agentName };
+export async function updateProjectAgent({ boardId, agentName, isActive, sortOrder }) {
+  const params = { boardId, agentName };
   if (isActive !== undefined) params.isActive = isActive;
   if (sortOrder !== undefined) params.sortOrder = sortOrder;
   return callFunction("updateProjectAgent", params);
 }
 
 
-export async function createSprint({ projectHash, name, order }) {
-  return callFunction("createSprint", { projectHash, name, order });
+export async function createSprint({ boardId, name, order }) {
+  return callFunction("createSprint", { boardId, name, order });
 }
 
-export async function getSprints(projectHash) {
-  return callFunction("getSprints", { projectHash });
+export async function getSprints(boardId) {
+  return callFunction("getSprints", { boardId });
 }
 
-export async function updateSprint({ projectHash, sprintId, name, order }) {
-  const params = { projectHash, sprintId };
+export async function updateSprint({ boardId, sprintId, name, order }) {
+  const params = { boardId, sprintId };
   if (name !== undefined) params.name = name;
   if (order !== undefined) params.order = order;
   return callFunction("updateSprint", params);
 }
 
-export async function deleteSprint(projectHash, sprintId) {
-  return callFunction("deleteSprint", { projectHash, sprintId });
+export async function deleteSprint(boardId, sprintId) {
+  return callFunction("deleteSprint", { boardId, sprintId });
 }
 
 
-export async function createArticle({ projectHash, title, text, keywords }) {
-  return callFunction("createArticle", { projectHash, title, text, keywords });
+export async function createArticle({ boardId, title, text, keywords }) {
+  return callFunction("createArticle", { boardId, title, text, keywords });
 }
 
-export async function getArticle(projectHash, title) {
-  return callFunction("getArticle", { projectHash, title });
+export async function getArticle(boardId, title) {
+  return callFunction("getArticle", { boardId, title });
 }
 
-export async function updateArticle({ projectHash, title, text, keywords, newTitle }) {
-  const params = { projectHash, title };
+export async function updateArticle({ boardId, title, text, keywords, newTitle }) {
+  const params = { boardId, title };
   if (text !== undefined) params.text = text;
   if (keywords !== undefined) params.keywords = keywords;
   if (newTitle !== undefined) params.newTitle = newTitle;
   return callFunction("updateArticle", params);
 }
 
-export async function deleteArticle(projectHash, title) {
-  return callFunction("deleteArticle", { projectHash, title });
+export async function deleteArticle(boardId, title) {
+  return callFunction("deleteArticle", { boardId, title });
 }
 
-export async function listArticles(projectHash) {
-  return callFunction("listArticles", { projectHash });
+export async function listArticles(boardId) {
+  return callFunction("listArticles", { boardId });
 }
 
-export async function searchArticles(projectHash, { query, keywords } = {}) {
-  const params = { projectHash };
+export async function searchArticles(boardId, { query, keywords } = {}) {
+  const params = { boardId };
   if (query) params.query = query;
   if (keywords) params.keywords = keywords;
   return callFunction("searchArticles", params);
 }
 
-export async function linkArticleToProject({ projectHash, articleTitle }) {
-  return callFunction("linkArticleToProject", { projectHash, articleTitle });
+export async function linkArticleToProject({ boardId, articleTitle }) {
+  return callFunction("linkArticleToProject", { boardId, articleTitle });
 }
 
-export async function unlinkArticleFromProject({ projectHash, articleTitle }) {
-  return callFunction("unlinkArticleFromProject", { projectHash, articleTitle });
+export async function unlinkArticleFromProject({ boardId, articleTitle }) {
+  return callFunction("unlinkArticleFromProject", { boardId, articleTitle });
 }
 
-export async function getProjectArticles(projectHash) {
-  return callFunction("getProjectArticles", { projectHash });
-}
-
-
-export async function createCommand(projectHash, action) {
-  return callFunction("createCommand", { projectHash, action });
-}
-
-export async function listRecentCommands(projectHash) {
-  return callFunction("listRecentCommands", { projectHash });
+export async function getProjectArticles(boardId) {
+  return callFunction("getProjectArticles", { boardId });
 }
 
 
-export async function getLatestPing(projectHash) {
-  return callFunction("getLatestPing", { projectHash });
+export async function createCommand(boardId, action) {
+  return callFunction("createCommand", { boardId, action });
+}
+
+export async function listRecentCommands(boardId) {
+  return callFunction("listRecentCommands", { boardId });
+}
+
+
+export async function getLatestPing(boardId) {
+  return callFunction("getLatestPing", { boardId });
 }
 
 
 let _commandSubscription = null;
 
-export async function subscribeToCommands(projectHash, onCommand) {
+export async function subscribeToCommands(boardId, onCommand) {
   if (_commandSubscription) {
     _commandSubscription.unsubscribe();
     _commandSubscription = null;
   }
 
   const query = new Parse.Query("Command");
-  query.equalTo("projectHash", projectHash);
+  const Board = Parse.Object.extend("Board");
+  query.equalTo("board", Board.createWithoutData(boardId));
   const subscription = await query.subscribe();
   _commandSubscription = subscription;
 
@@ -330,21 +331,22 @@ export async function getLiveQueryStatus() {
 }
 
 
-export async function subscribeToPings(projectHash, onPing) {
+export async function subscribeToPings(boardId, onPing) {
   if (_pingSubscription) {
     _pingSubscription.unsubscribe();
     _pingSubscription = null;
   }
 
   const query = new Parse.Query("Ping");
-  query.equalTo("projectHash", projectHash);
+  const Board = Parse.Object.extend("Board");
+  query.equalTo("board", Board.createWithoutData(boardId));
   const subscription = await query.subscribe();
   _pingSubscription = subscription;
 
   const handler = (object) => {
     onPing({
       objectId: object.id,
-      projectHash: object.get("projectHash"),
+      boardId: object.get("board")?.id,
       agentStatus: object.get("agentStatus"),
       updatedAt: object.get("updatedAt"),
     });

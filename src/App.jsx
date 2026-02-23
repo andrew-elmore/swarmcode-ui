@@ -40,7 +40,7 @@ export default function App() {
   const activeProject = useAppSelector((s) => s.projects.activeProject);
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
-  const projectHash = useAppSelector((s) => s.board.board?.projectHash);
+  const boardId = useAppSelector((s) => s.board.board?.objectId);
   const liveQueryRefreshFlag = useAppSelector((s) => s.messages.liveQueryRefreshFlag);
   const tts = useAppSelector((s) => s.tts);
   const ttsRef = useRef(tts);
@@ -60,7 +60,7 @@ export default function App() {
 
   const isMessagesTab = tab === 0;
 
-  // Load board on startup so projectHash is available for all tabs (including Messages)
+  // Load board on startup so boardId is available for all tabs (including Messages)
   useEffect(() => {
     if (activeProject) {
       dispatch(fetchBoard(activeProject.path));
@@ -101,15 +101,15 @@ export default function App() {
 
   // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {
-    if (!projectHash) return;
+    if (!boardId) return;
     let unsubCmd = null;
     let unsubPing = null;
 
-    subscribeToCommands(projectHash, (event) => {
+    subscribeToCommands(boardId, (event) => {
       dispatch(updateCommand(event.command));
     }).then((unsub) => { unsubCmd = unsub; });
 
-    subscribeToPings(projectHash, (ping) => {
+    subscribeToPings(boardId, (ping) => {
       dispatch(setPing(ping));
     }).then((unsub) => { unsubPing = unsub; });
 
@@ -117,7 +117,7 @@ export default function App() {
       if (unsubCmd) unsubCmd();
       if (unsubPing) unsubPing();
     };
-  }, [dispatch, projectHash, liveQueryRefreshFlag]);
+  }, [dispatch, boardId, liveQueryRefreshFlag]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>

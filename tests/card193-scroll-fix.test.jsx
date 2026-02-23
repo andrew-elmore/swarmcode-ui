@@ -82,7 +82,7 @@ const theme = createTheme();
 // --- Default State Slices ---
 
 const DEFAULT_BOARD = {
-  board: { projectHash: "test-hash-193" },
+  board: { objectId: "test-hash-193" },
   cards: [],
   sprints: [],
   sprintFilter: null,

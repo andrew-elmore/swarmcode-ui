@@ -77,7 +77,7 @@ jest.mock("../src/services/api", () => ({
 const theme = createTheme();
 
 const DEFAULT_BOARD = {
-  board: { projectHash: "test-hash" },
+  board: { objectId: "test-hash" },
   cards: [],
   sprints: [],
   sprintFilter: null,
@@ -163,7 +163,7 @@ function renderWithProviders(ui, storeOverrides = {}) {
 
 beforeEach(() => {
   // Safe defaults — all API calls resolve to prevent unhandled rejections
-  api.getOrCreateBoard.mockResolvedValue({ board: { projectHash: "test-hash" }, cards: [], sprints: [] });
+  api.getOrCreateBoard.mockResolvedValue({ board: { objectId: "test-hash" }, cards: [], sprints: [] });
   api.listCards.mockResolvedValue({ cards: [] });
   api.getAgents.mockResolvedValue({ agents: [] });
   api.getAllAgents.mockResolvedValue({ agents: [] });

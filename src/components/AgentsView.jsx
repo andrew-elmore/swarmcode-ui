@@ -59,9 +59,9 @@ export default function AgentsView() {
   const [deleting, setDeleting] = useState(false);
   const [selectedProjectPath, setSelectedProjectPath] = useState(activeProject?.path || "");
 
-  const projectHash = board?.projectHash;
+  const boardId = board?.objectId;
 
-  // Ensure board is loaded so we have projectHash
+  // Ensure board is loaded so we have boardId
   useEffect(() => {
     if (activeProject && !board) {
       dispatch(fetchBoard(activeProject.path));
@@ -76,7 +76,7 @@ export default function AgentsView() {
   }, [dispatch, projects.length]);
 
   // When dropdown selection changes, fetch the board for that project
-  // so projectHash updates and triggers agent fetch
+  // so boardId updates and triggers agent fetch
   useEffect(() => {
     if (selectedProjectPath && selectedProjectPath !== activeProject?.path) {
       dispatch(fetchBoard(selectedProjectPath));
@@ -90,10 +90,10 @@ export default function AgentsView() {
 
   // Load project-scoped agents when project selected
   useEffect(() => {
-    if (projectHash) {
-      dispatch(fetchAgents(projectHash));
+    if (boardId) {
+      dispatch(fetchAgents(boardId));
     }
-  }, [dispatch, projectHash]);
+  }, [dispatch, boardId]);
 
   // Compute assigned vs unassigned agents
   const assignedNames = useMemo(() => new Set(agents.map((a) => a.name)), [agents]);
@@ -121,26 +121,26 @@ export default function AgentsView() {
     // Refresh global list after create/update
     dispatch(fetchAllAgents());
     // Refresh project list too (in case an assigned agent was edited)
-    if (projectHash) dispatch(fetchAgents(projectHash));
+    if (boardId) dispatch(fetchAgents(boardId));
   };
 
   const handleToggleActive = (agent) => {
-    if (!projectHash) return;
+    if (!boardId) return;
     dispatch(updateProjectAgent({
-      projectHash,
+      boardId,
       agentName: agent.name,
       isActive: !agent.isActive,
     }));
   };
 
   const handleAssign = (agentName) => {
-    if (!projectHash) return;
-    dispatch(assignAgent({ projectHash, agentName }));
+    if (!boardId) return;
+    dispatch(assignAgent({ boardId, agentName }));
   };
 
   const handleUnassign = (agentName) => {
-    if (!projectHash) return;
-    dispatch(unassignAgent({ projectHash, agentName }));
+    if (!boardId) return;
+    dispatch(unassignAgent({ boardId, agentName }));
   };
 
   const handleDeleteClick = (agent) => {
@@ -202,7 +202,7 @@ export default function AgentsView() {
       )}
 
       {/* Assigned agents section */}
-      {projectHash && (
+      {boardId && (
         <>
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
             Assigned to this project ({agents.length})
@@ -326,7 +326,7 @@ export default function AgentsView() {
       )}
 
       {/* No project selected — show all global agents */}
-      {!projectHash && (
+      {!boardId && (
         <>
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
             All Agents ({allAgents.length})
