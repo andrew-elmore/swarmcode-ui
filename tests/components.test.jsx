@@ -37,6 +37,8 @@ jest.mock("../src/services/api", () => ({
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn(),
+  subscribeToCommands: jest.fn(() => Promise.resolve(jest.fn())),
+  subscribeToPings: jest.fn(() => Promise.resolve(jest.fn())),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),

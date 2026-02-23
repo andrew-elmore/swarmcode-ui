@@ -50,6 +50,8 @@ jest.mock("../src/services/api", () => ({
     capturedOnMessage = onMessage;
     return Promise.resolve(() => {});
   }),
+  subscribeToCommands: jest.fn(() => Promise.resolve(jest.fn())),
+  subscribeToPings: jest.fn(() => Promise.resolve(jest.fn())),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
