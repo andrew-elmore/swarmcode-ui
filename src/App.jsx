@@ -18,7 +18,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
 import { fetchBoard } from "./store/boardSlice";
-import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
+import { appendMessage, setMobileDrawerOpen, resetConversations } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
 import { updateCommand, setPing } from "./store/commandsSlice";
 import { subscribeToMessages, subscribeToCommands, subscribeToPings } from "./services/api";
@@ -67,10 +67,21 @@ export default function App() {
     }
   }, [dispatch, activeProject]);
 
+  // Clear stale conversations when switching projects
+  const prevProjectHashRef = useRef(projectHash);
+  useEffect(() => {
+    if (prevProjectHashRef.current && prevProjectHashRef.current !== projectHash) {
+      dispatch(resetConversations());
+    }
+    prevProjectHashRef.current = projectHash;
+  }, [dispatch, projectHash]);
+
   // LiveQuery subscription lives in App so it stays active across all tabs.
   // Re-subscribes when liveQueryRefreshFlag flips (triggered by chat refresh button).
   useEffect(() => {
     let unsubscribe = null;
+
+    if (!projectHash) return;
 
     subscribeToMessages((msg) => {
       // Resolve Pointer objectIds to agent names via agentIdMap.
@@ -90,14 +101,14 @@ export default function App() {
       if (resolvedMsg.from !== "owner" && currentTts.enabled) {
         dispatch(enqueueMessage({ from: resolvedMsg.from, message: resolvedMsg.message }));
       }
-    }).then((unsub) => {
+    }, projectHash).then((unsub) => {
       unsubscribe = unsub;
     });
 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [dispatch, liveQueryRefreshFlag]);
+  }, [dispatch, projectHash, liveQueryRefreshFlag]);
 
   // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {
