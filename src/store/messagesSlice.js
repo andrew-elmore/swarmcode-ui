@@ -130,6 +130,11 @@ const messagesSlice = createSlice({
     refreshLiveQuery(state) {
       state.liveQueryRefreshFlag = !state.liveQueryRefreshFlag;
     },
+    resetConversations(state) {
+      state.conversations = { all: emptyConvo(false) };
+      state.unreadCounts = { all: 0 };
+      state.selectedAgent = null;
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(loadConversation.pending, (state) => {
@@ -202,5 +207,5 @@ const messagesSlice = createSlice({
   },
 });
 
-export const { selectAgent, appendMessage, clearError, setMobileDrawerOpen, refreshLiveQuery } = messagesSlice.actions;
+export const { selectAgent, appendMessage, clearError, setMobileDrawerOpen, refreshLiveQuery, resetConversations } = messagesSlice.actions;
 export default messagesSlice.reducer;

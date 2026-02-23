@@ -18,7 +18,7 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
 import { fetchBoard } from "./store/boardSlice";
-import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
+import { appendMessage, setMobileDrawerOpen, resetConversations } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
 import { updateCommand, setPing } from "./store/commandsSlice";
 import { subscribeToMessages, subscribeToCommands, subscribeToPings } from "./services/api";
@@ -63,16 +63,19 @@ export default function App() {
   // Load board on startup so boardId is available for all tabs (including Messages)
   useEffect(() => {
     if (activeProject) {
+      dispatch(resetConversations());
       dispatch(fetchBoard(activeProject.path));
     }
   }, [dispatch, activeProject]);
 
   // LiveQuery subscription lives in App so it stays active across all tabs.
-  // Re-subscribes when liveQueryRefreshFlag flips (triggered by chat refresh button).
+  // Re-subscribes when boardId or liveQueryRefreshFlag changes.
   useEffect(() => {
+    if (!boardId) return;
+
     let unsubscribe = null;
 
-    subscribeToMessages((msg) => {
+    subscribeToMessages(boardId, (msg) => {
       // Resolve Pointer objectIds to agent names via agentIdMap.
       const idMap = agentIdMapRef.current;
       const resolvedFrom = (msg.fromId && idMap[msg.fromId]) || msg.from;
@@ -97,7 +100,7 @@ export default function App() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [dispatch, liveQueryRefreshFlag]);
+  }, [dispatch, boardId, liveQueryRefreshFlag]);
 
   // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {

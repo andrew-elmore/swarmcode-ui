@@ -38,14 +38,18 @@ let _messageSubscription = null;
  * Calls onMessage(msg) for each new message created.
  * Returns an unsubscribe function.
  */
-export async function subscribeToMessages(onMessage) {
+export async function subscribeToMessages(boardId, onMessage) {
+  if (!boardId) return () => {};
+
   // Unsubscribe previous if any
   if (_messageSubscription) {
     _messageSubscription.unsubscribe();
     _messageSubscription = null;
   }
 
+  const Board = Parse.Object.extend("Board");
   const query = new Parse.Query("Message");
+  query.equalTo("board", Board.createWithoutData(boardId));
   const subscription = await query.subscribe();
   _messageSubscription = subscription;
 
