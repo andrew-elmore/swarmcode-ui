@@ -83,7 +83,7 @@ describe("api.getConversation", () => {
 
 describe("api.subscribeToMessages", () => {
   test("returns an unsubscribe function", async () => {
-    const unsubscribe = await subscribeToMessages(jest.fn());
+    const unsubscribe = await subscribeToMessages("test-board-id", jest.fn());
     expect(typeof unsubscribe).toBe("function");
   });
 
@@ -96,11 +96,12 @@ describe("api.subscribeToMessages", () => {
       unsubscribe: jest.fn(),
     };
     Parse.Query.mockImplementationOnce(() => ({
+      equalTo: jest.fn(),
       subscribe: jest.fn().mockResolvedValue(mockSubscription),
     }));
 
     const onMessage = jest.fn();
-    await subscribeToMessages(onMessage);
+    await subscribeToMessages("test-board-id", onMessage);
 
     const mockObject = {
       id: "msg-001",
@@ -141,14 +142,16 @@ describe("api.subscribeToMessages", () => {
 
     Parse.Query
       .mockImplementationOnce(() => ({
+        equalTo: jest.fn(),
         subscribe: jest.fn().mockResolvedValue(mockSub1),
       }))
       .mockImplementationOnce(() => ({
+        equalTo: jest.fn(),
         subscribe: jest.fn().mockResolvedValue(mockSub2),
       }));
 
-    await subscribeToMessages(jest.fn());
-    await subscribeToMessages(jest.fn());
+    await subscribeToMessages("test-board-id", jest.fn());
+    await subscribeToMessages("test-board-id", jest.fn());
 
     expect(mockSub1.unsubscribe).toHaveBeenCalled();
   });

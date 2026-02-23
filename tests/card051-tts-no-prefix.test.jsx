@@ -46,10 +46,12 @@ jest.mock("../src/services/api", () => ({
   showCard: jest.fn(),
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
-  subscribeToMessages: jest.fn((cb) => {
+  subscribeToMessages: jest.fn((boardId, cb) => {
     capturedOnMessage = cb;
     return Promise.resolve(jest.fn());
   }),
+  subscribeToCommands: jest.fn().mockResolvedValue(jest.fn()),
+  subscribeToPings: jest.fn().mockResolvedValue(jest.fn()),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -100,7 +102,7 @@ function createTestStore(ttsOverrides = {}) {
         loading: false,
         error: null,
       },
-      board: { board: null, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
+      board: { board: { objectId: "test-board-id" }, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
       projects: { projects: [], activeProject: null, loading: false, error: null },
     },
   });

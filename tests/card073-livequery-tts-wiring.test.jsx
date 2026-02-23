@@ -46,10 +46,12 @@ jest.mock("../src/services/api", () => ({
   showCard: jest.fn(),
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
-  subscribeToMessages: jest.fn((onMessage) => {
+  subscribeToMessages: jest.fn((boardId, onMessage) => {
     capturedOnMessage = onMessage;
     return Promise.resolve(() => {});
   }),
+  subscribeToCommands: jest.fn().mockResolvedValue(() => {}),
+  subscribeToPings: jest.fn().mockResolvedValue(() => {}),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -110,7 +112,7 @@ function createTestStore(overrides = {}) {
         error: null,
       },
       board: {
-        board: null,
+        board: { objectId: "test-board-id" },
         cards: [],
         loading: false,
         error: null,

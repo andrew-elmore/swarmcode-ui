@@ -398,7 +398,7 @@ describe("api.js: LiveQuery subscriptions use Board Pointer", () => {
     expect(capturedQuery.value.id).toBe(TEST_BOARD_ID);
   });
 
-  test("subscribeToMessages does NOT filter by board (global subscription)", async () => {
+  test("subscribeToMessages filters LiveQuery by board (board-scoped since CARD-214)", async () => {
     const mockSub = { on: jest.fn(), unsubscribe: jest.fn() };
     const equalToSpy = jest.fn();
 
@@ -407,10 +407,10 @@ describe("api.js: LiveQuery subscriptions use Board Pointer", () => {
       this.subscribe = jest.fn().mockResolvedValue(mockSub);
     });
 
-    await api.subscribeToMessages(jest.fn());
+    await api.subscribeToMessages(TEST_BOARD_ID, jest.fn());
 
-    // Messages LiveQuery is intentionally global — no board filter
-    expect(equalToSpy).not.toHaveBeenCalled();
+    // Messages LiveQuery is board-scoped since CARD-214 — equalTo("board", ...) must be called
+    expect(equalToSpy).toHaveBeenCalledWith("board", expect.anything());
   });
 });
 

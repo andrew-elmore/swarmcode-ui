@@ -12,6 +12,7 @@ const Parse = {
     run: jest.fn(),
   },
   Query: jest.fn().mockImplementation(() => ({
+    equalTo: jest.fn(),
     subscribe: jest.fn().mockResolvedValue(mockSubscription),
   })),
   Object: {

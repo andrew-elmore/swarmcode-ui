@@ -37,6 +37,8 @@ jest.mock("../src/services/api", () => ({
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn(),
+  subscribeToCommands: jest.fn(),
+  subscribeToPings: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -72,6 +74,16 @@ function createTestStore(preloadedState = {}) {
     },
     preloadedState: {
       tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
+      board: {
+        board: { objectId: "test-board-id" },
+        cards: [],
+        sprints: [],
+        sprintFilter: null,
+        selectedCard: null,
+        loading: false,
+        error: null,
+        lastPoll: null,
+      },
       ...preloadedState,
     },
   });
@@ -100,6 +112,8 @@ beforeEach(() => {
   api.sendMessage.mockResolvedValue({ success: true });
   api.getConversation.mockResolvedValue({ messages: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn()); // returns unsubscribe function
+  api.subscribeToCommands.mockResolvedValue(jest.fn());
+  api.subscribeToPings.mockResolvedValue(jest.fn());
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
   api.getAgents.mockResolvedValue({
@@ -483,14 +497,14 @@ describe("MessagesView", () => {
 
   test("dispatches appendMessage when LiveQuery delivers a message", async () => {
     let liveQueryCallback = null;
-    api.subscribeToMessages.mockImplementation((cb) => {
+    api.subscribeToMessages.mockImplementation((boardId, cb) => {
       liveQueryCallback = cb;
       return Promise.resolve(jest.fn());
     });
 
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      board: { board: { objectId: "test-board-id" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },

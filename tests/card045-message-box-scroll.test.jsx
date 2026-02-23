@@ -34,6 +34,8 @@ jest.mock("../src/services/api", () => ({
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn(),
+  subscribeToCommands: jest.fn(),
+  subscribeToPings: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -65,7 +67,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
       agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
-      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      board: { board: { objectId: "test-board-id" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
@@ -99,6 +101,8 @@ beforeEach(() => {
   api.sendMessage.mockResolvedValue({ success: true });
   api.getConversation.mockResolvedValue({ messages: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn());
+  api.subscribeToCommands.mockResolvedValue(jest.fn());
+  api.subscribeToPings.mockResolvedValue(jest.fn());
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
 });
