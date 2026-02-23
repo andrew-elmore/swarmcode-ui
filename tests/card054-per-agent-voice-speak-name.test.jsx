@@ -109,7 +109,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: { ...DEFAULT_TTS_STATE, ...(overrides.tts || {}) },
       agents: overrides.agents || { agents: DEFAULT_AGENTS, loading: false, error: null },
-      board: { board: { projectHash: "test-hash" }, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
+      board: { board: null, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
       messages: {
         conversations: {},
         unreadCounts: {},

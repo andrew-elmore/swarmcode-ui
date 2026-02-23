@@ -100,7 +100,7 @@ function createTestStore(ttsOverrides = {}) {
         loading: false,
         error: null,
       },
-      board: { board: { projectHash: "test-hash" }, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
+      board: { board: null, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
       projects: { projects: [], activeProject: null, loading: false, error: null },
     },
   });

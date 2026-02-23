@@ -65,7 +65,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
       agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
-      board: { board: { projectHash: "test-hash" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
