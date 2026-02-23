@@ -10,7 +10,7 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
@@ -134,9 +134,13 @@ describe("CARD-045: App uses fixed height (100vh) instead of minHeight", () => {
 // ─── MessagesView: Flex layout with minHeight: 0 ───────────────────────────
 
 describe("CARD-045: MessagesView layout constrains to available space", () => {
-  test("MessagesView renders with correct flex layout", () => {
+  test("MessagesView renders with correct flex layout", async () => {
     const store = createTestStore();
     const { container } = renderWithProviders(<MessagesView />, { store });
+
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
 
     // Outer Box should have display: flex and overflow: hidden
     const outerBox = container.firstChild;
@@ -177,9 +181,13 @@ describe("CARD-045: ChatView scroll structure with agent selected", () => {
     });
   }
 
-  test("renders all 50 messages without infinite page expansion", () => {
+  test("renders all 50 messages without infinite page expansion", async () => {
     const store = createStoreWithAgent();
     renderWithProviders(<MessagesView />, { store });
+
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
 
     // All 50 messages should be rendered
     for (let i = 0; i < 50; i++) {
@@ -187,9 +195,13 @@ describe("CARD-045: ChatView scroll structure with agent selected", () => {
     }
   });
 
-  test("send button and input are always visible (not pushed off screen)", () => {
+  test("send button and input are always visible (not pushed off screen)", async () => {
     const store = createStoreWithAgent();
     renderWithProviders(<MessagesView />, { store });
+
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
 
     // Input placeholder should be visible
     expect(screen.getByPlaceholderText("Message PM Agent...")).toBeInTheDocument();
@@ -200,9 +212,13 @@ describe("CARD-045: ChatView scroll structure with agent selected", () => {
     expect(sendBtn).toBeTruthy();
   });
 
-  test("header with agent name is visible at top", () => {
+  test("header with agent name is visible at top", async () => {
     const store = createStoreWithAgent();
     renderWithProviders(<MessagesView />, { store });
+
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
 
     // Agent label should be visible in the header
     expect(screen.getAllByText("PM Agent").length).toBeGreaterThanOrEqual(1);

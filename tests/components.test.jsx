@@ -309,8 +309,13 @@ const DEFAULT_AGENTS_STATE = {
 // ─── MessagesView Component ──────────────────────────────────────────────────
 
 describe("MessagesView", () => {
+  // Helper to render MessagesView and wait for the subscribeToMessages effect to settle
   async function renderMessages(store) {
     const result = renderWithProviders(<MessagesView />, store ? { store } : undefined);
+    // Wait for the useEffect that calls subscribeToMessages to complete
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
     return result;
   }
 
@@ -345,6 +350,11 @@ describe("MessagesView", () => {
   test("shows 'Select an agent to start chatting' placeholder when no agent selected", async () => {
     await renderMessages();
     expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
+  });
+
+  test("subscribes to LiveQuery messages on mount", async () => {
+    await renderMessages();
+    expect(api.subscribeToMessages).toHaveBeenCalled();
   });
 
   test("shows chat view with empty state when agent is selected", async () => {
@@ -554,7 +564,9 @@ describe("ChatView — lazy loading", () => {
     };
   }
 
-  test("shows 'Load older messages' button when hasMore=true", () => {
+  test("shows 'Load older messages' button when hasMore=true", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
       board: { board: { projectHash: "test-hash" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
@@ -572,11 +584,14 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
 
     expect(screen.getByText("Load older messages")).toBeInTheDocument();
   });
 
-  test("hides 'Load older messages' button when hasMore=false", () => {
+  test("hides 'Load older messages' button when hasMore=false", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
       board: { board: { projectHash: "test-hash" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
@@ -594,11 +609,14 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
 
     expect(screen.queryByText("Load older messages")).not.toBeInTheDocument();
   });
 
-  test("shows 'Loading...' text when loadingMore=true", () => {
+  test("shows 'Loading...' text when loadingMore=true", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
       board: { board: { projectHash: "test-hash" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
@@ -616,13 +634,16 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
 
     const loadingBtn = screen.getByText("Loading...");
     expect(loadingBtn).toBeInTheDocument();
     expect(loadingBtn.closest("button")).toBeDisabled();
   });
 
-  test("shows empty state when no messages", () => {
+  test("shows empty state when no messages", async () => {
+    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
       board: { board: { projectHash: "test-hash" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
@@ -640,6 +661,7 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
+    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
 
     expect(screen.getByText(/no messages yet/i)).toBeInTheDocument();
   });
