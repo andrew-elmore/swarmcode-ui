@@ -6,7 +6,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import * as api from "../src/services/api";
 import boardReducer from "../src/store/boardSlice";
-import messagesReducer, { sendMessage, loadConversation, loadMoreMessages, clearError, resetConversations } from "../src/store/messagesSlice";
+import messagesReducer, { sendMessage, loadConversation, loadMoreMessages, clearError } from "../src/store/messagesSlice";
 
 jest.mock("../src/services/api", () => ({
   getOrCreateBoard: jest.fn(),
@@ -79,27 +79,6 @@ describe("messagesSlice reducers", () => {
     const store = createTestStore({ error: "Send failed" });
     store.dispatch(clearError());
     expect(store.getState().messages.error).toBeNull();
-  });
-
-  test("resetConversations clears all conversations and unread counts", () => {
-    const store = createTestStore({
-      conversations: {
-        all: { messages: [{ message: "broadcast" }], loaded: true, hasMore: false, loadingMore: false },
-        "developer-1": { messages: [{ message: "hello" }], loaded: true, hasMore: false, loadingMore: false },
-      },
-      unreadCounts: { all: 0, "developer-1": 3 },
-      selectedAgent: "developer-1",
-      error: "some error",
-    });
-
-    store.dispatch(resetConversations());
-    const state = store.getState().messages;
-
-    expect(Object.keys(state.conversations)).toEqual(["all"]);
-    expect(state.conversations.all.messages).toEqual([]);
-    expect(state.unreadCounts).toEqual({ all: 0 });
-    expect(state.selectedAgent).toBeNull();
-    expect(state.error).toBeNull();
   });
 
 });

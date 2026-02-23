@@ -35,11 +35,10 @@ let _messageSubscription = null;
 
 /**
  * Subscribe to new Message objects via LiveQuery.
- * When projectHash is provided, only messages for that project are delivered.
  * Calls onMessage(msg) for each new message created.
  * Returns an unsubscribe function.
  */
-export async function subscribeToMessages(onMessage, projectHash) {
+export async function subscribeToMessages(onMessage) {
   // Unsubscribe previous if any
   if (_messageSubscription) {
     _messageSubscription.unsubscribe();
@@ -47,18 +46,6 @@ export async function subscribeToMessages(onMessage, projectHash) {
   }
 
   const query = new Parse.Query("Message");
-
-  // Filter by board Pointer when projectHash is available
-  if (projectHash) {
-    const Board = Parse.Object.extend("Board");
-    const boardQuery = new Parse.Query(Board);
-    boardQuery.equalTo("projectHash", projectHash);
-    const board = await boardQuery.first();
-    if (board) {
-      query.equalTo("board", board);
-    }
-  }
-
   const subscription = await query.subscribe();
   _messageSubscription = subscription;
 
