@@ -110,7 +110,7 @@ function createTestStore(overrides = {}) {
         error: null,
       },
       board: {
-        board: null,
+        board: { projectHash: "test-hash" },
         cards: [],
         loading: false,
         error: null,
