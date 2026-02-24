@@ -168,7 +168,7 @@ describe("ArticlesView — list view", () => {
     renderWithProviders(<ArticlesView />);
 
     await waitFor(() => {
-      expect(api.listArticles).toHaveBeenCalledWith("test-hash-180");
+      expect(api.listArticles).toHaveBeenCalledWith();
     });
   });
 
@@ -338,7 +338,7 @@ describe("ArticlesView — delete confirmation", () => {
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
-      expect(api.deleteArticle).toHaveBeenCalledWith("test-hash-180", "Alpha Guide");
+      expect(api.deleteArticle).toHaveBeenCalledWith("Alpha Guide");
     });
 
     await waitFor(() => {
@@ -375,7 +375,7 @@ describe("ArticlesView — search", () => {
     fireEvent.click(screen.getByText("Search"));
 
     await waitFor(() => {
-      expect(api.searchArticles).toHaveBeenCalledWith("test-hash-180", {
+      expect(api.searchArticles).toHaveBeenCalledWith({
         query: "Alpha",
         keywords: undefined,
       });

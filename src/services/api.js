@@ -211,32 +211,32 @@ export async function deleteSprint(boardId, sprintId) {
 }
 
 
-export async function createArticle({ boardId, title, text, keywords }) {
-  return callFunction("createArticle", { boardId, title, text, keywords });
+export async function createArticle({ title, text, keywords }) {
+  return callFunction("createArticle", { title, text, keywords });
 }
 
-export async function getArticle(boardId, title) {
-  return callFunction("getArticle", { boardId, title });
+export async function getArticle(title) {
+  return callFunction("getArticle", { title });
 }
 
-export async function updateArticle({ boardId, title, text, keywords, newTitle }) {
-  const params = { boardId, title };
+export async function updateArticle({ title, text, keywords, newTitle }) {
+  const params = { title };
   if (text !== undefined) params.text = text;
   if (keywords !== undefined) params.keywords = keywords;
   if (newTitle !== undefined) params.newTitle = newTitle;
   return callFunction("updateArticle", params);
 }
 
-export async function deleteArticle(boardId, title) {
-  return callFunction("deleteArticle", { boardId, title });
+export async function deleteArticle(title) {
+  return callFunction("deleteArticle", { title });
 }
 
-export async function listArticles(boardId) {
-  return callFunction("listArticles", { boardId });
+export async function listArticles() {
+  return callFunction("listArticles", {});
 }
 
-export async function searchArticles(boardId, { query, keywords } = {}) {
-  const params = { boardId };
+export async function searchArticles({ query, keywords } = {}) {
+  const params = {};
   if (query) params.query = query;
   if (keywords) params.keywords = keywords;
   return callFunction("searchArticles", params);

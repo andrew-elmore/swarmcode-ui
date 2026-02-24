@@ -122,16 +122,15 @@ export default function ArticlesView() {
   );
 
   const handleRefClick = useCallback((refTitle) => {
-    if (!boardId) return;
     // Check if article is already loaded in the list
     const found = articles.find((a) => a.title.toLowerCase() === refTitle.toLowerCase());
     if (found) {
       dispatch(setSelectedArticle(found));
     } else {
       // Fetch from API (may not exist — getArticle.rejected will set error)
-      dispatch(getArticle({ boardId, title: refTitle }));
+      dispatch(getArticle({ title: refTitle }));
     }
-  }, [dispatch, boardId, articles]);
+  }, [dispatch, articles]);
 
   const handleToggleLink = (article) => {
     if (!boardId) return;
@@ -144,14 +143,13 @@ export default function ArticlesView() {
   };
 
   useEffect(() => {
+    dispatch(fetchArticles());
     if (boardId) {
-      dispatch(fetchArticles(boardId));
       dispatch(fetchLinkedArticles(boardId));
     }
   }, [dispatch, boardId]);
 
   const handleSearch = () => {
-    if (!boardId) return;
     const query = searchQuery.trim() || undefined;
     const keywords = searchKeywords.trim()
       ? searchKeywords.split(",").map((k) => k.trim()).filter(Boolean)
@@ -162,7 +160,7 @@ export default function ArticlesView() {
       return;
     }
     setIsSearching(true);
-    dispatch(searchArticles({ boardId, query, keywords }));
+    dispatch(searchArticles({ query, keywords }));
   };
 
   const handleClearSearch = () => {
@@ -196,9 +194,9 @@ export default function ArticlesView() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget || deleting || !boardId) return;
+    if (!deleteTarget || deleting) return;
     setDeleting(true);
-    const result = await dispatch(deleteArticle({ boardId, title: deleteTarget.title }));
+    const result = await dispatch(deleteArticle({ title: deleteTarget.title }));
     setDeleting(false);
     if (!result.error) {
       setDeleteOpen(false);
@@ -264,7 +262,6 @@ export default function ArticlesView() {
           open={editOpen}
           onClose={() => setEditOpen(false)}
           article={editArticle}
-          boardId={boardId}
         />
 
         <Dialog open={deleteOpen} onClose={() => setDeleteOpen(false)} fullWidth maxWidth="xs">
@@ -468,7 +465,6 @@ export default function ArticlesView() {
         open={editOpen}
         onClose={() => setEditOpen(false)}
         article={editArticle}
-        boardId={boardId}
       />
     </Box>
   );

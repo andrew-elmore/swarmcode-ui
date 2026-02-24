@@ -231,51 +231,58 @@ describe("api.js: all cloud functions pass boardId (not projectHash)", () => {
     expect(params.projectHash).toBeUndefined();
   });
 
-  test("createArticle passes boardId", async () => {
+  // CARD-218: articles are global — no boardId in CRUD params
+  test("createArticle sends title without boardId", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ article: {} });
-    await api.createArticle({ boardId: TEST_BOARD_ID, title: "T" });
+    await api.createArticle({ title: "T" });
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe(TEST_BOARD_ID);
+    expect(params.title).toBe("T");
+    expect(params.boardId).toBeUndefined();
     expect(params.projectHash).toBeUndefined();
   });
 
-  test("getArticle passes boardId", async () => {
+  test("getArticle sends title without boardId", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ article: {} });
-    await api.getArticle(TEST_BOARD_ID, "T");
+    await api.getArticle("T");
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe(TEST_BOARD_ID);
+    expect(params.title).toBe("T");
+    expect(params.boardId).toBeUndefined();
     expect(params.projectHash).toBeUndefined();
   });
 
-  test("updateArticle passes boardId", async () => {
+  test("updateArticle sends fields without boardId", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ article: {} });
-    await api.updateArticle({ boardId: TEST_BOARD_ID, title: "T", text: "X" });
+    await api.updateArticle({ title: "T", text: "X" });
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe(TEST_BOARD_ID);
+    expect(params.title).toBe("T");
+    expect(params.text).toBe("X");
+    expect(params.boardId).toBeUndefined();
     expect(params.projectHash).toBeUndefined();
   });
 
-  test("deleteArticle passes boardId", async () => {
+  test("deleteArticle sends title without boardId", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({});
-    await api.deleteArticle(TEST_BOARD_ID, "T");
+    await api.deleteArticle("T");
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe(TEST_BOARD_ID);
+    expect(params.title).toBe("T");
+    expect(params.boardId).toBeUndefined();
     expect(params.projectHash).toBeUndefined();
   });
 
-  test("listArticles passes boardId", async () => {
+  test("listArticles sends no board params", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ articles: [] });
-    await api.listArticles(TEST_BOARD_ID);
+    await api.listArticles();
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe(TEST_BOARD_ID);
+    expect(params.boardId).toBeUndefined();
     expect(params.projectHash).toBeUndefined();
   });
 
-  test("searchArticles passes boardId", async () => {
+  test("searchArticles sends query without boardId", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ articles: [] });
-    await api.searchArticles(TEST_BOARD_ID, { query: "test" });
+    await api.searchArticles({ query: "test" });
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe(TEST_BOARD_ID);
+    expect(params.query).toBe("test");
+    expect(params.boardId).toBeUndefined();
     expect(params.projectHash).toBeUndefined();
   });
 
@@ -565,47 +572,48 @@ describe("boardSlice: thunks pass boardId to API", () => {
   });
 });
 
-describe("articlesSlice: thunks pass boardId to API", () => {
-  test("fetchArticles passes boardId", async () => {
+// CARD-218: articles are global — thunks no longer pass boardId to CRUD/list API calls
+describe("articlesSlice: article CRUD thunks are global (no boardId)", () => {
+  test("fetchArticles calls listArticles with no args", async () => {
     jest.spyOn(api, "listArticles").mockResolvedValue({ articles: [] });
     const store = createStoreWithBoard();
-    await store.dispatch(fetchArticles(TEST_BOARD_ID));
-    expect(api.listArticles).toHaveBeenCalledWith(TEST_BOARD_ID);
+    await store.dispatch(fetchArticles());
+    expect(api.listArticles).toHaveBeenCalledWith();
   });
 
-  test("createArticle passes boardId", async () => {
+  test("createArticle passes title without boardId", async () => {
     jest.spyOn(api, "createArticle").mockResolvedValue({ article: { objectId: "a1", title: "T" } });
     const store = createStoreWithBoard();
-    await store.dispatch(createArticle({ boardId: TEST_BOARD_ID, title: "T" }));
-    expect(api.createArticle).toHaveBeenCalledWith({ boardId: TEST_BOARD_ID, title: "T" });
+    await store.dispatch(createArticle({ title: "T" }));
+    expect(api.createArticle).toHaveBeenCalledWith({ title: "T" });
   });
 
-  test("updateArticle passes boardId", async () => {
+  test("updateArticle passes fields without boardId", async () => {
     jest.spyOn(api, "updateArticle").mockResolvedValue({ article: { objectId: "a1", title: "T", text: "X" } });
     const store = createStoreWithBoard();
-    await store.dispatch(updateArticle({ boardId: TEST_BOARD_ID, title: "T", text: "X" }));
-    expect(api.updateArticle).toHaveBeenCalledWith({ boardId: TEST_BOARD_ID, title: "T", text: "X" });
+    await store.dispatch(updateArticle({ title: "T", text: "X" }));
+    expect(api.updateArticle).toHaveBeenCalledWith({ title: "T", text: "X" });
   });
 
-  test("deleteArticle passes boardId", async () => {
+  test("deleteArticle passes title only (no boardId)", async () => {
     jest.spyOn(api, "deleteArticle").mockResolvedValue({});
     const store = createStoreWithBoard();
-    await store.dispatch(deleteArticle({ boardId: TEST_BOARD_ID, title: "T" }));
-    expect(api.deleteArticle).toHaveBeenCalledWith(TEST_BOARD_ID, "T");
+    await store.dispatch(deleteArticle({ title: "T" }));
+    expect(api.deleteArticle).toHaveBeenCalledWith("T");
   });
 
-  test("searchArticles passes boardId", async () => {
+  test("searchArticles passes query without boardId", async () => {
     jest.spyOn(api, "searchArticles").mockResolvedValue({ articles: [] });
     const store = createStoreWithBoard();
-    await store.dispatch(searchArticles({ boardId: TEST_BOARD_ID, query: "test" }));
-    expect(api.searchArticles).toHaveBeenCalledWith(TEST_BOARD_ID, { query: "test", keywords: undefined });
+    await store.dispatch(searchArticles({ query: "test" }));
+    expect(api.searchArticles).toHaveBeenCalledWith({ query: "test", keywords: undefined });
   });
 
-  test("getArticle passes boardId", async () => {
+  test("getArticle passes title only (no boardId)", async () => {
     jest.spyOn(api, "getArticle").mockResolvedValue({ article: { objectId: "a1", title: "T" } });
     const store = createStoreWithBoard();
-    await store.dispatch(getArticle({ boardId: TEST_BOARD_ID, title: "T" }));
-    expect(api.getArticle).toHaveBeenCalledWith(TEST_BOARD_ID, "T");
+    await store.dispatch(getArticle({ title: "T" }));
+    expect(api.getArticle).toHaveBeenCalledWith("T");
   });
 
   test("fetchLinkedArticles passes boardId", async () => {
@@ -804,17 +812,17 @@ describe("E2E: board loaded → card operations use board.objectId as boardId", 
     });
   });
 
-  test("full flow: articles fetched after board load use objectId", async () => {
+  // CARD-218: articles are global — fetchArticles takes no boardId
+  test("full flow: articles fetched globally without boardId", async () => {
     jest.spyOn(api, "listArticles").mockResolvedValue({
       articles: [{ objectId: "a1", title: "Guide" }],
     });
 
     const store = createStoreWithBoard();
-    const boardId = store.getState().board.board.objectId;
 
-    await store.dispatch(fetchArticles(boardId));
+    await store.dispatch(fetchArticles());
 
-    expect(api.listArticles).toHaveBeenCalledWith(TEST_BOARD_ID);
+    expect(api.listArticles).toHaveBeenCalledWith();
     expect(store.getState().articles.articles).toHaveLength(1);
   });
 

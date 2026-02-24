@@ -3,44 +3,44 @@ import * as api from "../services/api";
 
 export const fetchArticles = createAsyncThunk(
   "articles/fetchArticles",
-  async (boardId) => {
-    return api.listArticles(boardId);
+  async () => {
+    return api.listArticles();
   }
 );
 
 export const createArticle = createAsyncThunk(
   "articles/createArticle",
-  async ({ boardId, title, text, keywords }) => {
-    return api.createArticle({ boardId, title, text, keywords });
+  async ({ title, text, keywords }) => {
+    return api.createArticle({ title, text, keywords });
   }
 );
 
 export const updateArticle = createAsyncThunk(
   "articles/updateArticle",
-  async ({ boardId, title, text, keywords, newTitle }) => {
-    return api.updateArticle({ boardId, title, text, keywords, newTitle });
+  async ({ title, text, keywords, newTitle }) => {
+    return api.updateArticle({ title, text, keywords, newTitle });
   }
 );
 
 export const deleteArticle = createAsyncThunk(
   "articles/deleteArticle",
-  async ({ boardId, title }) => {
-    await api.deleteArticle(boardId, title);
+  async ({ title }) => {
+    await api.deleteArticle(title);
     return { title };
   }
 );
 
 export const searchArticles = createAsyncThunk(
   "articles/searchArticles",
-  async ({ boardId, query, keywords }) => {
-    return api.searchArticles(boardId, { query, keywords });
+  async ({ query, keywords }) => {
+    return api.searchArticles({ query, keywords });
   }
 );
 
 export const getArticle = createAsyncThunk(
   "articles/getArticle",
-  async ({ boardId, title }) => {
-    return api.getArticle(boardId, title);
+  async ({ title }) => {
+    return api.getArticle(title);
   }
 );
 
