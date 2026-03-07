@@ -67,6 +67,18 @@ function ArticleContent({ text, knownTitles, onRefClick }) {
   const processed = useMemo(() => preprocessReferences(text), [text]);
 
   const components = useMemo(() => ({
+    table({ children }) {
+      return (
+        <TableContainer component={Paper} variant="outlined" sx={{ my: 1 }}>
+          <Table size="small">{children}</Table>
+        </TableContainer>
+      );
+    },
+    thead({ children }) { return <TableHead>{children}</TableHead>; },
+    tbody({ children }) { return <TableBody>{children}</TableBody>; },
+    tr({ children }) { return <TableRow>{children}</TableRow>; },
+    th({ children }) { return <TableCell sx={{ fontWeight: "bold" }}>{children}</TableCell>; },
+    td({ children }) { return <TableCell>{children}</TableCell>; },
     a({ href, children }) {
       if (href && href.startsWith(REF_SCHEME)) {
         const refTitle = decodeURIComponent(href.slice(REF_SCHEME.length));
