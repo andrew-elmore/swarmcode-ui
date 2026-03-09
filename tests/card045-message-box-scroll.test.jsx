@@ -17,7 +17,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -25,7 +25,7 @@ import App from "../src/App";
 import MessagesView from "../src/components/MessagesView";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -59,7 +59,7 @@ function createTestStore(overrides = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -67,7 +67,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
       agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
-      board: { board: { objectId: "test-board-id" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: { objectId: "test-board-id" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
@@ -97,7 +97,7 @@ function renderWithProviders(ui, { store, ...options } = {}) {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
   api.sendMessage.mockResolvedValue({ success: true });
   api.getConversation.mockResolvedValue({ messages: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn());

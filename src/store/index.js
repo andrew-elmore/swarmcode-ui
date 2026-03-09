@@ -2,7 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import agentsReducer from "./agentsSlice";
 import articlesReducer from "./articlesSlice";
-import boardReducer from "./boardSlice";
+import projectReducer from "./projectSlice";
 import commandsReducer from "./commandsSlice";
 import messagesReducer from "./messagesSlice";
 import projectsReducer from "./projectsSlice";
@@ -12,7 +12,7 @@ const store = configureStore({
   reducer: {
     agents: agentsReducer,
     articles: articlesReducer,
-    board: boardReducer,
+    project: projectReducer,
     commands: commandsReducer,
     messages: messagesReducer,
     projects: projectsReducer,

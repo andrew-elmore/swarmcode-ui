@@ -1,15 +1,15 @@
 /**
- * CARD-214: Feature — Filter all message queries by boardId (UI + Agent)
+ * CARD-214: Feature — Filter all message queries by projectId (UI + Agent)
  * UI QA Tests — qa-1
  *
  * Covers the three UI-side changes:
- *   1. api.js subscribeToMessages — boardId param, board filter, no-op guard
- *   2. App.jsx — boardId in dep array, guard, resetConversations before fetchBoard
+ *   1. api.js subscribeToMessages — projectId param, board filter, no-op guard
+ *   2. App.jsx — projectId in dep array, guard, resetConversations before fetchProject
  *   3. messagesSlice.js — resetConversations reducer (conversations, unreadCounts, selectedAgent)
  *
  * Also covers the board-switch E2E flow via Redux store simulation:
  *   - Loading conversations, switching boards (resetConversations), verifying blank state,
- *     then re-loading to confirm new boardId is used.
+ *     then re-loading to confirm new projectId is used.
  *
  * Test types:
  *   Unit        — source-level assertions + resetConversations reducer unit tests
@@ -21,7 +21,7 @@ import fs from 'fs';
 import path from 'path';
 import { configureStore } from '@reduxjs/toolkit';
 import * as api from '../src/services/api';
-import boardReducer from '../src/store/boardSlice';
+import projectReducer from '../src/store/projectSlice';
 import messagesReducer, {
   loadConversation,
   resetConversations,
@@ -42,7 +42,7 @@ const appSrc = fs.readFileSync(
 // ─── Mock API ─────────────────────────────────────────────────────────────────
 
 jest.mock('../src/services/api', () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -60,9 +60,9 @@ jest.mock('../src/services/api', () => ({
 const BOARD_A_ID = 'board-a-object-id';
 const BOARD_B_ID = 'board-b-object-id';
 
-function createTestStore(boardId = BOARD_A_ID, messagesPreload = {}) {
-  const boardState = {
-    board: { objectId: boardId },
+function createTestStore(projectId = BOARD_A_ID, messagesPreload = {}) {
+  const projectState = {
+    project: { objectId: projectId },
     cards: [],
     selectedCard: null,
     loading: false,
@@ -70,9 +70,9 @@ function createTestStore(boardId = BOARD_A_ID, messagesPreload = {}) {
     lastPoll: null,
   };
   return configureStore({
-    reducer: { board: boardReducer, messages: messagesReducer },
+    reducer: { project: projectReducer, messages: messagesReducer },
     preloadedState: {
-      board: boardState,
+      project: projectState,
       messages: { ...messagesReducer(undefined, { type: '@@INIT' }), ...messagesPreload },
     },
   });
@@ -86,62 +86,62 @@ afterEach(() => jest.restoreAllMocks());
 
 describe('CARD-214 Unit: api.js subscribeToMessages source', () => {
 
-  test('subscribeToMessages accepts boardId as first parameter', () => {
+  test('subscribeToMessages accepts projectId as first parameter', () => {
     expect(apiSrc).toMatch(
-      /async function subscribeToMessages\(\s*boardId\s*,\s*onMessage\s*\)/
+      /async function subscribeToMessages\(\s*projectId\s*,\s*onMessage\s*\)/
     );
   });
 
-  test('subscribeToMessages returns no-op () => {} when boardId is falsy', () => {
-    expect(apiSrc).toMatch(/if\s*\(!boardId\)\s*return\s*\(\s*\)\s*=>\s*\{\s*\}/);
+  test('subscribeToMessages returns no-op () => {} when projectId is falsy', () => {
+    expect(apiSrc).toMatch(/if\s*\(!projectId\)\s*return\s*\(\s*\)\s*=>\s*\{\s*\}/);
   });
 
-  test('subscribeToMessages filters LiveQuery by Board Pointer using createWithoutData', () => {
+  test('subscribeToMessages filters LiveQuery by Project Pointer using createWithoutData', () => {
     // Extract the subscribeToMessages function body
     const fnBlock =
       apiSrc.match(/async function subscribeToMessages[\s\S]*?^export async function/m)?.[0] ?? '';
-    expect(fnBlock).toContain('Board.createWithoutData(boardId)');
-    expect(fnBlock).toContain('query.equalTo("board"');
+    expect(fnBlock).toContain('Project.createWithoutData(projectId)');
+    expect(fnBlock).toContain('query.equalTo("project"');
   });
 
   test('subscribeToMessages pattern matches subscribeToCommands and subscribeToPings', () => {
-    // All three subscriptions should use the same Board.createWithoutData pattern
-    expect(apiSrc).toMatch(/subscribeToCommands[\s\S]*?Board\.createWithoutData\(boardId\)/);
-    expect(apiSrc).toMatch(/subscribeToPings[\s\S]*?Board\.createWithoutData\(boardId\)/);
-    expect(apiSrc).toMatch(/subscribeToMessages[\s\S]*?Board\.createWithoutData\(boardId\)/);
+    // All three subscriptions should use the same Project.createWithoutData pattern
+    expect(apiSrc).toMatch(/subscribeToCommands[\s\S]*?Project\.createWithoutData\(projectId\)/);
+    expect(apiSrc).toMatch(/subscribeToPings[\s\S]*?Project\.createWithoutData\(projectId\)/);
+    expect(apiSrc).toMatch(/subscribeToMessages[\s\S]*?Project\.createWithoutData\(projectId\)/);
   });
 
 });
 
 describe('CARD-214 Unit: App.jsx subscribeToMessages effect source', () => {
 
-  test('boardId is in the subscribeToMessages useEffect dependency array', () => {
+  test('projectId is in the subscribeToMessages useEffect dependency array', () => {
     // Look for the effect that calls subscribeToMessages and check its dep array
     const effectBlock =
-      appSrc.match(/subscribeToMessages\(boardId[\s\S]*?\}, \[dispatch,\s*boardId[\s\S]*?\]\)/)?.[0] ?? '';
+      appSrc.match(/subscribeToMessages\(projectId[\s\S]*?\}, \[dispatch,\s*projectId[\s\S]*?\]\)/)?.[0] ?? '';
     expect(effectBlock).not.toBe('');
-    expect(effectBlock).toContain('boardId');
+    expect(effectBlock).toContain('projectId');
     expect(effectBlock).toContain('liveQueryRefreshFlag');
   });
 
-  test('subscribeToMessages useEffect has if (!boardId) return guard', () => {
+  test('subscribeToMessages useEffect has if (!projectId) return guard', () => {
     const effectBlock =
-      appSrc.match(/\/\/ LiveQuery subscription[\s\S]*?}, \[dispatch, boardId, liveQueryRefreshFlag\]\)/)?.[0] ?? '';
-    expect(effectBlock).toContain('if (!boardId) return');
+      appSrc.match(/\/\/ LiveQuery subscription[\s\S]*?}, \[dispatch, projectId, liveQueryRefreshFlag\]\)/)?.[0] ?? '';
+    expect(effectBlock).toContain('if (!projectId) return');
   });
 
-  test('resetConversations is dispatched before fetchBoard in activeProject effect', () => {
+  test('resetConversations is dispatched before fetchProject in activeProject effect', () => {
     // Extract the activeProject effect block
     const effectBlock =
-      appSrc.match(/if \(activeProject\)\s*\{[\s\S]*?dispatch\(fetchBoard\(/)?.[0] ?? '';
+      appSrc.match(/if \(activeProject\)\s*\{[\s\S]*?dispatch\(fetchProject\(/)?.[0] ?? '';
     expect(effectBlock).not.toBe('');
 
     const resetIdx = effectBlock.indexOf('dispatch(resetConversations())');
-    const fetchBoardIdx = effectBlock.indexOf('dispatch(fetchBoard(');
+    const fetchProjectIdx = effectBlock.indexOf('dispatch(fetchProject(');
 
     expect(resetIdx).toBeGreaterThan(-1);
-    expect(fetchBoardIdx).toBeGreaterThan(-1);
-    expect(resetIdx).toBeLessThan(fetchBoardIdx);
+    expect(fetchProjectIdx).toBeGreaterThan(-1);
+    expect(resetIdx).toBeLessThan(fetchProjectIdx);
   });
 
   test('resetConversations is imported from messagesSlice in App.jsx', () => {
@@ -258,7 +258,7 @@ describe('CARD-214 Integration: board-switch via Redux store', () => {
     expect(store.getState().messages.conversations.all.messages).toEqual([]);
   });
 
-  test('loadConversation after board switch uses the new boardId', async () => {
+  test('loadConversation after board switch uses the new projectId', async () => {
     const msgs = [
       { from: 'senior-dev-1', to: 'owner', message: 'Board B msg', createdAt: '2026-02-23T12:00:00Z' },
     ];
@@ -267,17 +267,17 @@ describe('CARD-214 Integration: board-switch via Redux store', () => {
     // Start on boardA, then switch to boardB — createTestStore sets up boardA context
     createTestStore(BOARD_A_ID);
 
-    // Simulate board switch: first update the store's boardId, then reset conversations
-    // (In the real app, App.jsx dispatches resetConversations + fetchBoard when activeProject changes)
+    // Simulate board switch: first update the store's projectId, then reset conversations
+    // (In the real app, App.jsx dispatches resetConversations + fetchProject when activeProject changes)
     const boardBStore = configureStore({
-      reducer: { board: boardReducer, messages: messagesReducer },
+      reducer: { project: projectReducer, messages: messagesReducer },
       preloadedState: {
-        board: { board: { objectId: BOARD_B_ID }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+        project: { project: { objectId: BOARD_B_ID }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
         messages: messagesReducer(undefined, { type: '@@INIT' }),
       },
     });
 
-    // Dispatch resetConversations to clear stale messages (happens before fetchBoard)
+    // Dispatch resetConversations to clear stale messages (happens before fetchProject)
     boardBStore.dispatch(resetConversations());
     expect(boardBStore.getState().messages.selectedAgent).toBeNull();
     expect(Object.keys(boardBStore.getState().messages.conversations)).toEqual(['all']);
@@ -317,20 +317,20 @@ describe('CARD-214 E2E: full board-switch Redux flow (load → reset → reload)
     expect(storeA.getState().messages.conversations['developer-1'].messages).toEqual(boardAMsgs);
     expect(storeA.getState().messages.conversations['developer-1'].loaded).toBe(true);
 
-    // Step 2: Simulate board switch — resetConversations fires BEFORE fetchBoard
+    // Step 2: Simulate board switch — resetConversations fires BEFORE fetchProject
     storeA.dispatch(resetConversations());
 
     // Conversations are immediately blank
     expect(Object.keys(storeA.getState().messages.conversations)).toEqual(['all']);
     expect(storeA.getState().messages.selectedAgent).toBeNull();
 
-    // Step 3: Now imagine boardId changed to BOARD_B_ID in the Redux store.
+    // Step 3: Now imagine projectId changed to BOARD_B_ID in the Redux store.
     // We simulate by creating a fresh store with BOARD_B_ID pre-loaded.
     api.getConversation.mockResolvedValueOnce({ messages: boardBMsgs, hasMore: false });
     const storeB = configureStore({
-      reducer: { board: boardReducer, messages: messagesReducer },
+      reducer: { project: projectReducer, messages: messagesReducer },
       preloadedState: {
-        board: { board: { objectId: BOARD_B_ID }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+        project: { project: { objectId: BOARD_B_ID }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
         messages: messagesReducer(storeA.getState().messages, { type: '@@INIT' }),
       },
     });

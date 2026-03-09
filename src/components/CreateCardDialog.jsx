@@ -9,12 +9,12 @@ import MenuItem from "@mui/material/MenuItem";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
-import { createCard } from "../store/boardSlice";
+import { createCard } from "../store/projectSlice";
 import { STATUSES, PRIORITIES } from "../constants";
 
-export default function CreateCardDialog({ open, onClose, boardId }) {
+export default function CreateCardDialog({ open, onClose, projectId }) {
   const dispatch = useAppDispatch();
-  const { sprints } = useAppSelector((s) => s.board);
+  const { sprints } = useAppSelector((s) => s.project);
   const agents = useAppSelector((s) => s.agents.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -26,10 +26,10 @@ export default function CreateCardDialog({ open, onClose, boardId }) {
   const [sprint, setSprint] = useState("");
 
   const handleSubmit = async () => {
-    if (!title.trim() || !boardId) return;
+    if (!title.trim() || !projectId) return;
     await dispatch(
       createCard({
-        boardId,
+        projectId,
         title: title.trim(),
         description: description.trim(),
         status,

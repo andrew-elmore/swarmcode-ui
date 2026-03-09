@@ -67,13 +67,13 @@ import StreamView from "../src/components/StreamView";
 import ttsReducer from "../src/store/ttsSlice";
 import agentsReducer from "../src/store/agentsSlice";
 import messagesReducer from "../src/store/messagesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import projectsReducer from "../src/store/projectsSlice";
 
 // ─── Mock API ────────────────────────────────────────────────────────────────
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -123,13 +123,13 @@ function createTestStore(overrides = {}) {
       tts: ttsReducer,
       agents: agentsReducer,
       messages: messagesReducer,
-      board: boardReducer,
+      project: projectReducer,
       projects: projectsReducer,
     },
     preloadedState: {
       tts: { ...DEFAULT_TTS_STATE, ...(overrides.tts || {}) },
       agents: overrides.agents || { agents: TEST_AGENTS, loading: false, error: null },
-      board: overrides.board || {
+      board: overrides.project || {
         board: { projectHash: "test-hash-123", objectId: "board-096-1" },
         cards: [],
         sprints: [],

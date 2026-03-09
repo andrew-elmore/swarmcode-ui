@@ -23,7 +23,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer, {
   selectAgent,
   appendMessage,
@@ -33,7 +33,7 @@ import ttsReducer from "../src/store/ttsSlice";
 import MessagesView from "../src/components/MessagesView";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -72,7 +72,7 @@ function createTestStore(overrides = {}) {
   return configureStore({
     reducer: {
       agents: agentsReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -80,8 +80,8 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: DEFAULT_TTS_STATE,
       agents: overrides.agents || { agents: DEFAULT_AGENTS, loading: false, error: null },
-      board: overrides.board || {
-        board: { objectId: "test-hash-055" },
+      project: overrides.project || {
+        project: { objectId: "test-hash-055" },
         cards: [],
         selectedCard: null,
         loading: false,
@@ -116,7 +116,7 @@ function renderWithProviders(ui, { store, ...options } = {}) {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn());
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
   api.getConversation.mockResolvedValue({ messages: [], hasMore: false });

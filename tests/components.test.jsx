@@ -12,7 +12,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -28,7 +28,7 @@ import ProjectsView from "../src/components/ProjectsView";
 
 // Mock the entire API module to prevent real fetch calls
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -67,15 +67,15 @@ function createTestStore(preloadedState = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
     },
     preloadedState: {
       tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
-      board: {
-        board: { objectId: "test-board-id" },
+      project: {
+        project: { objectId: "test-board-id" },
         cards: [],
         sprints: [],
         sprintFilter: null,
@@ -103,7 +103,7 @@ function renderWithProviders(ui, { store, ...options } = {}) {
 
 beforeEach(() => {
   // Default mock implementations — resolve to safe defaults
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [], sprints: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [], sprints: [] });
   api.createCard.mockResolvedValue({ card: {} });
   api.updateCard.mockResolvedValue({ card: {} });
   api.addComment.mockResolvedValue({ comment: {} });
@@ -207,7 +207,7 @@ describe("BoardView", () => {
 
   test("shows loading spinner when loading", () => {
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: true, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: true, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
@@ -216,10 +216,10 @@ describe("BoardView", () => {
   });
 
   test("shows error alert when error exists", async () => {
-    api.getOrCreateBoard.mockRejectedValue(new Error("Network error"));
+    api.getOrCreateProject.mockRejectedValue(new Error("Network error"));
 
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
@@ -232,10 +232,10 @@ describe("BoardView", () => {
 
   test("renders Board heading and New Card button when board loaded", async () => {
     const mockBoard = { objectId: "b1", projectHash: "abc", nextId: 1 };
-    api.getOrCreateBoard.mockResolvedValue({ board: mockBoard, cards: [] });
+    api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: [] });
 
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
@@ -249,10 +249,10 @@ describe("BoardView", () => {
 
   test("renders all 6 Kanban columns", async () => {
     const mockBoard = { objectId: "b1", projectHash: "abc", nextId: 1 };
-    api.getOrCreateBoard.mockResolvedValue({ board: mockBoard, cards: [] });
+    api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: [] });
 
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
@@ -276,10 +276,10 @@ describe("BoardView", () => {
       { cardId: "CARD-001", title: "Fix bug", status: "scope", priority: "high" },
       { cardId: "CARD-002", title: "Add feature", status: "implement", priority: "medium" },
     ];
-    api.getOrCreateBoard.mockResolvedValue({ board: mockBoard, cards: mockCards });
+    api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: mockCards });
 
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
@@ -295,14 +295,14 @@ describe("BoardView", () => {
 
   test("fetches board when active project is set", async () => {
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/my/project", name: "project" }, loading: false, error: null },
     });
     renderWithProviders(<BoardView />, { store });
 
     await waitFor(() => {
-      expect(api.getOrCreateBoard).toHaveBeenCalledWith("/my/project");
+      expect(api.getOrCreateProject).toHaveBeenCalledWith("/my/project");
     });
   });
 });
@@ -374,7 +374,7 @@ describe("MessagesView", () => {
   test("shows chat view with empty state when agent is selected", async () => {
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
@@ -399,7 +399,7 @@ describe("MessagesView", () => {
   test("renders messages in chat view when conversation has messages", async () => {
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": {
@@ -427,7 +427,7 @@ describe("MessagesView", () => {
   test("send button is disabled when input is empty", async () => {
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
@@ -455,7 +455,7 @@ describe("MessagesView", () => {
   test("renders message input placeholder with agent name", async () => {
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
@@ -497,14 +497,14 @@ describe("MessagesView", () => {
 
   test("dispatches appendMessage when LiveQuery delivers a message", async () => {
     let liveQueryCallback = null;
-    api.subscribeToMessages.mockImplementation((boardId, cb) => {
+    api.subscribeToMessages.mockImplementation((projectId, cb) => {
       liveQueryCallback = cb;
       return Promise.resolve(jest.fn());
     });
 
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: { objectId: "test-board-id" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: { objectId: "test-board-id" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: {
           "pm-1": { messages: [], loaded: true },
@@ -580,7 +580,7 @@ describe("ChatView — lazy loading", () => {
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",
         conversations: {
@@ -605,7 +605,7 @@ describe("ChatView — lazy loading", () => {
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",
         conversations: {
@@ -630,7 +630,7 @@ describe("ChatView — lazy loading", () => {
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",
         conversations: {
@@ -657,7 +657,7 @@ describe("ChatView — lazy loading", () => {
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: buildMessagesState({
         selectedAgent: "developer-1",
         conversations: {
@@ -675,146 +675,6 @@ describe("ChatView — lazy loading", () => {
     await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
 
     expect(screen.getByText(/no messages yet/i)).toBeInTheDocument();
-  });
-});
-
-// ─── CreateCardDialog Component ──────────────────────────────────────────────
-
-describe("CreateCardDialog", () => {
-  test.skip("renders dialog title and fields when open", () => {
-    renderWithProviders(
-      <CreateCardDialog open={true} onClose={jest.fn()} boardId="abc" />
-    );
-    expect(screen.getByText("Create Card")).toBeInTheDocument();
-    expect(screen.getByLabelText(/title/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/description/i)).toBeInTheDocument();
-  });
-
-  test.skip("does not render when open=false", () => {
-    renderWithProviders(
-      <CreateCardDialog open={false} onClose={jest.fn()} boardId="abc" />
-    );
-    expect(screen.queryByText("Create Card")).not.toBeInTheDocument();
-  });
-
-  test.skip("Create button is disabled when title is empty", () => {
-    renderWithProviders(
-      <CreateCardDialog open={true} onClose={jest.fn()} boardId="abc" />
-    );
-    const createBtn = screen.getByRole("button", { name: /create/i });
-    expect(createBtn).toBeDisabled();
-  });
-
-  test.skip("Create button enables when title is entered", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(
-      <CreateCardDialog open={true} onClose={jest.fn()} boardId="abc" />
-    );
-
-    await user.type(screen.getByLabelText(/title/i), "New task");
-
-    const createBtn = screen.getByRole("button", { name: /create/i });
-    expect(createBtn).toBeEnabled();
-  });
-
-  test.skip("Cancel button is present", () => {
-    renderWithProviders(
-      <CreateCardDialog open={true} onClose={jest.fn()} boardId="abc" />
-    );
-    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
-  });
-
-  test.skip("dispatches createCard on submit", async () => {
-    const user = userEvent.setup();
-    api.createCard.mockResolvedValue({
-      card: { cardId: "CARD-001", title: "New task", status: "create", priority: "medium" },
-    });
-    const onClose = jest.fn();
-    renderWithProviders(
-      <CreateCardDialog open={true} onClose={onClose} boardId="abc" />
-    );
-
-    await user.type(screen.getByLabelText(/title/i), "New task");
-    await user.click(screen.getByRole("button", { name: /create/i }));
-
-    await waitFor(() => {
-      expect(api.createCard).toHaveBeenCalled();
-    });
-  });
-});
-
-// ─── CardDetailDialog Component ──────────────────────────────────────────────
-
-describe("CardDetailDialog", () => {
-  const sampleCard = {
-    cardId: "CARD-001",
-    title: "Test Card",
-    description: "A test description",
-    status: "scope",
-    priority: "high",
-    assignee: "qa-1",
-    comments: [
-      { author: "pm-1", message: "Looks good", createdAt: "2026-01-01T00:00:00Z" },
-    ],
-  };
-
-  test.skip("renders card title and card ID when open", () => {
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={sampleCard} boardId="abc" />
-    );
-    expect(screen.getByText("Test Card")).toBeInTheDocument();
-    expect(screen.getByText("CARD-001")).toBeInTheDocument();
-  });
-
-  test.skip("renders card description", () => {
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={sampleCard} boardId="abc" />
-    );
-    expect(screen.getByText("A test description")).toBeInTheDocument();
-  });
-
-  test.skip("renders comments section with count", () => {
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={sampleCard} boardId="abc" />
-    );
-    expect(screen.getByText(/comments \(1\)/i)).toBeInTheDocument();
-    expect(screen.getByText("Looks good")).toBeInTheDocument();
-  });
-
-  test.skip("shows 'No comments yet' when card has no comments", () => {
-    const cardNoComments = { ...sampleCard, comments: [] };
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={cardNoComments} boardId="abc" />
-    );
-    expect(screen.getByText(/no comments yet/i)).toBeInTheDocument();
-  });
-
-  test.skip("renders assignee dropdown", () => {
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={sampleCard} boardId="abc" />
-    );
-    expect(screen.getByLabelText("Assignee")).toBeInTheDocument();
-  });
-
-  test.skip("renders add comment input and send button", () => {
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={sampleCard} boardId="abc" />
-    );
-    expect(screen.getByLabelText(/add a comment/i)).toBeInTheDocument();
-  });
-
-  test.skip("Close button is present", () => {
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={sampleCard} boardId="abc" />
-    );
-    expect(screen.getByRole("button", { name: /close/i })).toBeInTheDocument();
-  });
-
-  test.skip("does not render when card is null", () => {
-    renderWithProviders(
-      <CardDetailDialog open={true} onClose={jest.fn()} card={null} boardId="abc" />
-    );
-    expect(screen.queryByText("CARD-001")).not.toBeInTheDocument();
   });
 });
 
@@ -861,7 +721,7 @@ describe("ProjectSelector", () => {
 
   test("renders project names when projects exist", () => {
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [
@@ -900,7 +760,7 @@ describe("ProjectsView", () => {
 
   test("renders project list with names and paths", () => {
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [
@@ -921,7 +781,7 @@ describe("ProjectsView", () => {
 
   test("active project list item has selected styling", () => {
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [
@@ -945,7 +805,7 @@ describe("ProjectsView", () => {
 
   test("renders a delete button for each project", () => {
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [
@@ -965,7 +825,7 @@ describe("ProjectsView", () => {
   test("clicking delete button opens confirmation dialog for that project", async () => {
     const user = userEvent.setup();
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [
@@ -990,7 +850,7 @@ describe("ProjectsView", () => {
   test("cancel closes the delete dialog", async () => {
     const user = userEvent.setup();
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
@@ -1014,7 +874,7 @@ describe("ProjectsView", () => {
     const user = userEvent.setup();
     api.deleteProject.mockResolvedValue({ success: true });
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
@@ -1050,7 +910,7 @@ describe("ProjectsView", () => {
     let resolveDelete;
     api.deleteProject.mockImplementation(() => new Promise((resolve) => { resolveDelete = resolve; }));
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
@@ -1086,7 +946,7 @@ describe("ProjectsView", () => {
     const user = userEvent.setup();
     api.deleteProject.mockRejectedValue(new Error("Server error: delete failed"));
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
@@ -1116,7 +976,7 @@ describe("ProjectsView", () => {
   test("error Alert banner can be dismissed with close button", async () => {
     const user = userEvent.setup();
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
@@ -1145,7 +1005,7 @@ describe("ProjectsView", () => {
     const user = userEvent.setup();
     api.deleteProject.mockRejectedValue(new Error("Network failure"));
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
@@ -1177,7 +1037,7 @@ describe("ProjectsView", () => {
     const user = userEvent.setup();
     api.deleteProject.mockResolvedValue({ success: true });
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [{ path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" }],
@@ -1202,7 +1062,7 @@ describe("ProjectsView", () => {
     const user = userEvent.setup();
     api.addRecentProject.mockResolvedValue({ success: true });
     const store = createTestStore({
-      board: { board: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [

@@ -8,7 +8,7 @@ import {
   sendMessage,
   getConversation,
   subscribeToMessages,
-  getOrCreateBoard,
+  getOrCreateProject,
   createCard,
   updateCard,
   addComment,
@@ -33,13 +33,13 @@ describe("api.sendMessage", () => {
   test("calls sendMessage with correct params", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ success: true, messageId: "abc123" });
     const result = await sendMessage({
-      boardId: "test-hash",
+      projectId: "test-hash",
       from: "qa-1",
       to: "developer-1",
       message: "Hello",
     });
     expect(Parse.Cloud.run).toHaveBeenCalledWith("sendMessage", {
-      boardId: "test-hash",
+      projectId: "test-hash",
       from: "qa-1",
       to: "developer-1",
       message: "Hello",
@@ -50,7 +50,7 @@ describe("api.sendMessage", () => {
   test("throws on API error", async () => {
     Parse.Cloud.run.mockRejectedValueOnce(new Error("Unknown sender 'bad-agent'"));
     await expect(
-      sendMessage({ boardId: "test-hash", from: "bad-agent", to: "qa-1", message: "Y" })
+      sendMessage({ projectId: "test-hash", from: "bad-agent", to: "qa-1", message: "Y" })
     ).rejects.toThrow("Unknown sender 'bad-agent'");
   });
 });
@@ -59,11 +59,11 @@ describe("api.sendMessage", () => {
 // ─── getConversation ─────────────────────────────────────────────────────────
 
 describe("api.getConversation", () => {
-  test("calls getConversation with boardId, user1 and user2", async () => {
+  test("calls getConversation with projectId, user1 and user2", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ messages: [] });
     await getConversation("test-hash", "owner", "pm-1");
     expect(Parse.Cloud.run).toHaveBeenCalledWith("getConversation", {
-      boardId: "test-hash",
+      projectId: "test-hash",
       user1: "owner",
       user2: "pm-1",
     });
@@ -157,13 +157,13 @@ describe("api.subscribeToMessages", () => {
   });
 });
 
-// ─── getOrCreateBoard ────────────────────────────────────────────────────────
+// ─── getOrCreateProject ────────────────────────────────────────────────────────
 
-describe("api.getOrCreateBoard", () => {
-  test("sends projectPath to getOrCreateBoard", async () => {
-    Parse.Cloud.run.mockResolvedValueOnce({ board: { boardId: "abc" }, cards: [] });
-    await getOrCreateBoard("C:\\test\\project");
-    expect(Parse.Cloud.run).toHaveBeenCalledWith("getOrCreateBoard", {
+describe("api.getOrCreateProject", () => {
+  test("sends projectPath to getOrCreateProject", async () => {
+    Parse.Cloud.run.mockResolvedValueOnce({ project: { objectId: "abc" }, cards: [] });
+    await getOrCreateProject("C:\\test\\project");
+    expect(Parse.Cloud.run).toHaveBeenCalledWith("getOrCreateProject", {
       projectPath: "C:\\test\\project",
     });
   });
@@ -175,7 +175,7 @@ describe("api.createCard", () => {
   test("sends all card fields", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ card: { cardId: "CARD-001" } });
     await createCard({
-      boardId: "abc",
+      projectId: "abc",
       title: "Test Card",
       description: "Desc",
       status: "scope",
@@ -184,7 +184,7 @@ describe("api.createCard", () => {
       author: "pm-1",
     });
     expect(Parse.Cloud.run).toHaveBeenCalledWith("createCard", {
-      boardId: "abc",
+      projectId: "abc",
       title: "Test Card",
       description: "Desc",
       status: "scope",
@@ -197,7 +197,7 @@ describe("api.createCard", () => {
   test("throws on missing title error", async () => {
     Parse.Cloud.run.mockRejectedValueOnce(new Error("Title is required"));
     await expect(
-      createCard({ boardId: "abc", author: "qa-1" })
+      createCard({ projectId: "abc", author: "qa-1" })
     ).rejects.toThrow("Title is required");
   });
 });
@@ -211,13 +211,13 @@ describe("api.updateCard", () => {
       changes: "status: scope -> done",
     });
     await updateCard({
-      boardId: "abc",
+      projectId: "abc",
       cardId: "CARD-001",
       status: "done",
       author: "developer-1",
     });
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe("abc");
+    expect(params.projectId).toBe("abc");
     expect(params.cardId).toBe("CARD-001");
     expect(params.status).toBe("done");
     expect(params.author).toBe("developer-1");
@@ -228,7 +228,7 @@ describe("api.updateCard", () => {
   test("throws on no changes error", async () => {
     Parse.Cloud.run.mockRejectedValueOnce(new Error("No changes specified"));
     await expect(
-      updateCard({ boardId: "abc", cardId: "CARD-001", author: "qa-1" })
+      updateCard({ projectId: "abc", cardId: "CARD-001", author: "qa-1" })
     ).rejects.toThrow("No changes specified");
   });
 });
@@ -239,13 +239,13 @@ describe("api.addComment", () => {
   test("sends comment params", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ comment: { objectId: "c1" } });
     await addComment({
-      boardId: "abc",
+      projectId: "abc",
       cardId: "CARD-001",
       message: "Test comment",
       author: "qa-1",
     });
     expect(Parse.Cloud.run).toHaveBeenCalledWith("addComment", {
-      boardId: "abc",
+      projectId: "abc",
       cardId: "CARD-001",
       message: "Test comment",
       author: "qa-1",
@@ -256,11 +256,11 @@ describe("api.addComment", () => {
 // ─── listCards ────────────────────────────────────────────────────────────────
 
 describe("api.listCards", () => {
-  test("sends boardId without status filter", async () => {
+  test("sends projectId without status filter", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ cards: [] });
     await listCards("abc");
     const params = Parse.Cloud.run.mock.calls[0][1];
-    expect(params.boardId).toBe("abc");
+    expect(params.projectId).toBe("abc");
     expect(params.status).toBeUndefined();
   });
 
@@ -275,11 +275,11 @@ describe("api.listCards", () => {
 // ─── showCard ────────────────────────────────────────────────────────────────
 
 describe("api.showCard", () => {
-  test("sends boardId and cardId", async () => {
+  test("sends projectId and cardId", async () => {
     Parse.Cloud.run.mockResolvedValueOnce({ card: { cardId: "CARD-001", comments: [] } });
     await showCard("abc", "CARD-001");
     expect(Parse.Cloud.run).toHaveBeenCalledWith("showCard", {
-      boardId: "abc",
+      projectId: "abc",
       cardId: "CARD-001",
     });
   });

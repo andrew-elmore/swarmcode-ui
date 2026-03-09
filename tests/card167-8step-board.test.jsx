@@ -19,7 +19,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import agentsReducer from "../src/store/agentsSlice";
 import messagesReducer from "../src/store/messagesSlice";
@@ -29,7 +29,7 @@ import { STATUSES, PRIORITIES, PRIORITY_COLORS } from "../src/constants";
 
 // Mock the API module
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -63,7 +63,7 @@ function createTestStore(boardState = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -90,7 +90,7 @@ function createTestStore(boardState = {}) {
 }
 
 function renderBoard(cards = [], sprints = []) {
-  api.getOrCreateBoard.mockResolvedValue({
+  api.getOrCreateProject.mockResolvedValue({
     board: { objectId: "b1", projectHash: "abc123", projectPath: "C:\\Test\\Project", nextId: 100 },
     cards,
     sprints,
@@ -106,7 +106,7 @@ function renderBoard(cards = [], sprints = []) {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({
+  api.getOrCreateProject.mockResolvedValue({
     board: { objectId: "b1", projectHash: "abc123", projectPath: "C:\\Test\\Project", nextId: 100 },
     cards: [],
     sprints: [],

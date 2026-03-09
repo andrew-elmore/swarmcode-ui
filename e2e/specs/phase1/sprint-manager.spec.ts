@@ -15,12 +15,12 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Sprint Manager CRUD', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Sprint Manager Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
   });
 
@@ -187,12 +187,12 @@ test.describe('Sprint Manager CRUD', () => {
 });
 
 test.describe('Sprint Manager — Board Integration', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Sprint Board Integration Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
   });
 

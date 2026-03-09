@@ -15,11 +15,11 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppDispatch, useAppSelector } from "../store";
-import { createSprint, updateSprint, deleteSprint } from "../store/boardSlice";
+import { createSprint, updateSprint, deleteSprint } from "../store/projectSlice";
 
-export default function SprintManagerDialog({ open, onClose, boardId }) {
+export default function SprintManagerDialog({ open, onClose, projectId }) {
   const dispatch = useAppDispatch();
-  const { sprints } = useAppSelector((s) => s.board);
+  const { sprints } = useAppSelector((s) => s.project);
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
@@ -27,9 +27,9 @@ export default function SprintManagerDialog({ open, onClose, boardId }) {
   const sorted = [...sprints].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const handleCreate = async () => {
-    if (!newName.trim() || !boardId) return;
+    if (!newName.trim() || !projectId) return;
     await dispatch(
-      createSprint({ boardId, name: newName.trim(), order: sprints.length })
+      createSprint({ projectId, name: newName.trim(), order: sprints.length })
     );
     setNewName("");
   };
@@ -40,7 +40,7 @@ export default function SprintManagerDialog({ open, onClose, boardId }) {
       return;
     }
     await dispatch(
-      updateSprint({ boardId, sprintId: sprint.objectId, name: editName.trim() })
+      updateSprint({ projectId, sprintId: sprint.objectId, name: editName.trim() })
     );
     setEditingId(null);
   };
@@ -51,16 +51,16 @@ export default function SprintManagerDialog({ open, onClose, boardId }) {
     const a = sorted[index];
     const b = sorted[targetIndex];
     await dispatch(
-      updateSprint({ boardId, sprintId: a.objectId, order: b.order ?? targetIndex })
+      updateSprint({ projectId, sprintId: a.objectId, order: b.order ?? targetIndex })
     );
     await dispatch(
-      updateSprint({ boardId, sprintId: b.objectId, order: a.order ?? index })
+      updateSprint({ projectId, sprintId: b.objectId, order: a.order ?? index })
     );
   };
 
   const handleDelete = async (sprint) => {
     if (!window.confirm(`Delete sprint "${sprint.name}"?`)) return;
-    await dispatch(deleteSprint({ boardId, sprintId: sprint.objectId }));
+    await dispatch(deleteSprint({ projectId, sprintId: sprint.objectId }));
   };
 
   return (

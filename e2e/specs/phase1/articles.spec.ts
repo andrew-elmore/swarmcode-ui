@@ -22,12 +22,12 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Article CRUD', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article CRUD Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
   });
 
@@ -61,7 +61,7 @@ test.describe('Article CRUD', () => {
 
   test('click article row opens detail view', async ({ page }) => {
     // Seed an article
-    const result = await seedArticle(boardId, 'Architecture Overview', 'This describes the system architecture.', ['arch', 'design']);
+    const result = await seedArticle(projectId, 'Architecture Overview', 'This describes the system architecture.', ['arch', 'design']);
     const articleId = result.article.objectId;
 
     await page.goto('/');
@@ -86,7 +86,7 @@ test.describe('Article CRUD', () => {
 
   test('edit article (title rename + text + keywords)', async ({ page }) => {
     // Seed an article to edit
-    const result = await seedArticle(boardId, 'Old Title', 'Old content.', ['old']);
+    const result = await seedArticle(projectId, 'Old Title', 'Old content.', ['old']);
     const articleId = result.article.objectId;
 
     await page.goto('/');
@@ -126,7 +126,7 @@ test.describe('Article CRUD', () => {
 
   test('delete article with confirmation', async ({ page }) => {
     // Seed an article to delete
-    const result = await seedArticle(boardId, 'To Be Deleted', 'Temporary article.', ['temp']);
+    const result = await seedArticle(projectId, 'To Be Deleted', 'Temporary article.', ['temp']);
     const articleId = result.article.objectId;
 
     await page.goto('/');
@@ -179,15 +179,15 @@ test.describe('Article CRUD', () => {
 });
 
 test.describe('Article List & Search', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article Search Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
     // Seed 3 articles with distinct titles and keywords
-    await seedArticles(boardId, [
+    await seedArticles(projectId, [
       { title: 'Bravo Guide', text: 'Bravo content.', keywords: ['guide', 'bravo'] },
       { title: 'Alpha Guide', text: 'Alpha content.', keywords: ['guide', 'alpha'] },
       { title: 'Charlie Notes', text: 'Charlie content.', keywords: ['notes', 'charlie'] },
@@ -304,14 +304,14 @@ test.describe('Article List & Search', () => {
 });
 
 test.describe('Inline [[references]]', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article References Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedArticles(boardId, [
+    await seedArticles(projectId, [
       { title: 'Article A', text: 'See [[Article B]] for details.', keywords: ['ref-test'] },
       { title: 'Article B', text: 'This is Article B content.', keywords: ['ref-test'] },
       { title: 'Has Missing Ref', text: 'See [[Nonexistent]] article.', keywords: ['ref-test'] },
@@ -393,12 +393,12 @@ test.describe('Inline [[references]]', () => {
 });
 
 test.describe('Articles Tab Navigation', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article Tab Nav Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
   });
 
@@ -421,7 +421,7 @@ test.describe('Articles Tab Navigation', () => {
 
   test('tab shows article content after switching tabs', async ({ page }) => {
     // Seed articles so there's content to verify
-    await seedArticles(boardId, [
+    await seedArticles(projectId, [
       { title: 'Persistent Article', text: 'Still here.', keywords: ['nav'] },
     ]);
 
@@ -455,14 +455,14 @@ test.describe('Articles — mobile', () => {
     isMobile: true,
   });
 
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article Mobile Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedArticles(boardId, [
+    await seedArticles(projectId, [
       { title: 'Mobile Article', text: 'Mobile content.', keywords: ['mobile', 'test'] },
     ]);
   });

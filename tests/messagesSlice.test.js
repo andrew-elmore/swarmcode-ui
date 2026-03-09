@@ -5,11 +5,11 @@
 
 import { configureStore } from "@reduxjs/toolkit";
 import * as api from "../src/services/api";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer, { sendMessage, loadConversation, loadMoreMessages, clearError } from "../src/store/messagesSlice";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -25,8 +25,8 @@ jest.mock("../src/services/api", () => ({
 const TEST_BOARD_ID = "test-board-id-abc";
 
 function createTestStore(preloadedState) {
-  const boardState = {
-    board: { objectId: TEST_BOARD_ID },
+  const projectState = {
+    project: { objectId: TEST_BOARD_ID },
     cards: [],
     selectedCard: null,
     loading: false,
@@ -34,13 +34,13 @@ function createTestStore(preloadedState) {
     lastPoll: null,
   };
   return configureStore({
-    reducer: { board: boardReducer, messages: messagesReducer },
+    reducer: { project: projectReducer, messages: messagesReducer },
     preloadedState: preloadedState
       ? {
-          board: boardState,
+          project: projectState,
           messages: { ...messagesReducer(undefined, { type: "@@INIT" }), ...preloadedState },
         }
-      : { board: boardState },
+      : { project: projectState },
   });
 }
 
@@ -242,7 +242,7 @@ describe("loadMoreMessages thunk", () => {
     api.getConversation.mockResolvedValueOnce({ messages: [], hasMore: false });
     await store.dispatch(loadMoreMessages("developer-1"));
 
-    // Should pass boardId, userA, userB, and the 'before' cursor
+    // Should pass projectId, userA, userB, and the 'before' cursor
     expect(api.getConversation).toHaveBeenLastCalledWith(TEST_BOARD_ID, "owner", "developer-1", {
       before: "2026-02-09T09:00:00Z",
     });

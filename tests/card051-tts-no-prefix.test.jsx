@@ -15,7 +15,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -38,7 +38,7 @@ global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
 let capturedOnMessage = null;
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -46,7 +46,7 @@ jest.mock("../src/services/api", () => ({
   showCard: jest.fn(),
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
-  subscribeToMessages: jest.fn((boardId, cb) => {
+  subscribeToMessages: jest.fn((projectId, cb) => {
     capturedOnMessage = cb;
     return Promise.resolve(jest.fn());
   }),
@@ -87,7 +87,7 @@ function createTestStore(ttsOverrides = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -102,7 +102,7 @@ function createTestStore(ttsOverrides = {}) {
         loading: false,
         error: null,
       },
-      board: { board: { objectId: "test-board-id" }, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
+      project: { project: { objectId: "test-board-id" }, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
       projects: { projects: [], activeProject: null, loading: false, error: null },
     },
   });
@@ -123,7 +123,7 @@ function renderApp(ttsOverrides = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnMessage = null;
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [], sprints: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [], sprints: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: [] });
 });

@@ -12,7 +12,7 @@
  * API source verification tests belong in the API repo's test suite.
  *
  * Part 1: UI source verification (api.js, App.jsx, BoardView, CardDetailDialog) — CARD-118
- * Part 2: UI boardSlice compatibility with new sprint object shape
+ * Part 2: UI projectSlice compatibility with new sprint object shape
  * Part 3: Assignee string serialization compatibility
  */
 
@@ -110,19 +110,19 @@ describe("CARD-120 QA: CardDetailDialog.jsx sprint backward compat (CARD-118)", 
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Part 3: UI boardSlice sprint object compatibility
+// Part 3: UI projectSlice sprint object compatibility
 // ═════════════════════════════════════════════════════════════════════════════
 
 import { configureStore } from "@reduxjs/toolkit";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 
-describe("CARD-120 QA: boardSlice sprint object shape compatibility", () => {
+describe("CARD-120 QA: projectSlice sprint object shape compatibility", () => {
   function createBoardStore(cards = [], sprints = []) {
     return configureStore({
-      reducer: { board: boardReducer },
+      reducer: { project: projectReducer },
       preloadedState: {
-        board: {
-          board: { objectId: "b1", projectHash: "testhash", nextId: 10 },
+        project: {
+          project: { objectId: "b1", projectHash: "testhash", nextId: 10 },
           cards,
           sprints,
           sprintFilter: null,
@@ -150,7 +150,7 @@ describe("CARD-120 QA: boardSlice sprint object shape compatibility", () => {
       },
     ]);
 
-    const card = store.getState().board.cards[0];
+    const card = store.getState().project.cards[0];
     expect(card.sprint).toEqual({ objectId: "s1", name: "Sprint 1" });
     expect(card.sprintName).toBe("Sprint 1");
   });
@@ -170,7 +170,7 @@ describe("CARD-120 QA: boardSlice sprint object shape compatibility", () => {
       },
     ]);
 
-    const card = store.getState().board.cards[0];
+    const card = store.getState().project.cards[0];
     expect(card.sprint).toBeNull();
     expect(card.sprintName).toBeNull();
   });

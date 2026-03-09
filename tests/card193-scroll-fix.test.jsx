@@ -24,7 +24,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import commandsReducer from "../src/store/commandsSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
@@ -34,7 +34,7 @@ import AgentsView from "../src/components/AgentsView";
 import BoardView from "../src/components/BoardView";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -175,7 +175,7 @@ function createTestStore(overrides = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       commands: commandsReducer,
       messages: messagesReducer,
       projects: projectsReducer,
@@ -184,7 +184,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       agents: { ...DEFAULT_AGENTS, ...overrides.agents },
       articles: { ...DEFAULT_ARTICLES, ...overrides.articles },
-      board: { ...DEFAULT_BOARD, ...overrides.board },
+      board: { ...DEFAULT_BOARD, ...overrides.project },
       commands: { ...DEFAULT_COMMANDS, ...overrides.commands },
       messages: { ...DEFAULT_MESSAGES, ...overrides.messages },
       projects: { ...DEFAULT_PROJECTS, ...overrides.projects },
@@ -204,7 +204,7 @@ function renderWithProviders(ui, storeOverrides = {}) {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({
+  api.getOrCreateProject.mockResolvedValue({
     board: { objectId: "b1", projectHash: "test-hash-193", projectPath: "C:\\Test\\Project", nextId: 100 },
     cards: [],
     sprints: [],
@@ -395,7 +395,7 @@ describe("CARD-193: BoardView scroll container", () => {
 
   test("renders many cards inside their column scroll container", async () => {
     const manyCards = generateCards(10, "implement");
-    api.getOrCreateBoard.mockResolvedValue({
+    api.getOrCreateProject.mockResolvedValue({
       board: { objectId: "b1", projectHash: "test-hash-193", projectPath: "C:\\Test\\Project", nextId: 100 },
       cards: manyCards,
       sprints: [],
@@ -427,7 +427,7 @@ describe("CARD-193: BoardView scroll container", () => {
       sprintId: null,
     }));
 
-    api.getOrCreateBoard.mockResolvedValue({
+    api.getOrCreateProject.mockResolvedValue({
       board: { objectId: "b1", projectHash: "test-hash-193", projectPath: "C:\\Test\\Project", nextId: 100 },
       cards: [...implementCards, ...testCards],
       sprints: [],

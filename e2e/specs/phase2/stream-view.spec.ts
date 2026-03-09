@@ -14,12 +14,12 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Stream View — UI and Controls', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream UI Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
   });
 
@@ -150,15 +150,15 @@ test.describe('Stream View — UI and Controls', () => {
 });
 
 test.describe('Stream View — Message Queue', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream Queue Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -181,7 +181,7 @@ test.describe('Stream View — Message Queue', () => {
       window.speechSynthesis.getVoices = () => [];
     });
 
-    simulator = new AgentSimulator(boardId, 'developer-1', {
+    simulator = new AgentSimulator(projectId, 'developer-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -221,7 +221,7 @@ test.describe('Stream View — Message Queue', () => {
       window.speechSynthesis.getVoices = () => [];
     });
 
-    simulator = new AgentSimulator(boardId, 'qa-1', {
+    simulator = new AgentSimulator(projectId, 'qa-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -264,7 +264,7 @@ test.describe('Stream View — Message Queue', () => {
       window.speechSynthesis.getVoices = () => [];
     });
 
-    simulator = new AgentSimulator(boardId, 'senior-dev-1', {
+    simulator = new AgentSimulator(projectId, 'senior-dev-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -305,12 +305,12 @@ test.describe('Stream View — mobile', () => {
     isMobile: true,
   });
 
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream Mobile Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
   });
 

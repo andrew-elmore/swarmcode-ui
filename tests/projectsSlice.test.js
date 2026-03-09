@@ -8,7 +8,7 @@ import * as api from "../src/services/api";
 import projectsReducer, { fetchRecentProjects, addRecentProject, setActiveProject, clearError, deleteProject } from "../src/store/projectsSlice";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),

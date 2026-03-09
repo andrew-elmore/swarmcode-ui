@@ -14,15 +14,15 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Board Collaboration', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Board Collab Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -35,7 +35,7 @@ test.describe('Board Collaboration', () => {
 
   test('user creates card, agent simulator moves it to implement', async ({ page }) => {
     // Start simulator that watches for new cards and moves them
-    simulator = new AgentSimulator(boardId, 'developer-1', {
+    simulator = new AgentSimulator(projectId, 'developer-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 500,
@@ -80,13 +80,13 @@ test.describe('Board Collaboration', () => {
 
   test('agent simulator adds comment, comment appears in card detail', async ({ page }) => {
     // Seed a card for the agent to comment on
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Comment Collab Card', status: 'code_review', priority: 'medium' },
     ]);
     const cardId = cards[0].cardId;
 
     // Use simulator for direct API calls only (no polling needed)
-    simulator = new AgentSimulator(boardId, 'senior-dev-1', {
+    simulator = new AgentSimulator(projectId, 'senior-dev-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,
@@ -114,7 +114,7 @@ test.describe('Board Collaboration', () => {
 
   test('agent creates a new card via API, card appears in board after refresh', async ({ page }) => {
     // Use simulator for direct API calls only (no polling needed)
-    simulator = new AgentSimulator(boardId, 'pm-1', {
+    simulator = new AgentSimulator(projectId, 'pm-1', {
       heartbeatInterval: 0,
       commandPollInterval: 0,
       pollInterval: 5000,

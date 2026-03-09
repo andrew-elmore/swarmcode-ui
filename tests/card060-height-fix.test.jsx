@@ -17,14 +17,14 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -64,7 +64,7 @@ function createTestStore() {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -72,7 +72,7 @@ function createTestStore() {
     preloadedState: {
       tts: DEFAULT_TTS_STATE,
       agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
-      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
@@ -102,7 +102,7 @@ function renderApp() {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn());
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });

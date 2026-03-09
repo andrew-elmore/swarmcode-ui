@@ -2,74 +2,74 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as api from "../services/api";
 
 
-export const fetchBoard = createAsyncThunk(
-  "board/fetchBoard",
+export const fetchProject = createAsyncThunk(
+  "project/fetchProject",
   async (projectPath) => {
-    return api.getOrCreateBoard(projectPath);
+    return api.getOrCreateProject(projectPath);
   }
 );
 
 export const createCard = createAsyncThunk(
-  "board/createCard",
+  "project/createCard",
   async (cardData) => {
     return api.createCard(cardData);
   }
 );
 
 export const updateCard = createAsyncThunk(
-  "board/updateCard",
+  "project/updateCard",
   async (cardData) => {
     return api.updateCard(cardData);
   }
 );
 
 export const addComment = createAsyncThunk(
-  "board/addComment",
+  "project/addComment",
   async (commentData) => {
     return api.addComment(commentData);
   }
 );
 
 export const fetchCards = createAsyncThunk(
-  "board/fetchCards",
-  async ({ boardId, status }) => {
-    return api.listCards(boardId, status);
+  "project/fetchCards",
+  async ({ projectId, status, sprint }) => {
+    return api.listCards(projectId, status, sprint);
   }
 );
 
 export const fetchCard = createAsyncThunk(
-  "board/fetchCard",
-  async ({ boardId, cardId }) => {
-    return api.showCard(boardId, cardId);
+  "project/fetchCard",
+  async ({ projectId, cardId }) => {
+    return api.showCard(projectId, cardId);
   }
 );
 
 export const createSprint = createAsyncThunk(
-  "board/createSprint",
+  "project/createSprint",
   async (sprintData) => {
     return api.createSprint(sprintData);
   }
 );
 
 export const updateSprint = createAsyncThunk(
-  "board/updateSprint",
+  "project/updateSprint",
   async (sprintData) => {
     return api.updateSprint(sprintData);
   }
 );
 
 export const deleteSprint = createAsyncThunk(
-  "board/deleteSprint",
-  async ({ boardId, sprintId }) => {
-    return api.deleteSprint(boardId, sprintId);
+  "project/deleteSprint",
+  async ({ projectId, sprintId }) => {
+    return api.deleteSprint(projectId, sprintId);
   }
 );
 
 
-const boardSlice = createSlice({
-  name: "board",
+const projectSlice = createSlice({
+  name: "project",
   initialState: {
-    board: null,
+    project: null,
     cards: [],
     sprints: [],
     sprintFilter: null,
@@ -90,18 +90,18 @@ const boardSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(fetchBoard.pending, (state) => {
+    builder.addCase(fetchProject.pending, (state) => {
       state.loading = true;
       state.error = null;
     });
-    builder.addCase(fetchBoard.fulfilled, (state, action) => {
+    builder.addCase(fetchProject.fulfilled, (state, action) => {
       state.loading = false;
-      state.board = action.payload.board;
+      state.project = action.payload.project;
       state.cards = action.payload.cards;
       state.sprints = action.payload.sprints || [];
       state.lastPoll = new Date().toISOString();
     });
-    builder.addCase(fetchBoard.rejected, (state, action) => {
+    builder.addCase(fetchProject.rejected, (state, action) => {
       state.loading = false;
       state.error = action.error.message;
     });
@@ -178,5 +178,5 @@ const boardSlice = createSlice({
   },
 });
 
-export const { clearError, clearSelectedCard, setSprintFilter } = boardSlice.actions;
-export default boardSlice.reducer;
+export const { clearError, clearSelectedCard, setSprintFilter } = projectSlice.actions;
+export default projectSlice.reducer;

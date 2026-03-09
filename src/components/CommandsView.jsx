@@ -52,7 +52,7 @@ function formatTimestamp(dateStr) {
 
 export default function CommandsView() {
   const dispatch = useAppDispatch();
-  const boardId = useAppSelector((s) => s.board.board?.objectId);
+  const projectId = useAppSelector((s) => s.project.project?.objectId);
   const { commands, latestPing, loading, sending, error } = useAppSelector((s) => s.commands);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -66,20 +66,20 @@ export default function CommandsView() {
 
   // Fetch initial data (skip if already populated from preloaded/LiveQuery state)
   useEffect(() => {
-    if (boardId) {
-      if (commands.length === 0 && !error) dispatch(fetchRecentCommands(boardId));
-      if (!latestPing) dispatch(fetchLatestPing(boardId));
+    if (projectId) {
+      if (commands.length === 0 && !error) dispatch(fetchRecentCommands(projectId));
+      if (!latestPing) dispatch(fetchLatestPing(projectId));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, boardId]);
+  }, [dispatch, projectId]);
 
   const handleCommand = useCallback(
     (action) => {
-      if (boardId) {
-        dispatch(createCommand({ boardId, action }));
+      if (projectId) {
+        dispatch(createCommand({ projectId, action }));
       }
     },
-    [dispatch, boardId]
+    [dispatch, projectId]
   );
 
   // Ping status

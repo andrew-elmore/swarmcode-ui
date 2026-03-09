@@ -23,8 +23,8 @@ export const loadConversation = createAsyncThunk(
     if (agent === "all") {
       return { agent, messages: [], hasMore: false };
     }
-    const boardId = getState().board.board?.objectId;
-    const result = await api.getConversation(boardId, "owner", agent, { limit: 30 });
+    const projectId = getState().project.project?.objectId;
+    const result = await api.getConversation(projectId, "owner", agent, { limit: 30 });
     return { agent, messages: result.messages, hasMore: result.hasMore };
   }
 );
@@ -32,8 +32,8 @@ export const loadConversation = createAsyncThunk(
 export const sendMessage = createAsyncThunk(
   "messages/sendMessage",
   async ({ to, message }, { getState }) => {
-    const boardId = getState().board.board?.objectId;
-    const result = await api.sendMessage({ boardId, from: "owner", to, message });
+    const projectId = getState().project.project?.objectId;
+    const result = await api.sendMessage({ projectId, from: "owner", to, message });
     return { to, message, result };
   }
 );
@@ -44,8 +44,8 @@ export const refreshConversation = createAsyncThunk(
     if (agent === "all") {
       return { agent, messages: [], hasMore: false };
     }
-    const boardId = getState().board.board?.objectId;
-    const result = await api.getConversation(boardId, "owner", agent, { limit: 30 });
+    const projectId = getState().project.project?.objectId;
+    const result = await api.getConversation(projectId, "owner", agent, { limit: 30 });
     return { agent, messages: result.messages, hasMore: result.hasMore };
   }
 );
@@ -58,10 +58,10 @@ export const loadMoreMessages = createAsyncThunk(
     if (!convo || convo.messages.length === 0) {
       return { agent, messages: [], hasMore: false };
     }
-    const boardId = state.board.board?.objectId;
+    const projectId = state.project.project?.objectId;
     const oldestMsg = convo.messages[0];
     const before = oldestMsg.createdAt?.iso || oldestMsg.createdAt;
-    const result = await api.getConversation(boardId, "owner", agent, { before });
+    const result = await api.getConversation(projectId, "owner", agent, { before });
     return { agent, messages: result.messages, hasMore: result.hasMore };
   }
 );

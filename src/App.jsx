@@ -17,7 +17,7 @@ import TerminalIcon from "@mui/icons-material/Terminal";
 import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
-import { fetchBoard } from "./store/boardSlice";
+import { fetchProject } from "./store/projectSlice";
 import { appendMessage, setMobileDrawerOpen, resetConversations } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
 import { updateCommand, setPing } from "./store/commandsSlice";
@@ -40,7 +40,7 @@ export default function App() {
   const activeProject = useAppSelector((s) => s.projects.activeProject);
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
-  const boardId = useAppSelector((s) => s.board.board?.objectId);
+  const projectId = useAppSelector((s) => s.project.project?.objectId);
   const liveQueryRefreshFlag = useAppSelector((s) => s.messages.liveQueryRefreshFlag);
   const tts = useAppSelector((s) => s.tts);
   const ttsRef = useRef(tts);
@@ -60,22 +60,22 @@ export default function App() {
 
   const isMessagesTab = tab === 0;
 
-  // Load board on startup so boardId is available for all tabs (including Messages)
+  // Load project on startup so projectId is available for all tabs (including Messages)
   useEffect(() => {
     if (activeProject) {
       dispatch(resetConversations());
-      dispatch(fetchBoard(activeProject.path));
+      dispatch(fetchProject(activeProject.path));
     }
   }, [dispatch, activeProject]);
 
   // LiveQuery subscription lives in App so it stays active across all tabs.
-  // Re-subscribes when boardId or liveQueryRefreshFlag changes.
+  // Re-subscribes when projectId or liveQueryRefreshFlag changes.
   useEffect(() => {
-    if (!boardId) return;
+    if (!projectId) return;
 
     let unsubscribe = null;
 
-    subscribeToMessages(boardId, (msg) => {
+    subscribeToMessages(projectId, (msg) => {
       // Resolve Pointer objectIds to agent names via agentIdMap.
       const idMap = agentIdMapRef.current;
       const resolvedFrom = (msg.fromId && idMap[msg.fromId]) || msg.from;
@@ -100,19 +100,19 @@ export default function App() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [dispatch, boardId, liveQueryRefreshFlag]);
+  }, [dispatch, projectId, liveQueryRefreshFlag]);
 
   // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {
-    if (!boardId) return;
+    if (!projectId) return;
     let unsubCmd = null;
     let unsubPing = null;
 
-    subscribeToCommands(boardId, (event) => {
+    subscribeToCommands(projectId, (event) => {
       dispatch(updateCommand(event.command));
     }).then((unsub) => { unsubCmd = unsub; });
 
-    subscribeToPings(boardId, (ping) => {
+    subscribeToPings(projectId, (ping) => {
       dispatch(setPing(ping));
     }).then((unsub) => { unsubPing = unsub; });
 
@@ -120,7 +120,7 @@ export default function App() {
       if (unsubCmd) unsubCmd();
       if (unsubPing) unsubPing();
     };
-  }, [dispatch, boardId, liveQueryRefreshFlag]);
+  }, [dispatch, projectId, liveQueryRefreshFlag]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>

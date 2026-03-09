@@ -22,7 +22,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import commandsReducer from "../src/store/commandsSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
@@ -34,7 +34,7 @@ import AgentsView from "../src/components/AgentsView";
 import CommandsView from "../src/components/CommandsView";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -77,7 +77,7 @@ jest.mock("../src/services/api", () => ({
 const theme = createTheme();
 
 const DEFAULT_BOARD = {
-  board: { objectId: "test-hash" },
+  project: { objectId: "test-hash" },
   cards: [],
   sprints: [],
   sprintFilter: null,
@@ -133,7 +133,7 @@ function createTestStore(overrides = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       commands: commandsReducer,
       messages: messagesReducer,
       projects: projectsReducer,
@@ -142,7 +142,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       agents: { ...DEFAULT_AGENTS, ...overrides.agents },
       articles: { ...DEFAULT_ARTICLES, ...overrides.articles },
-      board: { ...DEFAULT_BOARD, ...overrides.board },
+      project: { ...DEFAULT_BOARD, ...overrides.project },
       commands: { ...DEFAULT_COMMANDS, ...overrides.commands },
       messages: { ...DEFAULT_MESSAGES, ...overrides.messages },
       projects: { ...DEFAULT_PROJECTS, ...overrides.projects },
@@ -163,7 +163,7 @@ function renderWithProviders(ui, storeOverrides = {}) {
 
 beforeEach(() => {
   // Safe defaults — all API calls resolve to prevent unhandled rejections
-  api.getOrCreateBoard.mockResolvedValue({ board: { objectId: "test-hash" }, cards: [], sprints: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: { objectId: "test-hash" }, cards: [], sprints: [] });
   api.listCards.mockResolvedValue({ cards: [] });
   api.getAgents.mockResolvedValue({ agents: [] });
   api.getAllAgents.mockResolvedValue({ agents: [] });
@@ -185,10 +185,10 @@ afterEach(() => {
 
 describe("BoardView — error-alert", () => {
   test("renders error-alert testid when board fetch fails", async () => {
-    api.getOrCreateBoard.mockRejectedValue(new Error("Board fetch failed"));
+    api.getOrCreateProject.mockRejectedValue(new Error("Board fetch failed"));
 
     renderWithProviders(<BoardView />, {
-      board: { ...DEFAULT_BOARD, board: null },
+      project: { ...DEFAULT_BOARD, project: null },
     });
 
     await waitFor(() => {
@@ -198,10 +198,10 @@ describe("BoardView — error-alert", () => {
   });
 
   test("error-alert is not dismissible (no close button)", async () => {
-    api.getOrCreateBoard.mockRejectedValue(new Error("Board fetch failed"));
+    api.getOrCreateProject.mockRejectedValue(new Error("Board fetch failed"));
 
     renderWithProviders(<BoardView />, {
-      board: { ...DEFAULT_BOARD, board: null },
+      project: { ...DEFAULT_BOARD, project: null },
     });
 
     await waitFor(() => {

@@ -13,9 +13,7 @@
 
 import Parse from "parse";
 import {
-  sendMessage as apiSendMessage,
   getConversation,
-  createCard,
   listCards,
 } from "../src/services/api.js";
 
@@ -32,39 +30,6 @@ afterEach(() => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-086 QA: callFunction error handling", () => {
-  test.skip("throws when Parse.Cloud.run rejects with error message", async () => {
-    Parse.Cloud.run.mockRejectedValueOnce(new Error("Missing required field: message"));
-
-    await expect(
-      apiSendMessage({ boardId: "h", from: "owner", to: "pm-1", message: "test" })
-    ).rejects.toThrow("Missing required field: message");
-  });
-
-  test.skip("throws on server error", async () => {
-    Parse.Cloud.run.mockRejectedValueOnce(new Error("Internal server error"));
-
-    await expect(
-      apiSendMessage({ boardId: "h", from: "owner", to: "pm-1", message: "test" })
-    ).rejects.toThrow("Internal server error");
-  });
-
-  test.skip("throws on network/connection error", async () => {
-    Parse.Cloud.run.mockRejectedValueOnce(new Error("XMLHttpRequest failed"));
-
-    await expect(
-      apiSendMessage({ boardId: "h", from: "owner", to: "pm-1", message: "test" })
-    ).rejects.toThrow("XMLHttpRequest failed");
-  });
-
-  test.skip("returns result on successful response", async () => {
-    Parse.Cloud.run.mockResolvedValueOnce({ success: true, messageId: "m1" });
-
-    const result = await apiSendMessage({
-      boardId: "h", from: "owner", to: "pm-1", message: "test",
-    });
-    expect(result).toEqual({ success: true, messageId: "m1" });
-  });
-
   test("getConversation error propagates correctly", async () => {
     Parse.Cloud.run.mockRejectedValueOnce(new Error("Function not found"));
 
@@ -77,26 +42,6 @@ describe("CARD-086 QA: callFunction error handling", () => {
     await expect(listCards("h")).rejects.toThrow("Internal server error");
   });
 
-  test.skip("createCard unauthorized error propagates correctly", async () => {
-    Parse.Cloud.run.mockRejectedValueOnce(new Error("unauthorized"));
-
-    await expect(
-      createCard({ boardId: "h", title: "T", author: "qa-1" })
-    ).rejects.toThrow("unauthorized");
-  });
-
-  test.skip("calls Parse.Cloud.run with correct function name and params", async () => {
-    Parse.Cloud.run.mockResolvedValueOnce({ success: true });
-
-    await apiSendMessage({ boardId: "h", from: "owner", to: "pm-1", message: "test" });
-
-    expect(Parse.Cloud.run).toHaveBeenCalledWith("sendMessage", {
-      boardId: "h",
-      from: "owner",
-      to: "pm-1",
-      message: "test",
-    });
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -1,7 +1,7 @@
 /**
  * CARD-043 QA Tests — Verify projectHash availability fixes.
  *
- * Bug 1: App.jsx now dispatches fetchBoard on startup so projectHash
+ * Bug 1: App.jsx now dispatches fetchProject on startup so projectHash
  *         is available for all tabs (not just Board/Agents).
  * Bug 2: sendMessage thunk passes projectHash from board state to API.
  *         (Agent-side fix in main.py is verified via API call assertions.)
@@ -15,15 +15,15 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
-import messagesReducer, { sendMessage, loadConversation, loadMoreMessages } from "../src/store/messagesSlice";
+import projectReducer from "../src/store/projectSlice";
+import messagesReducer, { loadConversation, loadMoreMessages } from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import commandsReducer from "../src/store/commandsSlice";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -52,7 +52,7 @@ function createTestStore(preloadedState = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -78,7 +78,7 @@ function renderWithProviders(ui, { store, ...options } = {}) {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
   api.createCard.mockResolvedValue({ card: {} });
   api.updateCard.mockResolvedValue({ card: {} });
   api.addComment.mockResolvedValue({ comment: {} });
@@ -101,12 +101,12 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
-// ─── Bug 1: App dispatches fetchBoard on startup ──────────────────────────
+// ─── Bug 1: App dispatches fetchProject on startup ──────────────────────────
 
-describe("CARD-043 Bug 1: App.jsx dispatches fetchBoard on startup", () => {
-  test("calls getOrCreateBoard when activeProject is set (Messages tab default)", async () => {
+describe("CARD-043 Bug 1: App.jsx dispatches fetchProject on startup", () => {
+  test("calls getOrCreateProject when activeProject is set (Messages tab default)", async () => {
     const mockBoard = { objectId: "b1", projectHash: "hash-123", nextId: 1 };
-    api.getOrCreateBoard.mockResolvedValue({ board: mockBoard, cards: [] });
+    api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: [] });
 
     const store = createTestStore({
       projects: {
@@ -119,21 +119,21 @@ describe("CARD-043 Bug 1: App.jsx dispatches fetchBoard on startup", () => {
 
     renderWithProviders(<App />, { store });
 
-    // App.jsx useEffect should dispatch fetchBoard with activeProject.path
+    // App.jsx useEffect should dispatch fetchProject with activeProject.path
     await waitFor(() => {
-      expect(api.getOrCreateBoard).toHaveBeenCalledWith("/test/project");
+      expect(api.getOrCreateProject).toHaveBeenCalledWith("/test/project");
     });
 
-    // After fetchBoard resolves, board.board.objectId should be set in store
+    // After fetchProject resolves, board.board.objectId should be set in store
     await waitFor(() => {
-      const boardState = store.getState().board;
-      expect(boardState.board).not.toBeNull();
-      expect(boardState.board.objectId).toBe("b1");
+      const boardState = store.getState().project;
+      expect(boardState.project).not.toBeNull();
+      expect(boardState.project.objectId).toBe("b1");
     });
   });
 
-  test("does NOT call getOrCreateBoard when no activeProject", async () => {
-    api.getOrCreateBoard.mockClear();
+  test("does NOT call getOrCreateProject when no activeProject", async () => {
+    api.getOrCreateProject.mockClear();
 
     const store = createTestStore({
       projects: {
@@ -149,38 +149,10 @@ describe("CARD-043 Bug 1: App.jsx dispatches fetchBoard on startup", () => {
     // Give effects time to run
     await new Promise((r) => setTimeout(r, 100));
 
-    // getOrCreateBoard should NOT have been called (no active project)
-    expect(api.getOrCreateBoard).not.toHaveBeenCalled();
+    // getOrCreateProject should NOT have been called (no active project)
+    expect(api.getOrCreateProject).not.toHaveBeenCalled();
   });
 
-  test.skip("projectHash is available in store before messaging thunks fire", async () => {
-    const mockBoard = { objectId: "b1", projectHash: "hash-xyz", nextId: 1 };
-    api.getOrCreateBoard.mockResolvedValue({ board: mockBoard, cards: [] });
-
-    const store = createTestStore({
-      projects: {
-        projects: [{ path: "/my/proj", name: "proj" }],
-        activeProject: { path: "/my/proj", name: "proj" },
-        loading: false,
-        error: null,
-      },
-    });
-
-    renderWithProviders(<App />, { store });
-
-    // Wait for board to load
-    await waitFor(() => {
-      expect(store.getState().board.board?.projectHash).toBe("hash-xyz");
-    });
-
-    // Now simulate sending a message — it should read objectId (boardId) from board state
-    api.sendMessage.mockResolvedValue({ success: true });
-    await store.dispatch(sendMessage({ to: "developer-1", message: "Test msg" }));
-
-    expect(api.sendMessage).toHaveBeenCalledWith(
-      expect.objectContaining({ boardId: "b1" })
-    );
-  });
 });
 
 // ─── Bug 2: sendMessage thunk passes projectHash ──────────────────────────
@@ -190,8 +162,8 @@ describe("CARD-043 Bug 2: sendMessage passes projectHash from board state", () =
 
   function createStoreWithBoard() {
     return createTestStore({
-      board: {
-        board: { objectId: PROJECT_HASH },
+      project: {
+        project: { objectId: PROJECT_HASH },
         cards: [],
         selectedCard: null,
         loading: false,
@@ -200,20 +172,6 @@ describe("CARD-043 Bug 2: sendMessage passes projectHash from board state", () =
       },
     });
   }
-
-  test.skip("sendMessage includes projectHash in API call", async () => {
-    api.sendMessage.mockResolvedValue({ success: true });
-    const store = createStoreWithBoard();
-
-    await store.dispatch(sendMessage({ to: "pm-1", message: "Hello PM" }));
-
-    expect(api.sendMessage).toHaveBeenCalledWith({
-      boardId: PROJECT_HASH,
-      from: "owner",
-      to: "pm-1",
-      message: "Hello PM",
-    });
-  });
 
   test("loadConversation includes projectHash in API call", async () => {
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
@@ -241,7 +199,7 @@ describe("CARD-043 Bug 2: sendMessage passes projectHash from board state", () =
     api.getConversation.mockResolvedValueOnce({ messages: [], hasMore: false });
     await store.dispatch(loadMoreMessages("developer-1"));
 
-    // Second call should include boardId (objectId) and before cursor
+    // Second call should include projectId (objectId) and before cursor
     expect(api.getConversation).toHaveBeenLastCalledWith(
       PROJECT_HASH,
       "owner",
@@ -250,29 +208,4 @@ describe("CARD-043 Bug 2: sendMessage passes projectHash from board state", () =
     );
   });
 
-  test.skip("sendMessage passes undefined projectHash when board not loaded", async () => {
-    api.sendMessage.mockResolvedValue({ success: true });
-
-    // Store with no board loaded
-    const store = createTestStore({
-      board: {
-        board: null,
-        cards: [],
-        selectedCard: null,
-        loading: false,
-        error: null,
-        lastPoll: null,
-      },
-    });
-
-    await store.dispatch(sendMessage({ to: "pm-1", message: "No board" }));
-
-    // Should still call API but with undefined projectHash
-    expect(api.sendMessage).toHaveBeenCalledWith({
-      boardId: undefined,
-      from: "owner",
-      to: "pm-1",
-      message: "No board",
-    });
-  });
 });

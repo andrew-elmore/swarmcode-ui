@@ -14,14 +14,14 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Accessibility audit', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('A11y Audit Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {

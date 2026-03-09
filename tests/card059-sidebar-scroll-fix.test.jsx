@@ -16,7 +16,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -24,7 +24,7 @@ import AgentSidebar from "../src/components/AgentSidebar";
 import MessagesView from "../src/components/MessagesView";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -65,7 +65,7 @@ function createTestStore(overrides = {}) {
   return configureStore({
     reducer: {
       agents: agentsReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -73,7 +73,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: DEFAULT_TTS_STATE,
       agents: overrides.agents || { agents: MANY_AGENTS, loading: false, error: null },
-      board: overrides.board || { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      board: overrides.project || { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: overrides.messages || {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },

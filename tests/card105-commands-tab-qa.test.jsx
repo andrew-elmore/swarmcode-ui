@@ -15,12 +15,12 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 
 import CommandsView from "../src/components/CommandsView";
-import commandsReducer, { updateCommand, setPing } from "../src/store/commandsSlice";
+import commandsReducer, { updateCommand } from "../src/store/commandsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
 import messagesReducer from "../src/store/messagesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import projectsReducer from "../src/store/projectsSlice";
 
 const api = require("../src/services/api");
@@ -28,7 +28,7 @@ const api = require("../src/services/api");
 // ─── Mock API ────────────────────────────────────────────────────────────────
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -89,7 +89,7 @@ const DEFAULT_COMMANDS_STATE = {
 };
 
 const DEFAULT_BOARD_STATE = {
-  board: { objectId: "test-hash-123" },
+  project: { objectId: "test-hash-123" },
   cards: [],
   sprints: [],
   sprintFilter: null,
@@ -107,7 +107,7 @@ function createTestStore(overrides = {}) {
       agents: agentsReducer,
       articles: articlesReducer,
       messages: messagesReducer,
-      board: boardReducer,
+      project: projectReducer,
       projects: projectsReducer,
     },
     preloadedState: {
@@ -116,7 +116,7 @@ function createTestStore(overrides = {}) {
         enabled: false, volume: 1.0, rate: 1.0, voice: "", error: null, queue: [], currentIndex: -1,
       },
       agents: overrides.agents || { agents: [], loading: false, error: null },
-      board: overrides.board || DEFAULT_BOARD_STATE,
+      project: overrides.project || DEFAULT_BOARD_STATE,
       messages: overrides.messages || {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
@@ -457,25 +457,6 @@ describe("CARD-105 QA: Redux state updates", () => {
     expect(cmd.error).toBe("Process killed");
   });
 
-  test.skip("TC-19: setPing updates the latestPing in state", () => {
-
-    const store = createTestStore();
-
-    expect(store.getState().commands.latestPing).toBeNull();
-
-    const now = new Date().toISOString();
-    store.dispatch(setPing({
-      objectId: "ping-1",
-      boardId: "test-hash-123",
-      agentStatus: { "pm-1": "running", "developer-1": "stopped" },
-      updatedAt: now,
-    }));
-
-    const ping = store.getState().commands.latestPing;
-    expect(ping).not.toBeNull();
-    expect(ping.agentStatus["pm-1"]).toBe("running");
-    expect(ping.agentStatus["developer-1"]).toBe("stopped");
-  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

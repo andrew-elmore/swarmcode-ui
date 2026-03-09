@@ -52,18 +52,18 @@ export async function deleteGlobalAgent(name: string) {
   return callFunction('deleteAgent', { name });
 }
 
-export async function seedAgent(boardId: string, name: string, description: string) {
+export async function seedAgent(projectId: string, name: string, description: string) {
   await callFunction('createAgent', { name, description });
-  await callFunction('assignAgentToProject', { boardId, agentName: name });
+  await callFunction('assignAgentToProject', { projectId, agentName: name });
 }
 
 export async function seedCard(
-  boardId: string,
+  projectId: string,
   title: string,
   options: { status?: string; priority?: string; assignee?: string; description?: string } = {}
 ) {
   return callFunction('createCard', {
-    boardId,
+    projectId,
     title,
     status: options.status || 'create',
     priority: options.priority || 'medium',
@@ -74,7 +74,7 @@ export async function seedCard(
 }
 
 export async function seedMessages(
-  boardId: string,
+  projectId: string,
   from: string,
   to: string,
   count: number
@@ -82,7 +82,7 @@ export async function seedMessages(
   const messages = [];
   for (let i = 0; i < count; i++) {
     const msg = await callFunction('sendMessage', {
-      boardId,
+      projectId,
       from,
       to,
       message: `Test message ${i + 1}`,
@@ -92,46 +92,46 @@ export async function seedMessages(
   return messages;
 }
 
-export async function seedSprint(boardId: string, name: string) {
-  return callFunction('createSprint', { boardId, name });
+export async function seedSprint(projectId: string, name: string) {
+  return callFunction('createSprint', { projectId, name });
 }
 
-export async function seedCommand(boardId: string, action: string) {
-  return callFunction('createCommand', { boardId, action });
+export async function seedCommand(projectId: string, action: string) {
+  return callFunction('createCommand', { projectId, action });
 }
 
-export async function seedPing(boardId: string, agentStatus: Record<string, string> = {}) {
-  return callFunction('recordPing', { boardId, agentStatus });
+export async function seedPing(projectId: string, agentStatus: Record<string, string> = {}) {
+  return callFunction('recordPing', { projectId, agentStatus });
 }
 
 export async function seedArticle(
-  boardId: string,
+  projectId: string,
   title: string,
   text?: string,
   keywords?: string[]
 ) {
   return callFunction('createArticle', {
-    boardId,
+    projectId,
     title,
     ...(text !== undefined && { text }),
     ...(keywords !== undefined && { keywords }),
   });
 }
 
-export async function listArticles(boardId: string) {
-  return callFunction('listArticles', { boardId });
+export async function listArticles(projectId: string) {
+  return callFunction('listArticles', { projectId });
 }
 
 export async function getBoard(projectPath: string) {
   return callFunction('getOrCreateBoard', { projectPath });
 }
 
-export async function listCards(boardId: string) {
-  return callFunction('listCards', { boardId });
+export async function listCards(projectId: string) {
+  return callFunction('listCards', { projectId });
 }
 
-export async function getConversation(boardId: string, user1: string, user2: string) {
-  return callFunction('getConversation', { boardId, user1, user2 });
+export async function getConversation(projectId: string, user1: string, user2: string) {
+  return callFunction('getConversation', { projectId, user1, user2 });
 }
 
 export async function deleteProject(path: string) {

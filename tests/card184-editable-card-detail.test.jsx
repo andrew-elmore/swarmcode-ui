@@ -36,14 +36,14 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import CardDetailDialog from "../src/components/CardDetailDialog";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -111,7 +111,7 @@ function createTestStore(overrides = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -133,7 +133,7 @@ function createTestStore(overrides = {}) {
         loading: false,
         error: null,
         lastPoll: null,
-        ...overrides.board,
+        ...overrides.project,
       },
       tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
       ...(overrides.extra || {}),
@@ -148,7 +148,7 @@ function renderDialog(card = MOCK_CARD, storeOverrides = {}) {
   const result = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <CardDetailDialog open={true} onClose={onClose} card={card} boardId="test-hash" />
+        <CardDetailDialog open={true} onClose={onClose} card={card} projectId="test-hash" />
       </ThemeProvider>
     </Provider>
   );
@@ -177,30 +177,6 @@ describe("CardDetailDialog — title editing", () => {
     expect(input).toBeInTheDocument();
     expect(input.value).toBe("Implement login page");
     expect(screen.queryByTestId("card-title-display")).not.toBeInTheDocument();
-  });
-
-  test.skip("Enter key saves the new title", async () => {
-    renderDialog();
-    fireEvent.click(screen.getByTestId("card-title-display"));
-
-    const input = screen.getByTestId("card-title-edit").querySelector("input");
-    fireEvent.change(input, { target: { value: "Updated title" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-
-    await waitFor(() => {
-      expect(api.updateCard).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boardId: "test-hash",
-          cardId: "CARD-042",
-          title: "Updated title",
-          author: "human",
-        })
-      );
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("card-title-display")).toBeInTheDocument();
-    });
   });
 
   test("Escape key cancels without saving", async () => {
@@ -298,26 +274,6 @@ describe("CardDetailDialog — description editing", () => {
     expect(textarea.value).toBe("");
   });
 
-  test.skip("blur saves the new description", async () => {
-    renderDialog();
-    fireEvent.click(screen.getByTestId("card-description-display"));
-
-    const textarea = screen.getByTestId("card-description-edit").querySelector("textarea");
-    fireEvent.change(textarea, { target: { value: "Updated description text." } });
-    fireEvent.blur(textarea);
-
-    await waitFor(() => {
-      expect(api.updateCard).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boardId: "test-hash",
-          cardId: "CARD-042",
-          description: "Updated description text.",
-          author: "human",
-        })
-      );
-    });
-  });
-
   test("Escape key cancels without saving", async () => {
     renderDialog();
     fireEvent.click(screen.getByTestId("card-description-display"));
@@ -384,52 +340,6 @@ describe("CardDetailDialog — assignee select", () => {
       expect(within(listbox).getByText("pm-1")).toBeInTheDocument();
       expect(within(listbox).getByText("developer-1")).toBeInTheDocument();
       expect(within(listbox).getByText("qa-1")).toBeInTheDocument();
-    });
-  });
-
-  test.skip("selecting an agent dispatches updateCard", async () => {
-    renderDialog();
-    const select = screen.getByLabelText("Assignee");
-    fireEvent.mouseDown(select);
-
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
-    });
-
-    fireEvent.click(within(screen.getByRole("listbox")).getByText("qa-1"));
-
-    await waitFor(() => {
-      expect(api.updateCard).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boardId: "test-hash",
-          cardId: "CARD-042",
-          assignee: "qa-1",
-          author: "human",
-        })
-      );
-    });
-  });
-
-  test.skip("selecting Unassigned dispatches updateCard with null assignee", async () => {
-    renderDialog();
-    const select = screen.getByLabelText("Assignee");
-    fireEvent.mouseDown(select);
-
-    await waitFor(() => {
-      expect(screen.getByRole("listbox")).toBeInTheDocument();
-    });
-
-    fireEvent.click(within(screen.getByRole("listbox")).getByText("Unassigned"));
-
-    await waitFor(() => {
-      expect(api.updateCard).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boardId: "test-hash",
-          cardId: "CARD-042",
-          assignee: null,
-          author: "human",
-        })
-      );
     });
   });
 

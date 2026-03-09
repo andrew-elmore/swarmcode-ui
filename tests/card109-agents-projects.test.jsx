@@ -20,7 +20,6 @@ import * as api from "../src/services/api";
 import agentsReducer, {
   fetchAgents,
   fetchAllAgents,
-  assignAgent,
   unassignAgent,
   updateProjectAgent,
   createAgent,
@@ -28,7 +27,7 @@ import agentsReducer, {
   deleteAgent,
 } from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -37,7 +36,7 @@ import AgentsView from "../src/components/AgentsView";
 
 // --- API Mocks ---
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -108,7 +107,7 @@ function createTestStore(overrides = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -121,8 +120,8 @@ function createTestStore(overrides = {}) {
         loading: false,
         error: null,
       },
-      board: overrides.board || {
-        board: { objectId: "test-hash-123" },
+      project: overrides.project || {
+        project: { objectId: "test-hash-123" },
         cards: [],
         selectedCard: null,
         loading: false,
@@ -178,11 +177,11 @@ beforeEach(() => {
   api.getRecentProjects.mockResolvedValue({ projects: TEST_PROJECTS });
   api.assignAgentToProject.mockResolvedValue({
     success: true,
-    projectAgent: { boardId: "test-hash-123", agentName: "custom-agent-1", isActive: true, sortOrder: 5 },
+    projectAgent: { projectId: "test-hash-123", agentName: "custom-agent-1", isActive: true, sortOrder: 5 },
   });
   api.unassignAgentFromProject.mockResolvedValue({ success: true });
   api.updateProjectAgent.mockResolvedValue({
-    projectAgent: { boardId: "test-hash-123", agentName: "qa-1", isActive: false, sortOrder: 3 },
+    projectAgent: { projectId: "test-hash-123", agentName: "qa-1", isActive: false, sortOrder: 3 },
   });
 });
 
@@ -249,7 +248,7 @@ describe("AgentsView rendering (project selected)", () => {
 describe("AgentsView rendering (no project)", () => {
   test("TC-25: no project shows all agents in single list", () => {
     renderAgentsView({
-      board: { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null, sprints: [], sprintFilter: null },
+      project: { project: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null, sprints: [], sprintFilter: null },
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     expect(screen.getByText(/All Agents/)).toBeInTheDocument();
@@ -260,31 +259,6 @@ describe("AgentsView rendering (no project)", () => {
 // 3. Assign/Unassign interactions
 // ---------------------------------------------------------------------------
 describe("Assign/Unassign interactions", () => {
-  test.skip("TC-26: clicking assign button dispatches assignAgent thunk", async () => {
-    renderAgentsView();
-    const assignButton = screen.getByTitle("Assign to project");
-    fireEvent.click(assignButton);
-    await waitFor(() => {
-      expect(api.assignAgentToProject).toHaveBeenCalledWith({
-        boardId: "test-hash-123",
-        agentName: "custom-agent-1",
-      });
-    });
-  });
-
-  test.skip("TC-27: clicking unassign button dispatches unassignAgent thunk", async () => {
-    renderAgentsView();
-    const unassignButtons = screen.getAllByTitle("Unassign from project");
-    // Click first unassign button (pm-1)
-    fireEvent.click(unassignButtons[0]);
-    await waitFor(() => {
-      expect(api.unassignAgentFromProject).toHaveBeenCalledWith({
-        boardId: "test-hash-123",
-        agentName: "pm-1",
-      });
-    });
-  });
-
   test("TC-28: toggling active switch dispatches updateProjectAgent", async () => {
     renderAgentsView();
     // MUI Switch uses <input type="checkbox"> — query via CSS class
@@ -325,32 +299,6 @@ describe("Delete agent interaction", () => {
 // 5. agentsSlice Redux state transitions
 // ---------------------------------------------------------------------------
 describe("agentsSlice state transitions", () => {
-  test.skip("TC-30: assignAgent.fulfilled adds agent to project-scoped list", () => {
-    const state = {
-      agents: [...ASSIGNED_AGENTS],
-      allAgents: [...ALL_AGENTS],
-      loading: false,
-      error: null,
-    };
-
-    const action = {
-      type: assignAgent.fulfilled.type,
-      payload: {
-        success: true,
-        projectAgent: {
-          boardId: "test-hash",
-          agentName: "custom-agent-1",
-          isActive: true,
-          sortOrder: 5,
-        },
-      },
-    };
-
-    const result = agentsReducer(state, action);
-    expect(result.agents.find((a) => a.name === "custom-agent-1")).toBeDefined();
-    expect(result.agents.length).toBe(6);
-  });
-
   test("TC-31: unassignAgent.fulfilled removes agent from project-scoped list", () => {
     const state = {
       agents: [...ASSIGNED_AGENTS],
@@ -495,31 +443,6 @@ describe("agentsSlice state transitions", () => {
     expect(result.loading).toBe(false);
   });
 
-  test.skip("assignAgent.fulfilled does not duplicate if already assigned", () => {
-    const state = {
-      agents: [...ASSIGNED_AGENTS],
-      allAgents: [...ALL_AGENTS],
-      loading: false,
-      error: null,
-    };
-
-    const action = {
-      type: assignAgent.fulfilled.type,
-      payload: {
-        success: true,
-        projectAgent: {
-          boardId: "test-hash",
-          agentName: "pm-1", // already in agents
-          isActive: true,
-          sortOrder: 0,
-        },
-      },
-    };
-
-    const result = agentsReducer(state, action);
-    const pmCount = result.agents.filter((a) => a.name === "pm-1").length;
-    expect(pmCount).toBe(1);
-  });
 });
 
 // ---------------------------------------------------------------------------

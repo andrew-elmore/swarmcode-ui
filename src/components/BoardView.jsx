@@ -15,7 +15,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../store";
-import { fetchBoard, setSprintFilter } from "../store/boardSlice";
+import { fetchProject, setSprintFilter } from "../store/projectSlice";
 import { PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 import CreateCardDialog from "./CreateCardDialog";
 import CardDetailDialog from "./CardDetailDialog";
@@ -34,7 +34,7 @@ const COLUMNS = [
 
 export default function BoardView() {
   const dispatch = useAppDispatch();
-  const { board, cards, sprints, sprintFilter, loading, error } = useAppSelector((s) => s.board);
+  const { project, cards, sprints, sprintFilter, loading, error } = useAppSelector((s) => s.project);
   const { activeProject } = useAppSelector((s) => s.projects);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -46,7 +46,7 @@ export default function BoardView() {
 
   useEffect(() => {
     if (activeProject) {
-      dispatch(fetchBoard(activeProject.path));
+      dispatch(fetchProject(activeProject.path));
     }
   }, [dispatch, activeProject]);
 
@@ -256,20 +256,20 @@ export default function BoardView() {
       <CreateCardDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        boardId={board?.objectId}
+        projectId={project?.objectId}
       />
 
       <CardDetailDialog
         open={!!selectedCard}
         onClose={() => setSelectedCardId(null)}
         card={selectedCard}
-        boardId={board?.objectId}
+        projectId={project?.objectId}
       />
 
       <SprintManagerDialog
         open={sprintManagerOpen}
         onClose={() => setSprintManagerOpen(false)}
-        boardId={board?.objectId}
+        projectId={project?.objectId}
       />
     </Box>
   );

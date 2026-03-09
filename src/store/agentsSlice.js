@@ -5,8 +5,8 @@ import * as api from "../services/api";
 // Fetch agents assigned to the current project (via ProjectAgent join table)
 export const fetchAgents = createAsyncThunk(
   "agents/fetchAgents",
-  async (boardId) => {
-    return api.getAgents(boardId);
+  async (projectId) => {
+    return api.getAgents(projectId);
   }
 );
 
@@ -18,7 +18,7 @@ export const fetchAllAgents = createAsyncThunk(
   }
 );
 
-// Create a global agent (no boardId)
+// Create a global agent (no projectId)
 export const createAgent = createAsyncThunk(
   "agents/createAgent",
   async (agentData) => {
@@ -26,7 +26,7 @@ export const createAgent = createAsyncThunk(
   }
 );
 
-// Update a global agent (no boardId)
+// Update a global agent (no projectId)
 export const updateAgent = createAsyncThunk(
   "agents/updateAgent",
   async (agentData) => {
@@ -46,16 +46,16 @@ export const deleteAgent = createAsyncThunk(
 // Assign a global agent to a project
 export const assignAgent = createAsyncThunk(
   "agents/assignAgent",
-  async ({ boardId, agentName }) => {
-    return api.assignAgentToProject({ boardId, agentName });
+  async ({ projectId, agentName }) => {
+    return api.assignAgentToProject({ projectId, agentName });
   }
 );
 
 // Unassign an agent from a project
 export const unassignAgent = createAsyncThunk(
   "agents/unassignAgent",
-  async ({ boardId, agentName }) => {
-    await api.unassignAgentFromProject({ boardId, agentName });
+  async ({ projectId, agentName }) => {
+    await api.unassignAgentFromProject({ projectId, agentName });
     return { agentName };
   }
 );
@@ -63,8 +63,8 @@ export const unassignAgent = createAsyncThunk(
 // Update per-project agent overrides (isActive, sortOrder)
 export const updateProjectAgent = createAsyncThunk(
   "agents/updateProjectAgent",
-  async ({ boardId, agentName, isActive, sortOrder }) => {
-    return api.updateProjectAgent({ boardId, agentName, isActive, sortOrder });
+  async ({ projectId, agentName, isActive, sortOrder }) => {
+    return api.updateProjectAgent({ projectId, agentName, isActive, sortOrder });
   }
 );
 

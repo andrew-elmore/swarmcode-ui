@@ -40,7 +40,7 @@ import {
   updateProjectAgent,
   clearError,
 } from "../store/agentsSlice";
-import { fetchBoard } from "../store/boardSlice";
+import { fetchProject } from "../store/projectSlice";
 import { fetchRecentProjects } from "../store/projectsSlice";
 import AgentEditDialog from "./AgentEditDialog";
 
@@ -48,7 +48,7 @@ export default function AgentsView() {
   const dispatch = useAppDispatch();
   const { agents, allAgents, loading, error } = useAppSelector((s) => s.agents);
   const { activeProject, projects } = useAppSelector((s) => s.projects);
-  const { board } = useAppSelector((s) => s.board);
+  const { project } = useAppSelector((s) => s.project);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -59,14 +59,14 @@ export default function AgentsView() {
   const [deleting, setDeleting] = useState(false);
   const [selectedProjectPath, setSelectedProjectPath] = useState(activeProject?.path || "");
 
-  const boardId = board?.objectId;
+  const projectId = project?.objectId;
 
-  // Ensure board is loaded so we have boardId
+  // Ensure project is loaded so we have projectId
   useEffect(() => {
-    if (activeProject && !board) {
-      dispatch(fetchBoard(activeProject.path));
+    if (activeProject && !project) {
+      dispatch(fetchProject(activeProject.path));
     }
-  }, [dispatch, activeProject, board]);
+  }, [dispatch, activeProject, project]);
 
   // Load projects for dropdown
   useEffect(() => {
@@ -76,10 +76,10 @@ export default function AgentsView() {
   }, [dispatch, projects.length]);
 
   // When dropdown selection changes, fetch the board for that project
-  // so boardId updates and triggers agent fetch
+  // so projectId updates and triggers agent fetch
   useEffect(() => {
     if (selectedProjectPath && selectedProjectPath !== activeProject?.path) {
-      dispatch(fetchBoard(selectedProjectPath));
+      dispatch(fetchProject(selectedProjectPath));
     }
   }, [dispatch, selectedProjectPath, activeProject]);
 
@@ -90,10 +90,10 @@ export default function AgentsView() {
 
   // Load project-scoped agents when project selected
   useEffect(() => {
-    if (boardId) {
-      dispatch(fetchAgents(boardId));
+    if (projectId) {
+      dispatch(fetchAgents(projectId));
     }
-  }, [dispatch, boardId]);
+  }, [dispatch, projectId]);
 
   // Compute assigned vs unassigned agents
   const assignedNames = useMemo(() => new Set(agents.map((a) => a.name)), [agents]);
@@ -121,26 +121,26 @@ export default function AgentsView() {
     // Refresh global list after create/update
     dispatch(fetchAllAgents());
     // Refresh project list too (in case an assigned agent was edited)
-    if (boardId) dispatch(fetchAgents(boardId));
+    if (projectId) dispatch(fetchAgents(projectId));
   };
 
   const handleToggleActive = (agent) => {
-    if (!boardId) return;
+    if (!projectId) return;
     dispatch(updateProjectAgent({
-      boardId,
+      projectId,
       agentName: agent.name,
       isActive: !agent.isActive,
     }));
   };
 
   const handleAssign = (agentName) => {
-    if (!boardId) return;
-    dispatch(assignAgent({ boardId, agentName }));
+    if (!projectId) return;
+    dispatch(assignAgent({ projectId, agentName }));
   };
 
   const handleUnassign = (agentName) => {
-    if (!boardId) return;
-    dispatch(unassignAgent({ boardId, agentName }));
+    if (!projectId) return;
+    dispatch(unassignAgent({ projectId, agentName }));
   };
 
   const handleDeleteClick = (agent) => {
@@ -202,7 +202,7 @@ export default function AgentsView() {
       )}
 
       {/* Assigned agents section */}
-      {boardId && (
+      {projectId && (
         <>
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
             Assigned to this project ({agents.length})
@@ -326,7 +326,7 @@ export default function AgentsView() {
       )}
 
       {/* No project selected — show all global agents */}
-      {!boardId && (
+      {!projectId && (
         <>
           <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
             All Agents ({allAgents.length})

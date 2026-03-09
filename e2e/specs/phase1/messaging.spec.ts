@@ -11,14 +11,14 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Messaging', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Messaging Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -100,7 +100,7 @@ test.describe('Messaging', () => {
 
   test('Load older messages pagination works', async ({ page }) => {
     // Seed 40+ messages to trigger pagination (default page size is 30)
-    await seedConversation(boardId, 'owner', 'qa-1', 35);
+    await seedConversation(projectId, 'owner', 'qa-1', 35);
 
     await page.goto('/');
     await page.locator(TAB_MESSAGES).click();
@@ -128,14 +128,14 @@ test.describe('Messaging — mobile', () => {
     isMobile: true,
   });
 
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Messaging Mobile Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -162,14 +162,14 @@ test.describe('Messaging — mobile', () => {
 });
 
 test.describe('Multi-agent conversation isolation', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Conversation Isolation Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -178,8 +178,8 @@ test.describe('Multi-agent conversation isolation', () => {
 
   test('switching agents shows correct conversation history', async ({ page }) => {
     // Seed 3 messages to developer-1 and 2 messages to qa-1 (different counts for verification)
-    await seedConversation(boardId, 'owner', 'developer-1', 3);
-    await seedConversation(boardId, 'owner', 'qa-1', 2);
+    await seedConversation(projectId, 'owner', 'developer-1', 3);
+    await seedConversation(projectId, 'owner', 'qa-1', 2);
 
     await page.goto('/');
     await page.locator(TAB_MESSAGES).click();
@@ -239,7 +239,7 @@ test.describe('Multi-agent conversation isolation', () => {
   test('empty conversation displays after switching from populated', async ({ page }) => {
     // Create a fresh project to ensure clean state
     const isolationProject = await createTestProject('Empty Conv Isolation Test');
-    const isoHash = isolationProject.boardId;
+    const isoHash = isolationProject.projectId;
     await seedDefaultAgents(isoHash);
 
     // Seed messages to developer-1 only — qa-1 has no messages

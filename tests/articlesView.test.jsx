@@ -10,7 +10,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import ArticlesView from "../src/components/ArticlesView";
 
 jest.mock("../src/services/api", () => ({
@@ -20,7 +20,7 @@ jest.mock("../src/services/api", () => ({
   deleteArticle: jest.fn(),
   searchArticles: jest.fn(),
   getArticle: jest.fn(),
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -90,7 +90,7 @@ function createTestStore(overrides = {}) {
   return configureStore({
     reducer: {
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
     },
     preloadedState: {
       articles: {
@@ -102,8 +102,8 @@ function createTestStore(overrides = {}) {
         error: null,
         ...overrides.articles,
       },
-      board: {
-        board: { objectId: "test-hash-180" },
+      project: {
+        project: { objectId: "test-hash-180" },
         cards: [],
         sprints: [],
         sprintFilter: null,
@@ -111,7 +111,7 @@ function createTestStore(overrides = {}) {
         loading: false,
         error: null,
         lastPoll: null,
-        ...overrides.board,
+        ...overrides.project,
       },
     },
   });
@@ -495,58 +495,6 @@ describe("ArticlesView — link/unlink toggle", () => {
     expect(toggles[2].querySelector("input")).toBeChecked();
   });
 
-  test.skip("clicking toggle on unlinked article dispatches linkArticle", async () => {
-    api.linkArticleToProject.mockResolvedValue({
-      success: true,
-      linked: true,
-      article: { objectId: "art1", title: "Alpha Guide" },
-    });
-
-    renderWithProviders(<ArticlesView />);
-
-    await waitFor(() => {
-      expect(screen.getByText("Alpha Guide")).toBeInTheDocument();
-    });
-
-    const toggles = screen.getAllByTestId("article-link-toggle");
-    fireEvent.click(toggles[0].querySelector("input"));
-
-    await waitFor(() => {
-      expect(api.linkArticleToProject).toHaveBeenCalledWith({
-        boardId: "test-hash-180",
-        articleTitle: "Alpha Guide",
-      });
-    });
-  });
-
-  test.skip("clicking toggle on linked article dispatches unlinkArticle", async () => {
-    // Mock getProjectArticles so fetchLinkedArticles keeps Alpha Guide linked
-    api.getProjectArticles.mockResolvedValue({
-      articles: [{ objectId: "art1", title: "Alpha Guide" }],
-    });
-    const store = createTestStore({
-      articles: {
-        articles: MOCK_ARTICLES,
-        linkedArticleTitles: ["Alpha Guide"],
-      },
-    });
-    renderWithProviders(<ArticlesView />, { store });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Alpha Guide").length).toBeGreaterThan(0);
-    });
-
-    const toggles = screen.getAllByTestId("article-link-toggle");
-    fireEvent.click(toggles[0].querySelector("input"));
-
-    await waitFor(() => {
-      expect(api.unlinkArticleFromProject).toHaveBeenCalledWith({
-        boardId: "test-hash-180",
-        articleTitle: "Alpha Guide",
-      });
-    });
-  });
-
   test("clicking toggle does not navigate to detail view", async () => {
     renderWithProviders(<ArticlesView />);
 
@@ -639,35 +587,6 @@ describe("ArticlesView — linked articles section", () => {
 
     expect(screen.getByText("Linked to this project (0)")).toBeInTheDocument();
     expect(screen.getByText(/No articles linked\. Toggle Linked on articles below to link them\./)).toBeInTheDocument();
-  });
-
-  test.skip("unlink button dispatches unlinkArticle", async () => {
-    api.getProjectArticles.mockResolvedValue({
-      articles: [{ objectId: "art1", title: "Alpha Guide" }],
-    });
-    api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
-    const store = createTestStore({
-      articles: {
-        articles: MOCK_ARTICLES,
-        linkedArticleTitles: ["Alpha Guide"],
-      },
-    });
-    renderWithProviders(<ArticlesView />, { store });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("linked-article-row-art1")).toBeInTheDocument();
-    });
-
-    const row = screen.getByTestId("linked-article-row-art1");
-    const unlinkBtn = within(row).getByTestId("unlink-article-button");
-    fireEvent.click(unlinkBtn);
-
-    await waitFor(() => {
-      expect(api.unlinkArticleFromProject).toHaveBeenCalledWith({
-        boardId: "test-hash-180",
-        articleTitle: "Alpha Guide",
-      });
-    });
   });
 
   test("clicking linked article row navigates to detail view", async () => {

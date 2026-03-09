@@ -27,7 +27,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer, { selectAgent, setMobileDrawerOpen } from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -36,7 +36,7 @@ import ChatView from "../src/components/ChatView";
 import AgentSidebar from "../src/components/AgentSidebar";
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -98,7 +98,7 @@ function createTestStore(overrides = {}) {
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -106,7 +106,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       tts: DEFAULT_TTS_STATE,
       agents: overrides.agents || { agents: DEFAULT_AGENTS, allAgents: [], loading: false, error: null },
-      board: overrides.board || { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
+      board: overrides.project || { board: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: overrides.messages || {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
@@ -136,7 +136,7 @@ function renderWithProviders(ui, { store, ...options } = {}) {
 }
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn());
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });

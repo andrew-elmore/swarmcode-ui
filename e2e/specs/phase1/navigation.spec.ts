@@ -14,14 +14,14 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Navigation', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Nav Test Project');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -54,7 +54,7 @@ test.describe('Navigation', () => {
 
   test('tab switching preserves message state', async ({ page }) => {
     // Seed a message so there's content to verify
-    await seedMessages(boardId, 'owner', 'developer-1', 1);
+    await seedMessages(projectId, 'owner', 'developer-1', 1);
 
     await page.goto('/');
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
@@ -87,14 +87,14 @@ test.describe('Navigation — mobile', () => {
     isMobile: true,
   });
 
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Nav Mobile Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {

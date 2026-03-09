@@ -20,14 +20,14 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Board CRUD', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Board CRUD Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -75,7 +75,7 @@ test.describe('Board CRUD', () => {
 
   test('click a card to open CardDetailDialog and edit properties', async ({ page }) => {
     // Seed a card to interact with
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Detail Test Card', status: 'create', priority: 'medium' },
     ]);
     const cardId = cards[0].cardId;
@@ -109,7 +109,7 @@ test.describe('Board CRUD', () => {
   });
 
   test('add a comment to a card', async ({ page }) => {
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Comment Test Card', status: 'implement', priority: 'low' },
     ]);
     const cardId = cards[0].cardId;
@@ -138,10 +138,10 @@ test.describe('Board CRUD', () => {
 
   test('create a sprint, assign card to sprint, filter by sprint', async ({ page }) => {
     // Seed a card and a sprint
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Sprint Filter Card', status: 'create', priority: 'medium' },
     ]);
-    await seedSprint(boardId, 'Sprint Alpha');
+    await seedSprint(projectId, 'Sprint Alpha');
 
     await page.goto('/');
     await page.locator(TAB_BOARD).click();
@@ -179,14 +179,14 @@ test.describe('Board CRUD — mobile', () => {
     isMobile: true,
   });
 
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Board Mobile Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -194,7 +194,7 @@ test.describe('Board CRUD — mobile', () => {
   });
 
   test('mobile board shows single column with column selector', async ({ page }) => {
-    await seedBoardCards(boardId, [
+    await seedBoardCards(projectId, [
       { title: 'Mobile Card A', status: 'create', priority: 'high' },
       { title: 'Mobile Card B', status: 'scope', priority: 'medium' },
     ]);
@@ -222,14 +222,14 @@ test.describe('Board CRUD — mobile', () => {
 });
 
 test.describe('Card Detail Editing', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Card Detail Editing Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -237,7 +237,7 @@ test.describe('Card Detail Editing', () => {
   });
 
   test('edit card title inline', async ({ page }) => {
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Original Title', status: 'create', priority: 'medium' },
     ]);
     const cardId = cards[0].cardId;
@@ -273,7 +273,7 @@ test.describe('Card Detail Editing', () => {
 
   test('edit card description', async ({ page }) => {
     // Test editing existing description
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Desc Card With', status: 'scope', priority: 'low', description: 'Original description' },
     ]);
     const cardId = cards[0].cardId;
@@ -306,7 +306,7 @@ test.describe('Card Detail Editing', () => {
     await page.getByRole('button', { name: 'Close' }).click();
 
     // Test editing from empty — seed a card without description
-    const emptyCards = await seedBoardCards(boardId, [
+    const emptyCards = await seedBoardCards(projectId, [
       { title: 'Desc Card Empty', status: 'create', priority: 'medium' },
     ]);
     const emptyCardId = emptyCards[0].cardId;
@@ -339,7 +339,7 @@ test.describe('Card Detail Editing', () => {
   });
 
   test('change card assignee', async ({ page }) => {
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Assignee Card', status: 'implement', priority: 'high' },
     ]);
     const cardId = cards[0].cardId;
@@ -372,7 +372,7 @@ test.describe('Card Detail Editing', () => {
   });
 
   test('edits persist after closing and reopening dialog', async ({ page }) => {
-    const cards = await seedBoardCards(boardId, [
+    const cards = await seedBoardCards(projectId, [
       { title: 'Persist Card', status: 'create', priority: 'medium' },
     ]);
     const cardId = cards[0].cardId;

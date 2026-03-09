@@ -9,7 +9,7 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Project CRUD', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
 
   test.afterAll(async () => {
@@ -39,7 +39,7 @@ test.describe('Project CRUD', () => {
   test('project appears in project selector dropdown', async ({ page }) => {
     // Seed a project via API for a clean state
     const project = await createTestProject('Selector Test Project');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
 
     await page.goto('/');

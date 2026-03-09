@@ -15,7 +15,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import messagesReducer from "../src/store/messagesSlice";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 
@@ -38,7 +38,7 @@ global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
 let capturedOnMessage = null;
 
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -46,7 +46,7 @@ jest.mock("../src/services/api", () => ({
   showCard: jest.fn(),
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
-  subscribeToMessages: jest.fn((boardId, onMessage) => {
+  subscribeToMessages: jest.fn((projectId, onMessage) => {
     capturedOnMessage = onMessage;
     return Promise.resolve(() => {});
   }),
@@ -93,7 +93,7 @@ function createTestStore(overrides = {}) {
       messages: messagesReducer,
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       projects: projectsReducer,
       tts: ttsReducer,
     },
@@ -111,8 +111,8 @@ function createTestStore(overrides = {}) {
         loading: false,
         error: null,
       },
-      board: {
-        board: { objectId: "test-board-id" },
+      project: {
+        project: { objectId: "test-board-id" },
         cards: [],
         loading: false,
         error: null,
@@ -140,7 +140,7 @@ function renderApp(overrides = {}) {
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnMessage = null;
-  api.getOrCreateBoard.mockResolvedValue({ board: null, cards: [], sprints: [] });
+  api.getOrCreateProject.mockResolvedValue({ project: null, cards: [], sprints: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: [] });
 });

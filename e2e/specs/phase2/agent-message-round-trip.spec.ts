@@ -10,15 +10,15 @@ import {
 } from '../../helpers/selectors';
 
 test.describe('Agent Message Round-Trip', () => {
-  let boardId: string;
+  let projectId: string;
   let projectPath: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Round Trip Test');
-    boardId = project.boardId;
+    projectId = project.projectId;
     projectPath = project.path;
-    await seedDefaultAgents(boardId);
+    await seedDefaultAgents(projectId);
   });
 
   test.afterAll(async () => {
@@ -31,7 +31,7 @@ test.describe('Agent Message Round-Trip', () => {
 
   test('send message from UI, agent replies, reply appears in real-time', async ({ page }) => {
     // Start simulator that auto-replies to "hello" messages
-    simulator = new AgentSimulator(boardId, 'developer-1', {
+    simulator = new AgentSimulator(projectId, 'developer-1', {
       responseMap: { hello: 'Hello from simulator!' },
       responseDelay: 200,
       pollInterval: 300,
@@ -67,7 +67,7 @@ test.describe('Agent Message Round-Trip', () => {
 
   test('agent reply appears without page reload (LiveQuery)', async ({ page }) => {
     // Start simulator with custom handler that replies after a delay
-    simulator = new AgentSimulator(boardId, 'qa-1', {
+    simulator = new AgentSimulator(projectId, 'qa-1', {
       onMessage: async (msg) => {
         if (msg.message.includes('ping')) return 'pong from qa-1';
         return null;
@@ -104,7 +104,7 @@ test.describe('Agent Message Round-Trip', () => {
 
   test('broadcast message to all agents, all simulators reply', async ({ page }) => {
     // Create 3 simulators that each reply differently
-    const simulators = createSimulatorTeam(boardId, [
+    const simulators = createSimulatorTeam(projectId, [
       { name: 'developer-1', options: { responseMap: { broadcast: 'dev-1 ack' }, heartbeatInterval: 0, commandPollInterval: 0 } },
       { name: 'qa-1', options: { responseMap: { broadcast: 'qa-1 ack' }, heartbeatInterval: 0, commandPollInterval: 0 } },
       { name: 'devops-1', options: { responseMap: { broadcast: 'devops-1 ack' }, heartbeatInterval: 0, commandPollInterval: 0 } },
@@ -146,7 +146,7 @@ test.describe('Agent Message Round-Trip', () => {
 
   test('unread badge increments when viewing different agent', async ({ page }) => {
     // Start simulator that will send a message to trigger unread badge
-    simulator = new AgentSimulator(boardId, 'senior-dev-1', {
+    simulator = new AgentSimulator(projectId, 'senior-dev-1', {
       responseMap: { trigger: 'unread test reply' },
       responseDelay: 200,
       pollInterval: 300,

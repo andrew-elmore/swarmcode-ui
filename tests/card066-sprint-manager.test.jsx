@@ -18,7 +18,7 @@
  */
 
 import React from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
@@ -26,7 +26,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import boardReducer from "../src/store/boardSlice";
+import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -35,7 +35,7 @@ import BoardView from "../src/components/BoardView";
 
 // Mock API
 jest.mock("../src/services/api", () => ({
-  getOrCreateBoard: jest.fn(),
+  getOrCreateProject: jest.fn(),
   createCard: jest.fn(),
   updateCard: jest.fn(),
   addComment: jest.fn(),
@@ -67,14 +67,14 @@ const MOCK_SPRINTS = [
   { objectId: "s3", name: "Sprint 3", order: 2 },
 ];
 
-const MOCK_BOARD = { objectId: "b1", boardId: "b1", nextId: 5 };
+const MOCK_BOARD = { objectId: "b1", projectId: "b1", nextId: 5 };
 
 function createTestStore(preloadedState = {}) {
   return configureStore({
     reducer: {
       agents: agentsReducer,
       articles: articlesReducer,
-      board: boardReducer,
+      project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
@@ -98,30 +98,9 @@ function renderWithProviders(ui, { store, ...options } = {}) {
   return { ...render(ui, { wrapper: Wrapper, ...options }), store: testStore };
 }
 
-function createBoardStore(sprintOverrides = {}) {
-  return createTestStore({
-    board: {
-      board: MOCK_BOARD,
-      cards: [],
-      sprints: MOCK_SPRINTS,
-      sprintFilter: null,
-      selectedCard: null,
-      loading: false,
-      error: null,
-      lastPoll: new Date().toISOString(),
-      ...sprintOverrides,
-    },
-    projects: {
-      projects: [],
-      activeProject: { path: "/test", name: "test" },
-      loading: false,
-      error: null,
-    },
-  });
-}
 
 beforeEach(() => {
-  api.getOrCreateBoard.mockResolvedValue({ board: MOCK_BOARD, cards: [], sprints: MOCK_SPRINTS });
+  api.getOrCreateProject.mockResolvedValue({ project: MOCK_BOARD, cards: [], sprints: MOCK_SPRINTS });
   api.createSprint.mockResolvedValue({ objectId: "s-new", name: "New Sprint", order: 3 });
   api.updateSprint.mockResolvedValue({ objectId: "s1", name: "Sprint 1", order: 0 });
   api.deleteSprint.mockResolvedValue({ deleted: true, sprintId: "s1", cardsUpdated: 0 });
@@ -133,394 +112,6 @@ beforeEach(() => {
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
   api.getAgents.mockResolvedValue({ agents: [] });
-});
-
-// ─── SprintManagerDialog rendering ──────────────────────────────────────────
-
-describe("CARD-066: SprintManagerDialog rendering", () => {
-  test.skip("renders dialog with title and close button", () => {
-    const store = createBoardStore();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    expect(screen.getByText("Manage Sprints")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
-  });
-
-  test.skip("does not render when open is false", () => {
-    const store = createBoardStore();
-    renderWithProviders(
-      <SprintManagerDialog open={false} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    expect(screen.queryByText("Manage Sprints")).not.toBeInTheDocument();
-  });
-
-  test.skip("shows empty state when no sprints exist", () => {
-    const store = createBoardStore({ sprints: [] });
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    expect(screen.getByText("No sprints yet. Create one above.")).toBeInTheDocument();
-  });
-
-  test.skip("shows sprint list when sprints exist", () => {
-    const store = createBoardStore();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    expect(screen.getByText("Sprint 1")).toBeInTheDocument();
-    expect(screen.getByText("Sprint 2")).toBeInTheDocument();
-    expect(screen.getByText("Sprint 3")).toBeInTheDocument();
-  });
-
-  test.skip("sprints are displayed sorted by order", () => {
-    // Provide sprints in reversed order to verify sorting
-    const store = createBoardStore({
-      sprints: [
-        { objectId: "s3", name: "Sprint 3", order: 2 },
-        { objectId: "s1", name: "Sprint 1", order: 0 },
-        { objectId: "s2", name: "Sprint 2", order: 1 },
-      ],
-    });
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const listItems = screen.getAllByRole("listitem");
-    expect(within(listItems[0]).getByText("Sprint 1")).toBeInTheDocument();
-    expect(within(listItems[1]).getByText("Sprint 2")).toBeInTheDocument();
-    expect(within(listItems[2]).getByText("Sprint 3")).toBeInTheDocument();
-  });
-
-  test.skip("close button calls onClose", async () => {
-    const onClose = jest.fn();
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={onClose} boardId="b1" />,
-      { store }
-    );
-
-    await user.click(screen.getByRole("button", { name: "Close" }));
-    expect(onClose).toHaveBeenCalled();
-  });
-});
-
-// ─── Create sprint ──────────────────────────────────────────────────────────
-
-describe("CARD-066: Create sprint", () => {
-  test.skip("Add button is disabled when name is empty", () => {
-    const store = createBoardStore();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const addButton = screen.getByRole("button", { name: "Add" });
-    expect(addButton).toBeDisabled();
-  });
-
-  test.skip("Add button is enabled when name is entered", async () => {
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const input = screen.getByLabelText("New sprint name");
-    await user.type(input, "Sprint 4");
-
-    const addButton = screen.getByRole("button", { name: "Add" });
-    expect(addButton).not.toBeDisabled();
-  });
-
-  test.skip("clicking Add dispatches createSprint", async () => {
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const input = screen.getByLabelText("New sprint name");
-    await user.type(input, "Sprint 4");
-    await user.click(screen.getByRole("button", { name: "Add" }));
-
-    await waitFor(() => {
-      expect(api.createSprint).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boardId: "b1",
-          name: "Sprint 4",
-        })
-      );
-    });
-  });
-
-  test.skip("pressing Enter in name field dispatches createSprint", async () => {
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const input = screen.getByLabelText("New sprint name");
-    await user.type(input, "Sprint 4{Enter}");
-
-    await waitFor(() => {
-      expect(api.createSprint).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boardId: "b1",
-          name: "Sprint 4",
-        })
-      );
-    });
-  });
-
-  test.skip("name field clears after successful create", async () => {
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const input = screen.getByLabelText("New sprint name");
-    await user.type(input, "Sprint 4");
-    await user.click(screen.getByRole("button", { name: "Add" }));
-
-    await waitFor(() => {
-      expect(input).toHaveValue("");
-    });
-  });
-});
-
-// ─── Inline rename ──────────────────────────────────────────────────────────
-
-describe("CARD-066: Inline rename", () => {
-  test.skip("clicking sprint name enters edit mode", async () => {
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    // Click on "Sprint 1" text to edit
-    await user.click(screen.getByText("Sprint 1"));
-
-    // An input field should appear with the sprint name
-    const editInput = screen.getByDisplayValue("Sprint 1");
-    expect(editInput).toBeInTheDocument();
-    expect(editInput.tagName.toLowerCase()).toBe("input");
-  });
-
-  test.skip("pressing Escape cancels inline edit", async () => {
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    await user.click(screen.getByText("Sprint 1"));
-
-    const editInput = screen.getByDisplayValue("Sprint 1");
-    await user.clear(editInput);
-    await user.type(editInput, "Changed Name{Escape}");
-
-    // Should exit edit mode without calling API
-    expect(api.updateSprint).not.toHaveBeenCalled();
-    // Original text should be back
-    expect(screen.getByText("Sprint 1")).toBeInTheDocument();
-  });
-
-  test.skip("pressing Enter saves renamed sprint", async () => {
-    api.updateSprint.mockResolvedValue({ objectId: "s1", name: "Renamed Sprint", order: 0 });
-
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    await user.click(screen.getByText("Sprint 1"));
-
-    const editInput = screen.getByDisplayValue("Sprint 1");
-    await user.clear(editInput);
-    await user.type(editInput, "Renamed Sprint{Enter}");
-
-    await waitFor(() => {
-      expect(api.updateSprint).toHaveBeenCalledWith(
-        expect.objectContaining({
-          boardId: "b1",
-          sprintId: "s1",
-          name: "Renamed Sprint",
-        })
-      );
-    });
-  });
-
-  test.skip("renaming to same name does not call API", async () => {
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    // Clear any mocks from prior tests
-    api.updateSprint.mockClear();
-
-    await user.click(screen.getByText("Sprint 2"));
-
-    // Press Enter without changing the name
-    const editInput = screen.getByDisplayValue("Sprint 2");
-    await user.type(editInput, "{Enter}");
-
-    // handleRename checks editName.trim() === sprint.name and returns early
-    expect(api.updateSprint).not.toHaveBeenCalled();
-  });
-});
-
-// ─── Reorder sprints ────────────────────────────────────────────────────────
-
-describe("CARD-066: Reorder sprints", () => {
-  test.skip("first sprint has disabled move-up button", () => {
-    const store = createBoardStore();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const moveUpButtons = screen.getAllByTitle("Move up");
-    // First one (for Sprint 1) should be disabled
-    expect(moveUpButtons[0]).toBeDisabled();
-  });
-
-  test.skip("last sprint has disabled move-down button", () => {
-    const store = createBoardStore();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const moveDownButtons = screen.getAllByTitle("Move down");
-    // Last one (for Sprint 3) should be disabled
-    expect(moveDownButtons[moveDownButtons.length - 1]).toBeDisabled();
-  });
-
-  test.skip("middle sprint has both up and down enabled", () => {
-    const store = createBoardStore();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const moveUpButtons = screen.getAllByTitle("Move up");
-    const moveDownButtons = screen.getAllByTitle("Move down");
-
-    // Sprint 2 (index 1) should have both enabled
-    expect(moveUpButtons[1]).not.toBeDisabled();
-    expect(moveDownButtons[1]).not.toBeDisabled();
-  });
-
-  test.skip("clicking move-down dispatches updateSprint calls to swap orders", async () => {
-    api.updateSprint.mockClear();
-    api.updateSprint.mockResolvedValue({ objectId: "s1", name: "Sprint 1", order: 1 });
-
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const moveDownButtons = screen.getAllByTitle("Move down");
-    // Click move-down on Sprint 1 (index 0), swapping with Sprint 2 (index 1)
-    await user.click(moveDownButtons[0]);
-
-    await waitFor(() => {
-      expect(api.updateSprint).toHaveBeenCalledTimes(2);
-    });
-
-    // First call: Sprint 1 gets Sprint 2's order (1)
-    expect(api.updateSprint).toHaveBeenCalledWith(
-      expect.objectContaining({
-        boardId: "b1",
-        sprintId: "s1",
-        order: 1,
-      })
-    );
-
-    // Second call: Sprint 2 gets Sprint 1's order (0)
-    expect(api.updateSprint).toHaveBeenCalledWith(
-      expect.objectContaining({
-        boardId: "b1",
-        sprintId: "s2",
-        order: 0,
-      })
-    );
-  });
-});
-
-// ─── Delete sprint ──────────────────────────────────────────────────────────
-
-describe("CARD-066: Delete sprint", () => {
-  test.skip("cancelling delete confirmation does not dispatch", async () => {
-    api.deleteSprint.mockClear();
-    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(false);
-
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const deleteButtons = screen.getAllByTitle("Delete sprint");
-    await user.click(deleteButtons[0]);
-
-    expect(confirmSpy).toHaveBeenCalled();
-    expect(api.deleteSprint).not.toHaveBeenCalled();
-
-    confirmSpy.mockRestore();
-  });
-
-  test.skip("confirming delete dispatches deleteSprint", async () => {
-    api.deleteSprint.mockClear();
-    const confirmSpy = jest.spyOn(window, "confirm").mockReturnValue(true);
-    api.deleteSprint.mockResolvedValue({ deleted: true, sprintId: "s1", cardsUpdated: 0 });
-
-    const store = createBoardStore();
-    const user = userEvent.setup();
-    renderWithProviders(
-      <SprintManagerDialog open={true} onClose={jest.fn()} boardId="b1" />,
-      { store }
-    );
-
-    const deleteButtons = screen.getAllByTitle("Delete sprint");
-    await user.click(deleteButtons[0]); // Delete Sprint 1
-
-    expect(confirmSpy).toHaveBeenCalledWith('Delete sprint "Sprint 1"?');
-
-    await waitFor(() => {
-      expect(api.deleteSprint).toHaveBeenCalledWith("b1", "s1");
-    });
-
-    confirmSpy.mockRestore();
-  });
 });
 
 // ─── BoardView integration ──────────────────────────────────────────────────

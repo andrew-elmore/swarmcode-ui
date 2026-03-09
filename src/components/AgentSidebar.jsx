@@ -16,16 +16,16 @@ import { fetchAgents } from "../store/agentsSlice";
 export default function AgentSidebar({ selectedAgent, onSelectAgent, unreadCounts }) {
   const dispatch = useAppDispatch();
   const agents = useAppSelector((s) => s.agents.agents);
-  const boardId = useAppSelector((s) => s.board.board?.objectId);
+  const projectId = useAppSelector((s) => s.project.project?.objectId);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
-  // Load agents from DB when boardId is available
+  // Load agents from DB when projectId is available
   useEffect(() => {
-    if (boardId && agents.length === 0) {
-      dispatch(fetchAgents(boardId));
+    if (projectId && agents.length === 0) {
+      dispatch(fetchAgents(projectId));
     }
-  }, [dispatch, boardId, agents.length]);
+  }, [dispatch, projectId, agents.length]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>

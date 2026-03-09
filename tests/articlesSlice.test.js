@@ -350,7 +350,7 @@ describe("linkArticle thunk", () => {
     });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
-    await store.dispatch(linkArticle({ boardId: "h1", articleTitle: "Charlie" }));
+    await store.dispatch(linkArticle({ projectId: "h1", articleTitle: "Charlie" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha", "Charlie"]);
   });
@@ -363,7 +363,7 @@ describe("linkArticle thunk", () => {
     });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
-    await store.dispatch(linkArticle({ boardId: "h1", articleTitle: "Alpha" }));
+    await store.dispatch(linkArticle({ projectId: "h1", articleTitle: "Alpha" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha"]);
   });
@@ -372,7 +372,7 @@ describe("linkArticle thunk", () => {
     api.linkArticleToProject.mockRejectedValue(new Error("Article not found"));
 
     const store = createTestStore();
-    await store.dispatch(linkArticle({ boardId: "h1", articleTitle: "Ghost" }));
+    await store.dispatch(linkArticle({ projectId: "h1", articleTitle: "Ghost" }));
 
     expect(store.getState().articles.error).toBe("Article not found");
   });
@@ -385,7 +385,7 @@ describe("unlinkArticle thunk", () => {
     api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha", "Bravo", "Charlie"] });
-    await store.dispatch(unlinkArticle({ boardId: "h1", articleTitle: "Bravo" }));
+    await store.dispatch(unlinkArticle({ projectId: "h1", articleTitle: "Bravo" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha", "Charlie"]);
   });
@@ -394,7 +394,7 @@ describe("unlinkArticle thunk", () => {
     api.unlinkArticleFromProject.mockResolvedValue({ success: true, linked: false });
 
     const store = createTestStore({ linkedArticleTitles: ["Alpha"] });
-    await store.dispatch(unlinkArticle({ boardId: "h1", articleTitle: "Ghost" }));
+    await store.dispatch(unlinkArticle({ projectId: "h1", articleTitle: "Ghost" }));
 
     expect(store.getState().articles.linkedArticleTitles).toEqual(["Alpha"]);
   });
@@ -403,7 +403,7 @@ describe("unlinkArticle thunk", () => {
     api.unlinkArticleFromProject.mockRejectedValue(new Error("Unlink failed"));
 
     const store = createTestStore();
-    await store.dispatch(unlinkArticle({ boardId: "h1", articleTitle: "Alpha" }));
+    await store.dispatch(unlinkArticle({ projectId: "h1", articleTitle: "Alpha" }));
 
     expect(store.getState().articles.error).toBe("Unlink failed");
   });

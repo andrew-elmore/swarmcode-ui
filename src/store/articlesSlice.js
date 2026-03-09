@@ -46,22 +46,22 @@ export const getArticle = createAsyncThunk(
 
 export const fetchLinkedArticles = createAsyncThunk(
   "articles/fetchLinkedArticles",
-  async (boardId) => {
-    return api.getProjectArticles(boardId);
+  async (projectId) => {
+    return api.getProjectArticles(projectId);
   }
 );
 
 export const linkArticle = createAsyncThunk(
   "articles/linkArticle",
-  async ({ boardId, articleTitle }) => {
-    return api.linkArticleToProject({ boardId, articleTitle });
+  async ({ projectId, articleTitle }) => {
+    return api.linkArticleToProject({ projectId, articleTitle });
   }
 );
 
 export const unlinkArticle = createAsyncThunk(
   "articles/unlinkArticle",
-  async ({ boardId, articleTitle }) => {
-    await api.unlinkArticleFromProject({ boardId, articleTitle });
+  async ({ projectId, articleTitle }) => {
+    await api.unlinkArticleFromProject({ projectId, articleTitle });
     return { articleTitle };
   }
 );

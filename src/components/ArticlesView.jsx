@@ -109,7 +109,7 @@ function ArticleContent({ text, knownTitles, onRefClick }) {
 export default function ArticlesView() {
   const dispatch = useAppDispatch();
   const { articles, linkedArticleTitles, selectedArticle, searchResults, loading, error } = useAppSelector((s) => s.articles);
-  const boardId = useAppSelector((s) => s.board.board?.objectId);
+  const projectId = useAppSelector((s) => s.project.project?.objectId);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -145,21 +145,21 @@ export default function ArticlesView() {
   }, [dispatch, articles]);
 
   const handleToggleLink = (article) => {
-    if (!boardId) return;
+    if (!projectId) return;
     const isLinked = linkedArticleTitles.includes(article.title);
     if (isLinked) {
-      dispatch(unlinkArticle({ boardId, articleTitle: article.title }));
+      dispatch(unlinkArticle({ projectId, articleTitle: article.title }));
     } else {
-      dispatch(linkArticle({ boardId, articleTitle: article.title }));
+      dispatch(linkArticle({ projectId, articleTitle: article.title }));
     }
   };
 
   useEffect(() => {
     dispatch(fetchArticles());
-    if (boardId) {
-      dispatch(fetchLinkedArticles(boardId));
+    if (projectId) {
+      dispatch(fetchLinkedArticles(projectId));
     }
-  }, [dispatch, boardId]);
+  }, [dispatch, projectId]);
 
   const handleSearch = () => {
     const query = searchQuery.trim() || undefined;
