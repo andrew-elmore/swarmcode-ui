@@ -10,17 +10,18 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
 import { createCard } from "../store/projectSlice";
-import { STATUSES, PRIORITIES } from "../constants";
+import { PRIORITIES } from "../constants";
 
 export default function CreateCardDialog({ open, onClose, projectId }) {
   const dispatch = useAppDispatch();
-  const { sprints } = useAppSelector((s) => s.project);
+  const { sprints, statuses } = useAppSelector((s) => s.project);
   const agents = useAppSelector((s) => s.agents.agents);
+  const sortedStatuses = [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("create");
+  const [status, setStatus] = useState(sortedStatuses[0]?.name || "");
   const [priority, setPriority] = useState("medium");
   const [assignee, setAssignee] = useState("");
   const [sprint, setSprint] = useState("");
@@ -41,7 +42,7 @@ export default function CreateCardDialog({ open, onClose, projectId }) {
     );
     setTitle("");
     setDescription("");
-    setStatus("create");
+    setStatus(sortedStatuses[0]?.name || "");
     setPriority("medium");
     setAssignee("");
     setSprint("");
@@ -72,15 +73,15 @@ export default function CreateCardDialog({ open, onClose, projectId }) {
         />
         <TextField
           label="Status"
-          value={status}
+          value={status || sortedStatuses[0]?.name || ""}
           onChange={(e) => setStatus(e.target.value)}
           select
           fullWidth
           data-testid="card-status-select"
         >
-          {STATUSES.map((s) => (
-            <MenuItem key={s} value={s}>
-              {s.replace("_", " ")}
+          {sortedStatuses.map((s) => (
+            <MenuItem key={s.name} value={s.name}>
+              {s.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
             </MenuItem>
           ))}
         </TextField>

@@ -17,12 +17,13 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { useAppDispatch, useAppSelector } from "../store";
 import { updateCard, addComment } from "../store/projectSlice";
-import { STATUSES, PRIORITIES, PRIORITY_COLORS, getSprintDisplayName } from "../constants";
+import { PRIORITIES, PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 
 export default function CardDetailDialog({ open, onClose, card, projectId }) {
   const dispatch = useAppDispatch();
-  const { sprints } = useAppSelector((s) => s.project);
+  const { sprints, statuses } = useAppSelector((s) => s.project);
   const { agents } = useAppSelector((s) => s.agents);
+  const sortedStatuses = [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [newComment, setNewComment] = useState("");
@@ -188,16 +189,16 @@ export default function CardDetailDialog({ open, onClose, card, projectId }) {
         <Box sx={{ display: "flex", gap: 2, mb: 2, flexWrap: isMobile ? "wrap" : "nowrap" }}>
           <TextField
             label="Status"
-            value={editStatus || card.status}
+            value={editStatus || card.status || ""}
             onChange={(e) => handleStatusChange(e.target.value)}
             select
             size="small"
             data-testid="card-status-select"
             sx={{ minWidth: 140, flex: isMobile ? "1 1 100%" : undefined }}
           >
-            {STATUSES.map((s) => (
-              <MenuItem key={s} value={s}>
-                {s.replace("_", " ")}
+            {sortedStatuses.map((s) => (
+              <MenuItem key={s.name} value={s.name}>
+                {s.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
               </MenuItem>
             ))}
           </TextField>

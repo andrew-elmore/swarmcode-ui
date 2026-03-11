@@ -44,6 +44,27 @@ export const fetchCard = createAsyncThunk(
   }
 );
 
+export const createStatus = createAsyncThunk(
+  "project/createStatus",
+  async (statusData) => {
+    return api.createStatus(statusData);
+  }
+);
+
+export const updateStatus = createAsyncThunk(
+  "project/updateStatus",
+  async (statusData) => {
+    return api.updateStatus(statusData);
+  }
+);
+
+export const deleteStatus = createAsyncThunk(
+  "project/deleteStatus",
+  async ({ projectId, statusId }) => {
+    return api.deleteStatus(projectId, statusId);
+  }
+);
+
 export const createSprint = createAsyncThunk(
   "project/createSprint",
   async (sprintData) => {
@@ -72,6 +93,7 @@ const projectSlice = createSlice({
     project: null,
     cards: [],
     sprints: [],
+    statuses: [],
     sprintFilter: null,
     selectedCard: null,
     loading: false,
@@ -99,6 +121,7 @@ const projectSlice = createSlice({
       state.project = action.payload.project;
       state.cards = action.payload.cards;
       state.sprints = action.payload.sprints || [];
+      state.statuses = action.payload.statuses || [];
       state.lastPoll = new Date().toISOString();
     });
     builder.addCase(fetchProject.rejected, (state, action) => {
@@ -144,6 +167,34 @@ const projectSlice = createSlice({
 
     builder.addCase(fetchCard.fulfilled, (state, action) => {
       state.selectedCard = action.payload.card;
+    });
+
+    builder.addCase(createStatus.fulfilled, (state, action) => {
+      state.statuses.push(action.payload.status);
+      state.statuses.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    });
+    builder.addCase(createStatus.rejected, (state, action) => {
+      state.error = action.error.message;
+    });
+
+    builder.addCase(updateStatus.fulfilled, (state, action) => {
+      const updated = action.payload.status;
+      const idx = state.statuses.findIndex((s) => s.objectId === updated.objectId);
+      if (idx !== -1) {
+        state.statuses[idx] = updated;
+        state.statuses.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      }
+    });
+    builder.addCase(updateStatus.rejected, (state, action) => {
+      state.error = action.error.message;
+    });
+
+    builder.addCase(deleteStatus.fulfilled, (state, action) => {
+      const { statusId } = action.meta.arg;
+      state.statuses = state.statuses.filter((s) => s.objectId !== statusId);
+    });
+    builder.addCase(deleteStatus.rejected, (state, action) => {
+      state.error = action.error.message;
     });
 
     builder.addCase(createSprint.fulfilled, (state, action) => {

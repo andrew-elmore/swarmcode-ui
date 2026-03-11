@@ -20,29 +20,26 @@ import { PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 import CreateCardDialog from "./CreateCardDialog";
 import CardDetailDialog from "./CardDetailDialog";
 import SprintManagerDialog from "./SprintManagerDialog";
-
-const COLUMNS = [
-  { key: "create", label: "Create" },
-  { key: "scope", label: "Scope" },
-  { key: "implement", label: "Implement" },
-  { key: "code_review", label: "Code Review" },
-  { key: "test", label: "Test" },
-  { key: "test_review", label: "Test Review" },
-  { key: "ship", label: "Ship" },
-  { key: "done", label: "Done" },
-];
+import StatusManagerDialog from "./StatusManagerDialog";
 
 export default function BoardView() {
   const dispatch = useAppDispatch();
-  const { project, cards, sprints, sprintFilter, loading, error } = useAppSelector((s) => s.project);
+  const { project, cards, sprints, statuses, sprintFilter, loading, error } = useAppSelector((s) => s.project);
   const { activeProject } = useAppSelector((s) => s.projects);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState(null);
-  const [selectedColumn, setSelectedColumn] = useState("create");
+  const [selectedColumn, setSelectedColumn] = useState(null);
   const [sprintManagerOpen, setSprintManagerOpen] = useState(false);
+  const [statusManagerOpen, setStatusManagerOpen] = useState(false);
+
+  // Derive columns from statuses Redux state, sorted by order
+  const columns = [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((s) => ({
+    key: s.name,
+    label: s.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+  }));
 
   useEffect(() => {
     if (activeProject) {
@@ -85,10 +82,11 @@ export default function BoardView() {
     ? cards.filter((c) => (c.sprintName || c.sprint) === sprintFilter)
     : cards;
 
-  // For mobile: filter to the selected column only
+  // For mobile: filter to the selected column only; default to first column
+  const effectiveColumn = selectedColumn || columns[0]?.key || null;
   const visibleColumns = isMobile
-    ? COLUMNS.filter((col) => col.key === selectedColumn)
-    : COLUMNS;
+    ? columns.filter((col) => col.key === effectiveColumn)
+    : columns;
 
   return (
     <Box sx={{ p: isMobile ? 1 : 2, height: "100%", overflow: "auto" }}>
@@ -124,6 +122,14 @@ export default function BoardView() {
             Manage Sprints
           </Button>
           <Button
+            variant="outlined"
+            onClick={() => setStatusManagerOpen(true)}
+            size={isMobile ? "small" : "medium"}
+            data-testid="manage-statuses-button"
+          >
+            Manage Statuses
+          </Button>
+          <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setCreateOpen(true)}
@@ -140,13 +146,13 @@ export default function BoardView() {
         <TextField
           select
           size="small"
-          value={selectedColumn}
+          value={effectiveColumn || ""}
           onChange={(e) => setSelectedColumn(e.target.value)}
           fullWidth
           sx={{ mb: 2 }}
           label="Column"
         >
-          {COLUMNS.map((col) => {
+          {columns.map((col) => {
             const count = filteredCards.filter((c) => c.status === col.key).length;
             return (
               <MenuItem key={col.key} value={col.key}>
@@ -269,6 +275,12 @@ export default function BoardView() {
       <SprintManagerDialog
         open={sprintManagerOpen}
         onClose={() => setSprintManagerOpen(false)}
+        projectId={project?.objectId}
+      />
+
+      <StatusManagerDialog
+        open={statusManagerOpen}
+        onClose={() => setStatusManagerOpen(false)}
         projectId={project?.objectId}
       />
     </Box>
