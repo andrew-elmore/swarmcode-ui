@@ -35,8 +35,8 @@ export default function BoardView() {
   const [sprintManagerOpen, setSprintManagerOpen] = useState(false);
   const [statusManagerOpen, setStatusManagerOpen] = useState(false);
 
-  // Derive columns from statuses Redux state; fall back to STATUSES constant if not yet loaded
-  const effectiveStatuses = statuses.length > 0
+  // Derive columns from statuses Redux state; fall back to STATUSES constant if not yet loaded or undefined
+  const effectiveStatuses = statuses?.length
     ? [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     : STATUSES.map((name, idx) => ({ name, order: idx }));
   const columns = effectiveStatuses.map((s) => ({
