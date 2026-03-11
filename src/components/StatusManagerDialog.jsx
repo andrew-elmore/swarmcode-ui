@@ -29,7 +29,7 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
 
-  const sorted = [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const sorted = [...(statuses || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const formValid =
     form.name.trim() &&

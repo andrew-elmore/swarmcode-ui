@@ -23,7 +23,7 @@ export default function CardDetailDialog({ open, onClose, card, projectId }) {
   const dispatch = useAppDispatch();
   const { sprints, statuses } = useAppSelector((s) => s.project);
   const { agents } = useAppSelector((s) => s.agents);
-  const sortedStatuses = [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const sortedStatuses = [...(statuses || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const [newComment, setNewComment] = useState("");
