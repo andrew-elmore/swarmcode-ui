@@ -121,7 +121,7 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
             size="small"
             fullWidth
             multiline
-            rows={3}
+            rows={6}
             data-testid="status-new-instructions"
           />
           <TextField
@@ -221,7 +221,7 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
                       size="small"
                       fullWidth
                       multiline
-                      rows={3}
+                      rows={6}
                       data-testid="status-edit-instructions"
                     />
                     <TextField
