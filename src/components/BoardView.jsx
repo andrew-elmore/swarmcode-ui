@@ -16,7 +16,7 @@ import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../store";
 import { fetchProject, setSprintFilter } from "../store/projectSlice";
-import { PRIORITY_COLORS, getSprintDisplayName } from "../constants";
+import { STATUSES, PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 import CreateCardDialog from "./CreateCardDialog";
 import CardDetailDialog from "./CardDetailDialog";
 import SprintManagerDialog from "./SprintManagerDialog";
@@ -35,8 +35,11 @@ export default function BoardView() {
   const [sprintManagerOpen, setSprintManagerOpen] = useState(false);
   const [statusManagerOpen, setStatusManagerOpen] = useState(false);
 
-  // Derive columns from statuses Redux state, sorted by order
-  const columns = [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)).map((s) => ({
+  // Derive columns from statuses Redux state; fall back to STATUSES constant if not yet loaded
+  const effectiveStatuses = statuses.length > 0
+    ? [...statuses].sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+    : STATUSES.map((name, idx) => ({ name, order: idx }));
+  const columns = effectiveStatuses.map((s) => ({
     key: s.name,
     label: s.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
   }));
