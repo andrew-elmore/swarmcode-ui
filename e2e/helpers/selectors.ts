@@ -99,6 +99,7 @@ export const CARD_TITLE_EDIT = '[data-testid="card-title-edit"]';
 export const CARD_DESCRIPTION_DISPLAY = '[data-testid="card-description-display"]';
 export const CARD_DESCRIPTION_EDIT = '[data-testid="card-description-edit"]';
 export const CARD_ASSIGNEE_SELECT = '[data-testid="card-assignee-select"]';
+export const CARD_SPRINT_SELECT = '[data-testid="card-sprint-select"]';
 
 // Status Manager
 export const MANAGE_STATUSES_BUTTON = '[data-testid="manage-statuses-button"]';

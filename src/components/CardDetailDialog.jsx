@@ -223,6 +223,7 @@ export default function CardDetailDialog({ open, onClose, card, projectId }) {
             onChange={(e) => handleSprintChange(e.target.value)}
             select
             size="small"
+            data-testid="card-sprint-select"
             sx={{ minWidth: 140, flex: isMobile ? "1 1 100%" : undefined }}
           >
             <MenuItem value="">No Sprint</MenuItem>

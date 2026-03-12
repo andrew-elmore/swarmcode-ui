@@ -49,7 +49,7 @@ const projectsSlice = createSlice({
     });
     builder.addCase(fetchRecentProjects.fulfilled, (state, action) => {
       state.loading = false;
-      state.projects = action.payload.projects;
+      state.projects = action.payload.projects ?? [];
     });
     builder.addCase(fetchRecentProjects.rejected, (state, action) => {
       state.loading = false;

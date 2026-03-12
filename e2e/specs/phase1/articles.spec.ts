@@ -25,11 +25,13 @@ import {
 test.describe('Article CRUD', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article CRUD Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
   });
 
   test.afterAll(async () => {
@@ -38,6 +40,7 @@ test.describe('Article CRUD', () => {
 
   test('create article via New Article dialog', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -66,6 +69,7 @@ test.describe('Article CRUD', () => {
     const articleId = result.article.objectId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(articleRow(articleId))).toBeVisible({ timeout: 5000 });
 
@@ -91,6 +95,7 @@ test.describe('Article CRUD', () => {
     const articleId = result.article.objectId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(articleRow(articleId))).toBeVisible({ timeout: 5000 });
 
@@ -131,6 +136,7 @@ test.describe('Article CRUD', () => {
     const articleId = result.article.objectId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(articleRow(articleId))).toBeVisible({ timeout: 5000 });
 
@@ -160,6 +166,7 @@ test.describe('Article CRUD', () => {
 
   test('create article shows (no content) for empty text', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 

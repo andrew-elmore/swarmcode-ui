@@ -18,6 +18,7 @@ import {
   CARD_DESCRIPTION_DISPLAY,
   CARD_DESCRIPTION_EDIT,
   CARD_ASSIGNEE_SELECT,
+  CARD_SPRINT_SELECT,
 } from '../../helpers/selectors';
 
 test.describe('Board CRUD', () => {
@@ -133,7 +134,7 @@ test.describe('Board CRUD', () => {
     await expect(page.locator(CARD_DETAIL_DIALOG).getByText('Comments (0)')).toBeVisible();
 
     // Type and submit a comment
-    await page.locator(CARD_COMMENT_INPUT).locator('textarea').fill('E2E test comment');
+    await page.locator(CARD_COMMENT_INPUT).locator('input').fill('E2E test comment');
     await page.getByRole('button', { name: 'Send' }).click();
 
     // Verify comment appears
@@ -160,8 +161,7 @@ test.describe('Board CRUD', () => {
     await expect(page.locator(CARD_DETAIL_DIALOG)).toBeVisible({ timeout: 3000 });
 
     // Select sprint
-    const sprintSelect = page.locator(CARD_DETAIL_DIALOG).getByLabel('Sprint');
-    await sprintSelect.locator('[role=combobox]').click();
+    await page.locator(CARD_SPRINT_SELECT).locator('[role=combobox]').click();
     await page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 10_000 });
     await page.locator('[role="listbox"]').getByRole('option', { name: 'Sprint Alpha' }).click();
 

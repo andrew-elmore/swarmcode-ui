@@ -120,7 +120,7 @@ test.describe('Project selector edge cases', () => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ result: [] }),
+        body: JSON.stringify({ result: { projects: [] } }),
       }),
     );
 
