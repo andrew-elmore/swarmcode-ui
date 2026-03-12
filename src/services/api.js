@@ -12,7 +12,9 @@ const LIVEQUERY_URL = process.env.REACT_APP_PARSE_LIVEQUERY_URL;
 if (LIVEQUERY_URL) {
   Parse.liveQueryServerURL = LIVEQUERY_URL;
 } else {
-  Parse.liveQueryServerURL = PARSE_URL.replace(/^http/, 'ws');
+  Parse.liveQueryServerURL = PARSE_URL.startsWith('http')
+    ? PARSE_URL.replace(/^http/, 'ws')
+    : 'ws://localhost:1337/parse';
 }
 
 async function callFunction(name, params = {}) {
