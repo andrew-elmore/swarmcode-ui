@@ -11,6 +11,8 @@ Parse.serverURL = PARSE_URL;
 const LIVEQUERY_URL = process.env.REACT_APP_PARSE_LIVEQUERY_URL;
 if (LIVEQUERY_URL) {
   Parse.liveQueryServerURL = LIVEQUERY_URL;
+} else {
+  Parse.liveQueryServerURL = PARSE_URL.replace(/^http/, 'ws');
 }
 
 async function callFunction(name, params = {}) {
@@ -50,6 +52,8 @@ export async function subscribeToMessages(projectId, onMessage) {
   const Project = Parse.Object.extend("Project");
   const query = new Parse.Query("Message");
   query.equalTo("project", Project.createWithoutData(projectId));
+  query.include('from');
+  query.include('to');
   const subscription = await query.subscribe();
   _messageSubscription = subscription;
 

@@ -211,13 +211,13 @@ export default function App() {
       </AppBar>
 
       <Box component="main" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-        {tab === 0 && <MessagesView />}
-        {tab === 1 && <BoardView />}
-        {tab === 2 && <AgentsView />}
-        {tab === 3 && <StreamView />}
-        {tab === 4 && <ProjectsView />}
-        {tab === 5 && <CommandsView />}
-        {tab === 6 && <ArticlesView />}
+        <Box sx={{ display: tab === 0 ? 'flex' : 'none', height: '100%' }}><MessagesView /></Box>
+        <Box sx={{ display: tab === 1 ? 'block' : 'none', height: '100%' }}><BoardView /></Box>
+        <Box sx={{ display: tab === 2 ? 'block' : 'none', height: '100%' }}><AgentsView /></Box>
+        <Box sx={{ display: tab === 3 ? 'block' : 'none', height: '100%' }}><StreamView /></Box>
+        <Box sx={{ display: tab === 4 ? 'block' : 'none', height: '100%' }}><ProjectsView /></Box>
+        <Box sx={{ display: tab === 5 ? 'block' : 'none', height: '100%' }}><CommandsView /></Box>
+        <Box sx={{ display: tab === 6 ? 'block' : 'none', height: '100%' }}><ArticlesView /></Box>
       </Box>
     </Box>
   );

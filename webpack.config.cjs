@@ -20,6 +20,9 @@ module.exports = {
     // package.json has "type": "module"; disable webpack's strict extension
     // enforcement so extensionless imports (e.g. './store') keep working.
     fullySpecified: false,
+    fallback: {
+      "events": require.resolve("events/"),
+    },
   },
   module: {
     rules: [
@@ -103,6 +106,7 @@ module.exports = {
         context: ["/parse"],
         target: "http://localhost:1337",
         changeOrigin: true,
+        ws: true,
       },
     ],
   },

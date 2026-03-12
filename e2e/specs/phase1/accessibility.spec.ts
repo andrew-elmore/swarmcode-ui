@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_MESSAGES,
   TAB_BOARD,
@@ -16,11 +17,13 @@ import {
 test.describe('Accessibility audit', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('A11y Audit Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -30,6 +33,7 @@ test.describe('Accessibility audit', () => {
 
   test('axe scan passes on each main view', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
     const tabs = [
@@ -62,6 +66,7 @@ test.describe('Accessibility audit', () => {
 
   test('keyboard navigation through tabs', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
     const tabSelectors = [
@@ -77,7 +82,7 @@ test.describe('Accessibility audit', () => {
     // Focus the first tab by clicking it
     await page.locator(TAB_MESSAGES).focus();
 
-    // Tab through each tab button and verify focus
+    // Navigate through tab buttons using ArrowRight (MUI Tabs uses ARIA roving tabindex)
     for (let i = 0; i < tabSelectors.length; i++) {
       const focused = page.locator(tabSelectors[i]);
       await expect(focused).toBeFocused({ timeout: 3000 });
@@ -86,15 +91,16 @@ test.describe('Accessibility audit', () => {
       await page.keyboard.press('Enter');
       await page.waitForTimeout(300);
 
-      // Tab to the next tab button (if not the last one)
+      // ArrowRight moves to the next tab within the tab group (Tab exits the group)
       if (i < tabSelectors.length - 1) {
-        await page.keyboard.press('Tab');
+        await page.keyboard.press('ArrowRight');
       }
     }
   });
 
   test('dialog accessibility — AgentEditDialog', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_AGENTS).click();
     await expect(page.locator(ADD_AGENT_BUTTON)).toBeVisible({ timeout: 10_000 });
 
