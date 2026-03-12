@@ -68,6 +68,7 @@ export default function ProjectSelector() {
           "& .MuiInputBase-root": { color: "inherit", bgcolor: "rgba(255,255,255,0.15)" },
           "& .MuiSvgIcon-root": { color: "inherit" },
         }}
+        inputProps={{ 'aria-label': 'Select project' }}
         SelectProps={{ displayEmpty: true }}
       >
         {projects.length === 0 && (

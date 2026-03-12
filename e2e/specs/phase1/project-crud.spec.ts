@@ -51,7 +51,7 @@ test.describe('Project CRUD', () => {
     await page.locator(PROJECT_SELECTOR).click();
 
     // Verify the project name appears in the dropdown options
-    await expect(page.getByRole('option', { name: 'Selector Test Project' })).toBeVisible();
+    await expect(page.getByRole('option', { name: project.name })).toBeVisible();
   });
 
   test('switch between projects and verify board reloads', async ({ page }) => {
@@ -64,7 +64,7 @@ test.describe('Project CRUD', () => {
 
     // Select project A
     await page.locator(PROJECT_SELECTOR).click();
-    await page.getByRole('option', { name: 'Switch Project A' }).click();
+    await page.getByRole('option', { name: project1.name }).click();
 
     // Navigate to Board tab to verify it loaded
     const tabBoard = page.locator('[data-testid="tab-board"]');
@@ -73,7 +73,7 @@ test.describe('Project CRUD', () => {
 
     // Switch to project B
     await page.locator(PROJECT_SELECTOR).click();
-    await page.getByRole('option', { name: 'Switch Project B' }).click();
+    await page.getByRole('option', { name: project2.name }).click();
 
     // Board should still be visible (reloaded for new project)
     await expect(page.getByText('Board')).toBeVisible();
@@ -91,23 +91,23 @@ test.describe('Project CRUD', () => {
     await page.locator(TAB_PROJECTS).click();
 
     // Wait for the project to appear in the list
-    await expect(page.locator(projectListItem('Delete Me Project'))).toBeVisible({
+    await expect(page.locator(projectListItem(project.name))).toBeVisible({
       timeout: 5000,
     });
 
     // Click the delete button on the project
-    const listItem = page.locator(projectListItem('Delete Me Project'));
+    const listItem = page.locator(projectListItem(project.name));
     await listItem.locator(DELETE_PROJECT_BUTTON).click();
 
     // Confirmation dialog should appear
     await expect(page.getByText('Are you sure you want to delete')).toBeVisible();
-    await expect(page.getByText('Delete Me Project')).toBeVisible();
+    await expect(page.getByText(project.name)).toBeVisible();
 
     // Confirm deletion
     await page.getByRole('button', { name: 'Delete' }).click();
 
     // Verify project is removed from the list
-    await expect(page.locator(projectListItem('Delete Me Project'))).not.toBeVisible({
+    await expect(page.locator(projectListItem(project.name))).not.toBeVisible({
       timeout: 5000,
     });
   });
@@ -149,7 +149,7 @@ test.describe('Project selector edge cases', () => {
     await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
 
     // Verify the project selector displays the seeded project name without manual selection
-    await expect(page.locator(PROJECT_SELECTOR)).toContainText('Auto Select Project', {
+    await expect(page.locator(PROJECT_SELECTOR)).toContainText(project.name, {
       timeout: 5000,
     });
 
@@ -170,10 +170,10 @@ test.describe('Project selector edge cases', () => {
 
     // Select the project
     await page.locator(PROJECT_SELECTOR).click();
-    await page.getByRole('option', { name: 'Idempotent Select Project' }).click();
+    await page.getByRole('option', { name: project.name }).click();
 
     // Verify project is selected
-    await expect(page.locator(PROJECT_SELECTOR)).toContainText('Idempotent Select Project');
+    await expect(page.locator(PROJECT_SELECTOR)).toContainText(project.name);
 
     // Navigate to Board tab to verify board loads
     await page.locator('[data-testid="tab-board"]').click();
@@ -181,10 +181,10 @@ test.describe('Project selector edge cases', () => {
 
     // Open dropdown and select the same project again
     await page.locator(PROJECT_SELECTOR).click();
-    await page.getByRole('option', { name: 'Idempotent Select Project' }).click();
+    await page.getByRole('option', { name: project.name }).click();
 
     // Verify no errors — project still selected and board still displays
-    await expect(page.locator(PROJECT_SELECTOR)).toContainText('Idempotent Select Project');
+    await expect(page.locator(PROJECT_SELECTOR)).toContainText(project.name);
     await expect(page.getByText('Board')).toBeVisible({ timeout: 5000 });
 
     // Cleanup

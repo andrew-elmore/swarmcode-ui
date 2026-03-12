@@ -47,7 +47,7 @@ export async function createTestProject(
   projectCounter++;
   const timestamp = Date.now();
   const uniquePath = `/tmp/e2e-test-${timestamp}-${projectCounter}`;
-  const projectName = name || `E2E Test ${projectCounter}`;
+  const projectName = name ? `${name} ${timestamp}` : `E2E Test ${projectCounter}`;
 
   await seedProject(uniquePath, projectName);
   const board = await getBoard(uniquePath);

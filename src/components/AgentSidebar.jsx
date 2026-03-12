@@ -48,7 +48,7 @@ export default function AgentSidebar({ selectedAgent, onSelectAgent, unreadCount
           />
         </ListItemButton>
 
-        <Divider sx={{ my: 0.5 }} />
+        <Divider component="li" sx={{ my: 0.5 }} />
 
         {/* Individual agents — loaded dynamically from DB */}
         {agents.filter((a) => a.isActive).map((agent) => (
