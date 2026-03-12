@@ -13,6 +13,7 @@ const Parse = {
   },
   Query: jest.fn().mockImplementation(() => ({
     equalTo: jest.fn(),
+    include: jest.fn().mockReturnThis(),
     subscribe: jest.fn().mockResolvedValue(mockSubscription),
   })),
   Object: {
