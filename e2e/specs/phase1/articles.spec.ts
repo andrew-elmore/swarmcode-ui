@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedArticles, teardownProject } from '../../fixtures/seed';
 import { seedArticle } from '../../helpers/api-client';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_BOARD,
   TAB_ARTICLES,
@@ -77,8 +78,8 @@ test.describe('Article CRUD', () => {
     await expect(page.locator(ARTICLE_DETAIL).getByText('This describes the system architecture.')).toBeVisible();
 
     // Verify keyword chips
-    await expect(page.locator(ARTICLE_DETAIL).getByText('arch')).toBeVisible();
-    await expect(page.locator(ARTICLE_DETAIL).getByText('design')).toBeVisible();
+    await expect(page.locator(ARTICLE_DETAIL).getByRole('button', { name: 'arch', exact: true })).toBeVisible();
+    await expect(page.locator(ARTICLE_DETAIL).getByRole('button', { name: 'design', exact: true })).toBeVisible();
 
     // Verify Updated date label is present
     await expect(page.locator(ARTICLE_DETAIL).getByText('Updated:')).toBeVisible();
@@ -120,8 +121,8 @@ test.describe('Article CRUD', () => {
     // Verify updated values in detail view
     await expect(page.locator(ARTICLE_DETAIL).getByText('New Title')).toBeVisible({ timeout: 5000 });
     await expect(page.locator(ARTICLE_DETAIL).getByText('Updated content.')).toBeVisible();
-    await expect(page.locator(ARTICLE_DETAIL).getByText('new')).toBeVisible();
-    await expect(page.locator(ARTICLE_DETAIL).getByText('updated')).toBeVisible();
+    await expect(page.locator(ARTICLE_DETAIL).getByRole('button', { name: 'new', exact: true })).toBeVisible();
+    await expect(page.locator(ARTICLE_DETAIL).getByRole('button', { name: 'updated', exact: true })).toBeVisible();
   });
 
   test('delete article with confirmation', async ({ page }) => {
@@ -181,11 +182,13 @@ test.describe('Article CRUD', () => {
 test.describe('Article List & Search', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article Search Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     // Seed 3 articles with distinct titles and keywords
     await seedArticles(projectId, [
       { title: 'Bravo Guide', text: 'Bravo content.', keywords: ['guide', 'bravo'] },
@@ -200,6 +203,7 @@ test.describe('Article List & Search', () => {
 
   test('list view shows all articles alphabetically', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -215,6 +219,7 @@ test.describe('Article List & Search', () => {
 
   test('search by title', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -233,6 +238,7 @@ test.describe('Article List & Search', () => {
 
   test('search by keywords', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -248,6 +254,7 @@ test.describe('Article List & Search', () => {
 
   test('combined search (title + keywords)', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -264,6 +271,7 @@ test.describe('Article List & Search', () => {
 
   test('empty search results', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -277,6 +285,7 @@ test.describe('Article List & Search', () => {
 
   test('clear button resets search', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -306,11 +315,13 @@ test.describe('Article List & Search', () => {
 test.describe('Inline [[references]]', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Article References Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedArticles(projectId, [
       { title: 'Article A', text: 'See [[Article B]] for details.', keywords: ['ref-test'] },
       { title: 'Article B', text: 'This is Article B content.', keywords: ['ref-test'] },
@@ -326,6 +337,7 @@ test.describe('Inline [[references]]', () => {
 
   test('clicking a [[reference]] navigates to referenced article', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -345,6 +357,7 @@ test.describe('Inline [[references]]', () => {
 
   test('missing reference styled in red/italic', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -370,6 +383,7 @@ test.describe('Inline [[references]]', () => {
 
   test('existing reference styled normally', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
     await expect(page.locator(ARTICLES_VIEW)).toBeVisible({ timeout: 5000 });
 

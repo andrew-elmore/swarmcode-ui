@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, seedBoardCards, teardownProject } from '../../fixtures/seed';
 import { AgentSimulator } from '../../fixtures/agent-simulator';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_BOARD,
   TAB_MESSAGES,
@@ -16,12 +17,14 @@ import {
 test.describe('Board Collaboration', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Board Collab Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -43,6 +46,7 @@ test.describe('Board Collaboration', () => {
     await simulator.start();
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(NEW_CARD_BUTTON)).toBeVisible({ timeout: 10_000 });
 
@@ -61,8 +65,8 @@ test.describe('Board Collaboration', () => {
     });
 
     // Now agent simulator moves the card to implement via API
-    // First find the card ID from the board
-    const cardElement = page.locator(boardColumn('create')).getByText('Collab Test Card').locator('xpath=ancestor::*[@data-testid]').first();
+    // Find the card element directly by its data-testid prefix within the column
+    const cardElement = page.locator(boardColumn('create')).locator('[data-testid^="board-card-"]').filter({ hasText: 'Collab Test Card' });
     const cardTestId = await cardElement.getAttribute('data-testid');
     const cardId = cardTestId?.replace('board-card-', '') || '';
 
@@ -96,6 +100,7 @@ test.describe('Board Collaboration', () => {
     await simulator.addComment(cardId, 'LGTM - approved by senior-dev-1');
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 10_000 });
 
@@ -128,6 +133,7 @@ test.describe('Board Collaboration', () => {
     });
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
 
     // Card should appear in the scope column

@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, seedBoardCards, teardownProject } from '../../fixtures/seed';
 import { seedSprint } from '../../helpers/api-client';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_BOARD,
   boardColumn,
@@ -22,11 +23,13 @@ import {
 test.describe('Board CRUD', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Board CRUD Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -36,6 +39,7 @@ test.describe('Board CRUD', () => {
 
   test('board displays 8-column layout', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
 
     // Verify all 8 columns are visible
@@ -47,6 +51,7 @@ test.describe('Board CRUD', () => {
 
   test('create a card via New Card dialog', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(NEW_CARD_BUTTON)).toBeVisible({ timeout: 5000 });
 
@@ -81,6 +86,7 @@ test.describe('Board CRUD', () => {
     const cardId = cards[0].cardId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
 
@@ -115,6 +121,7 @@ test.describe('Board CRUD', () => {
     const cardId = cards[0].cardId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
 
@@ -126,7 +133,7 @@ test.describe('Board CRUD', () => {
     await expect(page.locator(CARD_DETAIL_DIALOG).getByText('Comments (0)')).toBeVisible();
 
     // Type and submit a comment
-    await page.locator(CARD_COMMENT_INPUT).locator('input').fill('E2E test comment');
+    await page.locator(CARD_COMMENT_INPUT).locator('textarea').fill('E2E test comment');
     await page.getByRole('button', { name: 'Send' }).click();
 
     // Verify comment appears
@@ -144,6 +151,7 @@ test.describe('Board CRUD', () => {
     await seedSprint(projectId, 'Sprint Alpha');
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cards[0].cardId))).toBeVisible({ timeout: 5000 });
 
@@ -153,23 +161,27 @@ test.describe('Board CRUD', () => {
 
     // Select sprint
     const sprintSelect = page.locator(CARD_DETAIL_DIALOG).getByLabel('Sprint');
-    await sprintSelect.click();
-    await page.getByRole('option', { name: 'Sprint Alpha' }).click();
+    await sprintSelect.locator('[role=combobox]').click();
+    await page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('[role="listbox"]').getByRole('option', { name: 'Sprint Alpha' }).click();
 
     // Close dialog
     await page.getByRole('button', { name: 'Close' }).click();
 
     // Filter board by sprint
     await expect(page.locator(SPRINT_FILTER)).toBeVisible({ timeout: 3000 });
-    await page.locator(SPRINT_FILTER).click();
-    await page.getByRole('option', { name: 'Sprint Alpha' }).click();
+    await page.locator(SPRINT_FILTER).locator('[role=combobox]').click();
+    await page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('[role="listbox"]').getByRole('option', { name: 'Sprint Alpha' }).click();
 
     // Card should still be visible (it's in Sprint Alpha)
     await expect(page.locator(boardCard(cards[0].cardId))).toBeVisible({ timeout: 5000 });
 
     // Switch to All Sprints
-    await page.locator(SPRINT_FILTER).click();
-    await page.getByRole('option', { name: 'All Sprints' }).click();
+    await page.locator('[role="listbox"]').waitFor({ state: 'hidden' });
+    await page.locator(SPRINT_FILTER).locator('[role=combobox]').click();
+    await page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('[role="listbox"]').getByRole('option', { name: 'All Sprints' }).click();
   });
 });
 
@@ -181,11 +193,13 @@ test.describe('Board CRUD — mobile', () => {
 
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Board Mobile Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -200,21 +214,25 @@ test.describe('Board CRUD — mobile', () => {
     ]);
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
 
     // On mobile, a column selector dropdown should be visible
     await expect(page.getByLabel('Column')).toBeVisible({ timeout: 5000 });
 
     // Select 'Create' column
-    await page.getByLabel('Column').click();
-    await page.getByRole('option', { name: /Create/ }).click();
+    await page.getByLabel('Column').locator('[role=combobox]').click();
+    await page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('[role="listbox"]').getByRole('option', { name: /Create/ }).click();
 
     // Mobile Card A should be visible (it's in Create)
     await expect(page.getByText('Mobile Card A')).toBeVisible({ timeout: 3000 });
 
-    // Switch to Scope column
-    await page.getByLabel('Column').click();
-    await page.getByRole('option', { name: /Scope/ }).click();
+    // Switch to Scope column — wait for previous listbox to close before reopening
+    await page.locator('[role="listbox"]').waitFor({ state: 'hidden' });
+    await page.getByLabel('Column').locator('[role=combobox]').click();
+    await page.locator('[role="listbox"]').waitFor({ state: 'visible', timeout: 10_000 });
+    await page.locator('[role="listbox"]').getByRole('option', { name: /Scope/ }).click();
 
     // Mobile Card B should be visible (it's in Scope)
     await expect(page.getByText('Mobile Card B')).toBeVisible({ timeout: 3000 });
@@ -224,11 +242,13 @@ test.describe('Board CRUD — mobile', () => {
 test.describe('Card Detail Editing', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Card Detail Editing Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -243,6 +263,7 @@ test.describe('Card Detail Editing', () => {
     const cardId = cards[0].cardId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
 
@@ -279,6 +300,7 @@ test.describe('Card Detail Editing', () => {
     const cardId = cards[0].cardId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
 
@@ -312,6 +334,7 @@ test.describe('Card Detail Editing', () => {
     const emptyCardId = emptyCards[0].cardId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(emptyCardId))).toBeVisible({ timeout: 5000 });
 
@@ -345,6 +368,7 @@ test.describe('Card Detail Editing', () => {
     const cardId = cards[0].cardId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
 
@@ -378,6 +402,7 @@ test.describe('Card Detail Editing', () => {
     const cardId = cards[0].cardId;
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(boardCard(cardId))).toBeVisible({ timeout: 5000 });
 

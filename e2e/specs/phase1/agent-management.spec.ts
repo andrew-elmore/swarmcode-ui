@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { seedGlobalAgent, deleteGlobalAgent } from '../../helpers/api-client';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_AGENTS,
   ADD_AGENT_BUTTON,
@@ -11,11 +12,13 @@ import {
 test.describe('Agent Management', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Agent Mgmt Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -27,6 +30,7 @@ test.describe('Agent Management', () => {
 
   test('open Agents tab and see assigned agents', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_AGENTS).click();
 
     // Should see the "Agents" heading
@@ -42,6 +46,7 @@ test.describe('Agent Management', () => {
 
   test('create a new global agent via dialog', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_AGENTS).click();
     await expect(page.locator(ADD_AGENT_BUTTON)).toBeVisible({ timeout: 10_000 });
 
@@ -72,6 +77,7 @@ test.describe('Agent Management', () => {
     try { await seedGlobalAgent('e2e-test-agent', 'Agent created by E2E test'); } catch { /* already exists */ }
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_AGENTS).click();
     await expect(page.locator(agentListItem('e2e-test-agent'))).toBeVisible({ timeout: 10_000 });
 
@@ -89,6 +95,7 @@ test.describe('Agent Management', () => {
 
   test('toggle agent active/inactive', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_AGENTS).click();
     await expect(page.locator(agentListItem('developer-1'))).toBeVisible({ timeout: 10_000 });
 
@@ -115,6 +122,7 @@ test.describe('Agent Management', () => {
 
   test('unassign agent from project', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_AGENTS).click();
     await expect(page.locator(agentListItem('devops-1'))).toBeVisible({ timeout: 10_000 });
 
@@ -143,6 +151,7 @@ test.describe('Agent Management', () => {
     try { await seedGlobalAgent('e2e-test-agent', 'Agent created by E2E test'); } catch { /* already exists */ }
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_AGENTS).click();
     await expect(page.locator(agentListItem('e2e-test-agent'))).toBeVisible({ timeout: 10_000 });
 
@@ -154,7 +163,7 @@ test.describe('Agent Management', () => {
 
     // Confirm dialog should appear
     await expect(page.getByText('Delete Agent')).toBeVisible({ timeout: 3000 });
-    await expect(page.getByText('e2e-test-agent')).toBeVisible();
+    await expect(page.getByRole('dialog').getByText('e2e-test-agent')).toBeVisible();
 
     // Confirm deletion
     await page.getByRole('button', { name: 'Delete' }).click();
