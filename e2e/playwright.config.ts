@@ -16,7 +16,7 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'node ../swarmcode-api/start-test-server.js',
+      command: 'node ../../swarmcode-api/start-test-server.js',
       port: 1337,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,

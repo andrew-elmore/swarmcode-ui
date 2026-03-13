@@ -7,6 +7,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { callFunction } from '../../helpers/api-client';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_BOARD,
   MANAGE_STATUSES_BUTTON,
@@ -24,11 +25,13 @@ import {
 test.describe('Status Manager', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Status Manager E2E Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -38,12 +41,14 @@ test.describe('Status Manager', () => {
 
   test('Manage Statuses button is visible on BoardView', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(MANAGE_STATUSES_BUTTON)).toBeVisible({ timeout: 5000 });
   });
 
   test('clicking Manage Statuses opens StatusManagerDialog', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await page.locator(MANAGE_STATUSES_BUTTON).click();
 
@@ -58,6 +63,7 @@ test.describe('Status Manager', () => {
 
   test('dialog shows the 8 default seeded statuses', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await page.locator(MANAGE_STATUSES_BUTTON).click();
     await expect(page.locator(STATUS_MANAGER_DIALOG)).toBeVisible({ timeout: 5000 });
@@ -69,6 +75,7 @@ test.describe('Status Manager', () => {
 
   test('creates a new status and it appears in the list', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await page.locator(MANAGE_STATUSES_BUTTON).click();
     await expect(page.locator(STATUS_MANAGER_DIALOG)).toBeVisible({ timeout: 5000 });
@@ -102,6 +109,7 @@ test.describe('Status Manager', () => {
     });
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await page.locator(MANAGE_STATUSES_BUTTON).click();
     await expect(page.locator(STATUS_MANAGER_DIALOG)).toBeVisible({ timeout: 5000 });
@@ -136,6 +144,7 @@ test.describe('Status Manager', () => {
     });
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await page.locator(MANAGE_STATUSES_BUTTON).click();
     await expect(page.locator(STATUS_MANAGER_DIALOG)).toBeVisible({ timeout: 5000 });
@@ -168,6 +177,7 @@ test.describe('Status Manager', () => {
     });
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
     await page.locator(MANAGE_STATUSES_BUTTON).click();
     await expect(page.locator(STATUS_MANAGER_DIALOG)).toBeVisible({ timeout: 5000 });

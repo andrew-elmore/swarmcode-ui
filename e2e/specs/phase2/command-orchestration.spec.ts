@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { AgentSimulator } from '../../fixtures/agent-simulator';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_COMMANDS,
   ORCHESTRATOR_STATUS,
@@ -11,12 +12,14 @@ import {
 test.describe('Command Orchestration', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Command Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -42,6 +45,7 @@ test.describe('Command Orchestration', () => {
     await new Promise((r) => setTimeout(r, 2500));
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_COMMANDS).click();
     await expect(page.locator(ORCHESTRATOR_STATUS)).toBeVisible({ timeout: 10_000 });
 
@@ -69,6 +73,7 @@ test.describe('Command Orchestration', () => {
     await new Promise((r) => setTimeout(r, 2500));
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_COMMANDS).click();
     await expect(page.locator(ORCHESTRATOR_STATUS)).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(ORCHESTRATOR_STATUS).getByText('Online')).toBeVisible({
@@ -106,6 +111,7 @@ test.describe('Command Orchestration', () => {
     await new Promise((r) => setTimeout(r, 2500));
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_COMMANDS).click();
     await expect(page.locator(ORCHESTRATOR_STATUS).getByText('Online')).toBeVisible({
       timeout: 10_000,

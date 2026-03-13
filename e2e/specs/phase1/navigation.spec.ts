@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { seedMessages } from '../../helpers/api-client';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_MESSAGES,
   TAB_BOARD,
@@ -16,11 +17,13 @@ import {
 test.describe('Navigation', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Nav Test Project');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -30,6 +33,7 @@ test.describe('Navigation', () => {
 
   test('all 7 tabs render without errors', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
     // Click each tab and verify the view renders
@@ -57,6 +61,7 @@ test.describe('Navigation', () => {
     await seedMessages(projectId, 'owner', 'developer-1', 1);
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
     // Go to Messages tab and select an agent
@@ -89,11 +94,13 @@ test.describe('Navigation — mobile', () => {
 
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Nav Mobile Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -103,6 +110,7 @@ test.describe('Navigation — mobile', () => {
 
   test('mobile tabs show icon-only and are navigable', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
     // Tabs should be visible as icons
@@ -121,6 +129,7 @@ test.describe('Navigation — mobile', () => {
 
   test('mobile hamburger menu toggles agent drawer on Messages tab', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
 
     // Go to Messages tab

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, seedConversation, teardownProject } from '../../fixtures/seed';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_MESSAGES,
   agentSidebarItem,
@@ -13,11 +14,13 @@ import {
 test.describe('Messaging', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Messaging Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -27,6 +30,7 @@ test.describe('Messaging', () => {
 
   test('select an agent from sidebar and see chat view', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('all'))).toBeVisible({ timeout: 10_000 });
 
@@ -43,6 +47,7 @@ test.describe('Messaging', () => {
 
   test('type and send a message via Enter key', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
     await page.locator(agentSidebarItem('developer-1')).click();
@@ -60,6 +65,7 @@ test.describe('Messaging', () => {
 
   test('send a message via send button', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
     await page.locator(agentSidebarItem('developer-1')).click();
@@ -81,6 +87,7 @@ test.describe('Messaging', () => {
 
   test('Shift+Enter inserts newline instead of sending', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
     await page.locator(agentSidebarItem('developer-1')).click();
@@ -103,6 +110,7 @@ test.describe('Messaging', () => {
     await seedConversation(projectId, 'owner', 'qa-1', 35);
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('qa-1'))).toBeVisible({ timeout: 10_000 });
     await page.locator(agentSidebarItem('qa-1')).click();
@@ -130,11 +138,13 @@ test.describe('Messaging — mobile', () => {
 
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Messaging Mobile Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -144,6 +154,7 @@ test.describe('Messaging — mobile', () => {
 
   test('mobile drawer toggle shows agent sidebar for selection', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
 
     // On mobile, sidebar is hidden; hamburger opens drawer
@@ -164,11 +175,13 @@ test.describe('Messaging — mobile', () => {
 test.describe('Multi-agent conversation isolation', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Conversation Isolation Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -182,6 +195,7 @@ test.describe('Multi-agent conversation isolation', () => {
     await seedConversation(projectId, 'owner', 'qa-1', 2);
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
 
@@ -208,6 +222,7 @@ test.describe('Multi-agent conversation isolation', () => {
 
   test('sending a message to one agent does not appear in another', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
 
@@ -246,6 +261,7 @@ test.describe('Multi-agent conversation isolation', () => {
     await seedConversation(isoHash, 'owner', 'developer-1', 3);
 
     await page.goto('/');
+    await selectProject(page, isolationProject.name);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
 

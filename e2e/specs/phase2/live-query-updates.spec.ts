@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { AgentSimulator } from '../../fixtures/agent-simulator';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_MESSAGES,
   TAB_COMMANDS,
@@ -15,12 +16,14 @@ import {
 test.describe('LiveQuery Real-Time Updates', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('LiveQuery Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -34,6 +37,7 @@ test.describe('LiveQuery Real-Time Updates', () => {
 
   test('messages appear in real-time without page refresh', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
     await expect(page.locator(agentSidebarItem('developer-1'))).toBeVisible({ timeout: 10_000 });
     await page.locator(agentSidebarItem('developer-1')).click();
@@ -79,6 +83,7 @@ test.describe('LiveQuery Real-Time Updates', () => {
     await new Promise((r) => setTimeout(r, 2500));
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_COMMANDS).click();
     await expect(page.locator(ORCHESTRATOR_STATUS).getByText('Online')).toBeVisible({
       timeout: 10_000,
@@ -99,6 +104,7 @@ test.describe('LiveQuery Real-Time Updates', () => {
 
   test('orchestrator ping updates reflect in real-time', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_COMMANDS).click();
     await expect(page.locator(ORCHESTRATOR_STATUS)).toBeVisible({ timeout: 10_000 });
 

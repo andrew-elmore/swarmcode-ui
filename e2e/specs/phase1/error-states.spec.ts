@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_BOARD,
   TAB_MESSAGES,
@@ -19,11 +20,13 @@ const ERROR_RESPONSE = {
 test.describe('Error/Failure States', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Error States Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -38,6 +41,7 @@ test.describe('Error/Failure States', () => {
     );
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
 
     // Verify error alert is visible with error text
@@ -47,6 +51,7 @@ test.describe('Error/Failure States', () => {
 
   test('chat shows error snackbar on send failure', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_MESSAGES).click();
 
     // Wait for agent sidebar to load and select an agent
@@ -75,6 +80,7 @@ test.describe('Error/Failure States', () => {
     );
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_ARTICLES).click();
 
     // Verify error alert is visible
@@ -95,6 +101,7 @@ test.describe('Error/Failure States', () => {
     );
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
 
     // Verify error alert appears
@@ -105,6 +112,7 @@ test.describe('Error/Failure States', () => {
 
     // Reload the page
     await page.reload();
+    await selectProject(page, projectName);
     await page.locator(TAB_BOARD).click();
 
     // Verify board loads successfully — error alert should not be visible

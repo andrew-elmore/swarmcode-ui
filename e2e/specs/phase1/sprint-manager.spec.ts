@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { createTestProject, teardownProject } from '../../fixtures/seed';
 import {
   TAB_BOARD,
+  PROJECT_SELECTOR,
   MANAGE_SPRINTS_BUTTON,
   SPRINT_MANAGER_DIALOG,
   SPRINT_NEW_NAME,
@@ -17,11 +18,13 @@ import {
 test.describe('Sprint Manager CRUD', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Sprint Manager Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
   });
 
   test.afterAll(async () => {
@@ -30,6 +33,9 @@ test.describe('Sprint Manager CRUD', () => {
 
   test('empty state shows no sprints message', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: projectName }).click();
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(MANAGE_SPRINTS_BUTTON)).toBeVisible({ timeout: 5000 });
 
@@ -51,6 +57,9 @@ test.describe('Sprint Manager CRUD', () => {
 
   test('create sprint', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: projectName }).click();
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(MANAGE_SPRINTS_BUTTON)).toBeVisible({ timeout: 5000 });
 
@@ -75,6 +84,9 @@ test.describe('Sprint Manager CRUD', () => {
 
   test('rename sprint', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: projectName }).click();
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(MANAGE_SPRINTS_BUTTON)).toBeVisible({ timeout: 5000 });
 
@@ -114,6 +126,9 @@ test.describe('Sprint Manager CRUD', () => {
 
   test('delete sprint', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: projectName }).click();
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(MANAGE_SPRINTS_BUTTON)).toBeVisible({ timeout: 5000 });
 
@@ -146,6 +161,9 @@ test.describe('Sprint Manager CRUD', () => {
 
   test('reorder sprints', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: projectName }).click();
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(MANAGE_SPRINTS_BUTTON)).toBeVisible({ timeout: 5000 });
 
@@ -189,11 +207,13 @@ test.describe('Sprint Manager CRUD', () => {
 test.describe('Sprint Manager — Board Integration', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Sprint Board Integration Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
   });
 
   test.afterAll(async () => {
@@ -202,6 +222,9 @@ test.describe('Sprint Manager — Board Integration', () => {
 
   test('created sprint appears in board filter', async ({ page }) => {
     await page.goto('/');
+    await expect(page.locator(PROJECT_SELECTOR)).toBeVisible({ timeout: 10_000 });
+    await page.locator(PROJECT_SELECTOR).click();
+    await page.getByRole('option', { name: projectName }).click();
     await page.locator(TAB_BOARD).click();
     await expect(page.locator(MANAGE_SPRINTS_BUTTON)).toBeVisible({ timeout: 5000 });
 

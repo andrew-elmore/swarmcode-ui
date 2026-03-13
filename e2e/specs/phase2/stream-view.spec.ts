@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { AgentSimulator } from '../../fixtures/agent-simulator';
+import { selectProject } from '../../helpers/navigation';
 import {
   TAB_STREAM,
   STREAM_VIEW,
@@ -16,11 +17,13 @@ import {
 test.describe('Stream View — UI and Controls', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream UI Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
   });
 
   test.afterAll(async () => {
@@ -42,6 +45,7 @@ test.describe('Stream View — UI and Controls', () => {
 
   test('renders with heading and all controls', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -64,6 +68,7 @@ test.describe('Stream View — UI and Controls', () => {
 
   test('play/stop toggle changes state', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -89,6 +94,7 @@ test.describe('Stream View — UI and Controls', () => {
 
   test('volume slider changes value', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -114,6 +120,7 @@ test.describe('Stream View — UI and Controls', () => {
 
   test('speed selector changes rate', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -130,6 +137,7 @@ test.describe('Stream View — UI and Controls', () => {
 
   test('queue shows empty state messages', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -152,12 +160,14 @@ test.describe('Stream View — UI and Controls', () => {
 test.describe('Stream View — Message Queue', () => {
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
   let simulator: AgentSimulator;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream Queue Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
     await seedDefaultAgents(projectId);
   });
 
@@ -188,6 +198,7 @@ test.describe('Stream View — Message Queue', () => {
     });
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -228,6 +239,7 @@ test.describe('Stream View — Message Queue', () => {
     });
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -271,6 +283,7 @@ test.describe('Stream View — Message Queue', () => {
     });
 
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -307,11 +320,13 @@ test.describe('Stream View — mobile', () => {
 
   let projectId: string;
   let projectPath: string;
+  let projectName: string;
 
   test.beforeAll(async () => {
     const project = await createTestProject('Stream Mobile Test');
     projectId = project.projectId;
     projectPath = project.path;
+    projectName = project.name;
   });
 
   test.afterAll(async () => {
@@ -332,6 +347,7 @@ test.describe('Stream View — mobile', () => {
 
   test('mobile layout renders correctly at 375px', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
     await page.locator(TAB_STREAM).click();
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
 
@@ -350,6 +366,7 @@ test.describe('Stream View — mobile', () => {
 
   test('mobile tab navigation to Stream', async ({ page }) => {
     await page.goto('/');
+    await selectProject(page, projectName);
 
     // Click Stream tab
     await page.locator(TAB_STREAM).click();
