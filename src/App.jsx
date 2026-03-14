@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Tabs from "@mui/material/Tabs";
@@ -21,11 +22,13 @@ import { fetchProject } from "./store/projectSlice";
 import { appendMessage, setMobileDrawerOpen, resetConversations } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
 import { updateCommand, setPing } from "./store/commandsSlice";
+import { logoutUser, restoreSession } from "./store/authSlice";
 import { subscribeToMessages, subscribeToCommands, subscribeToPings } from "./services/api";
 import AgentsView from "./components/AgentsView";
 import ArticlesView from "./components/ArticlesView";
 import BoardView from "./components/BoardView";
 import CommandsView from "./components/CommandsView";
+import LoginDialog from "./components/LoginDialog";
 import MessagesView from "./components/MessagesView";
 import ProjectsView from "./components/ProjectsView";
 import ProjectSelector from "./components/ProjectSelector";
@@ -34,6 +37,7 @@ import { buildAgentLabels } from "./constants";
 
 export default function App() {
   const [tab, setTab] = useState(0);
+  const [loginOpen, setLoginOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const dispatch = useAppDispatch();
@@ -44,6 +48,7 @@ export default function App() {
   const liveQueryRefreshFlag = useAppSelector((s) => s.messages.liveQueryRefreshFlag);
   const tts = useAppSelector((s) => s.tts);
   const ttsRef = useRef(tts);
+  const authUser = useAppSelector((s) => s.auth.user);
 
   // Keep ref in sync so the LiveQuery callback always sees latest TTS state
   useEffect(() => { ttsRef.current = tts; }, [tts]);
@@ -59,6 +64,9 @@ export default function App() {
   const agentLabels = buildAgentLabels(agents);
 
   const isMessagesTab = tab === 0;
+
+  // Restore Parse session from localStorage on mount so AppBar reflects login state
+  useEffect(() => { dispatch(restoreSession()); }, [dispatch]);
 
   // Load project on startup so projectId is available for all tabs (including Messages)
   useEffect(() => {
@@ -188,6 +196,27 @@ export default function App() {
             </Typography>
           )}
           {!isMobile && <ProjectSelector />}
+          {!isMobile && (
+            authUser ? (
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ ml: 1, whiteSpace: "nowrap" }}
+                onClick={() => dispatch(logoutUser())}
+              >
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ ml: 1, whiteSpace: "nowrap" }}
+                onClick={() => setLoginOpen(true)}
+              >
+                Sign In
+              </Button>
+            )
+          )}
         </Toolbar>
         {isMobile && (
           <Toolbar
@@ -206,9 +235,29 @@ export default function App() {
             )}
             <Box sx={{ flex: 1 }} />
             <ProjectSelector />
+            {authUser ? (
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ ml: 1 }}
+                onClick={() => dispatch(logoutUser())}
+              >
+                Sign Out
+              </Button>
+            ) : (
+              <Button
+                color="inherit"
+                size="small"
+                sx={{ ml: 1 }}
+                onClick={() => setLoginOpen(true)}
+              >
+                Sign In
+              </Button>
+            )}
           </Toolbar>
         )}
       </AppBar>
+      <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
 
       <Box component="main" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <Box sx={{ display: tab === 0 ? 'flex' : 'none', height: '100%' }}><MessagesView /></Box>
