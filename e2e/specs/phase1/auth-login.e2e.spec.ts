@@ -142,6 +142,57 @@ test.describe("LoginDialog — failed login", () => {
   });
 });
 
+// ─── CARD-088: Sign-up flow ────────────────────────────────────────────────
+
+async function mockCreateAccount(page) {
+  await page.route("**/functions/createAccount", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ result: {} }),
+    });
+  });
+}
+
+test.describe("LoginDialog — sign-up flow", () => {
+  test("clicking toggle shows Sign Up form fields", async ({ page }) => {
+    await page.goto("/");
+    await page.waitForSelector('[data-testid="tab-messages"]', { timeout: 15_000 });
+
+    await page.getByRole("button", { name: /sign in/i }).first().click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+
+    await page.getByRole("button", { name: /don't have an account/i }).click();
+
+    await expect(page.getByLabel(/first name/i)).toBeVisible();
+    await expect(page.getByLabel(/last name/i)).toBeVisible();
+    await expect(page.getByLabel(/account name/i)).toBeVisible();
+  });
+
+  test("successful sign-up closes dialog and shows Sign Out button", async ({ page }) => {
+    await mockCreateAccount(page);
+    await mockParseLogin(page, { success: true });
+
+    await page.goto("/");
+    await page.waitForSelector('[data-testid="tab-messages"]', { timeout: 15_000 });
+
+    await page.getByRole("button", { name: /sign in/i }).first().click();
+    await page.getByRole("button", { name: /don't have an account/i }).click();
+
+    await page.getByLabel(/username/i).fill("alice");
+    await page.getByLabel(/password/i).fill("Pass1!");
+    await page.getByLabel(/first name/i).fill("Alice");
+    await page.getByLabel(/last name/i).fill("Smith");
+    await page.getByLabel(/account name/i).fill("Acme Corp");
+
+    await page.getByRole("button", { name: /^sign up$/i }).click();
+
+    await expect(page.getByRole("button", { name: /sign out/i }).first()).toBeVisible({
+      timeout: 5_000,
+    });
+  });
+});
+
 // ─── Logout flow ──────────────────────────────────────────────────────────
 
 test.describe("AppBar — Sign Out button", () => {

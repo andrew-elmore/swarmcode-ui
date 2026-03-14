@@ -10,6 +10,7 @@ import authReducer, {
   logoutUser,
   restoreSession,
   clearError,
+  createAccount,
 } from "../../src/store/authSlice";
 
 // Parse is mocked globally via tests/__mocks__/parseMock.cjs (includes User.logIn/logOut/current)
@@ -211,5 +212,80 @@ describe("App.jsx auth button integration — Redux state visible to components"
     await store.dispatch(loginUser({ username: "qa-1", password: "pass" }));
     await store.dispatch(logoutUser());
     expect(store.getState().auth.user).toBeNull();
+  });
+});
+
+// ─── CARD-088: createAccount thunk ────────────────────────────────────────────
+
+const SIGNUP_PARAMS = {
+  username: "alice",
+  password: "Pass1!",
+  firstName: "Alice",
+  lastName: "Smith",
+  accountName: "Acme Corp",
+};
+
+describe("createAccount thunk — success", () => {
+  beforeEach(() => {
+    Parse.Cloud.run.mockResolvedValue({});
+    Parse.User.logIn.mockResolvedValue({
+      getUsername: () => "alice",
+      getSessionToken: () => "r:signup-session",
+    });
+  });
+
+  test("calls Parse.Cloud.run with function name 'createAccount' and all 5 params", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(Parse.Cloud.run).toHaveBeenCalledWith("createAccount", SIGNUP_PARAMS);
+  });
+
+  test("calls Parse.User.logIn after cloud run", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(Parse.User.logIn).toHaveBeenCalledWith("alice", "Pass1!");
+  });
+
+  test("sets auth.user after successful sign-up", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(store.getState().auth.user).toBe("alice");
+  });
+
+  test("sets auth.sessionToken after successful sign-up", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(store.getState().auth.sessionToken).toBe("r:signup-session");
+  });
+
+  test("sets loading to false after success", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(store.getState().auth.loading).toBe(false);
+  });
+});
+
+describe("createAccount thunk — failure", () => {
+  beforeEach(() => {
+    Parse.Cloud.run.mockRejectedValue(new Error("Username already taken."));
+  });
+
+  test("sets auth.error on failure", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(store.getState().auth.error).toBe("Username already taken.");
+  });
+
+  test("sets loading to false after failure", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(store.getState().auth.loading).toBe(false);
+  });
+
+  test("leaves user and sessionToken null on failure", async () => {
+    const store = makeStore();
+    await store.dispatch(createAccount(SIGNUP_PARAMS));
+    expect(store.getState().auth.user).toBeNull();
+    expect(store.getState().auth.sessionToken).toBeNull();
   });
 });

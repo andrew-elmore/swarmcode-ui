@@ -28,6 +28,15 @@ export const restoreSession = createAsyncThunk(
   }
 );
 
+export const createAccount = createAsyncThunk(
+  "auth/createAccount",
+  async ({ username, password, firstName, lastName, accountName }) => {
+    await Parse.Cloud.run("createAccount", { username, password, firstName, lastName, accountName });
+    const user = await Parse.User.logIn(username, password);
+    return { username: user.getUsername(), sessionToken: user.getSessionToken() };
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState: {
@@ -58,6 +67,19 @@ const authSlice = createSlice({
     builder.addCase(logoutUser.fulfilled, (state) => {
       state.user = null;
       state.sessionToken = null;
+    });
+    builder.addCase(createAccount.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+    builder.addCase(createAccount.fulfilled, (state, action) => {
+      state.loading = false;
+      state.user = action.payload.username;
+      state.sessionToken = action.payload.sessionToken;
+    });
+    builder.addCase(createAccount.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.error.message;
     });
     builder.addCase(restoreSession.fulfilled, (state, action) => {
       if (action.payload) {

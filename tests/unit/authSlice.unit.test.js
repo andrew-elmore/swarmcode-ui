@@ -9,6 +9,7 @@ import authReducer, {
   loginUser,
   logoutUser,
   restoreSession,
+  createAccount,
 } from "../../src/store/authSlice";
 
 const initialState = {
@@ -113,6 +114,78 @@ describe("authSlice — loginUser.rejected", () => {
     const state = authReducer(prev, action);
     expect(state.user).toBe("pm-1");
     expect(state.sessionToken).toBe("tok");
+  });
+});
+
+// ─── createAccount thunk actions ─────────────────────────────────────────────
+
+describe("authSlice — createAccount.pending", () => {
+  const action = { type: createAccount.pending.type };
+
+  test("sets loading to true", () => {
+    const state = authReducer(initialState, action);
+    expect(state.loading).toBe(true);
+  });
+
+  test("clears any prior error", () => {
+    const state = authReducer({ ...initialState, error: "old error" }, action);
+    expect(state.error).toBeNull();
+  });
+
+  test("does not modify user or sessionToken", () => {
+    const prev = { ...initialState, user: "alice", sessionToken: "r:tok" };
+    const state = authReducer(prev, action);
+    expect(state.user).toBe("alice");
+    expect(state.sessionToken).toBe("r:tok");
+  });
+});
+
+describe("authSlice — createAccount.fulfilled", () => {
+  const payload = { username: "alice", sessionToken: "r:signup-tok" };
+  const action = { type: createAccount.fulfilled.type, payload };
+
+  test("sets user to the new username", () => {
+    const state = authReducer(initialState, action);
+    expect(state.user).toBe("alice");
+  });
+
+  test("sets sessionToken to the returned token", () => {
+    const state = authReducer(initialState, action);
+    expect(state.sessionToken).toBe("r:signup-tok");
+  });
+
+  test("sets loading to false", () => {
+    const state = authReducer({ ...initialState, loading: true }, action);
+    expect(state.loading).toBe(false);
+  });
+
+  test("error field remains null (pending already cleared it)", () => {
+    const state = authReducer(initialState, action);
+    expect(state.error).toBeNull();
+  });
+});
+
+describe("authSlice — createAccount.rejected", () => {
+  const action = {
+    type: createAccount.rejected.type,
+    error: { message: "Username already taken." },
+  };
+
+  test("sets error to the rejection message", () => {
+    const state = authReducer(initialState, action);
+    expect(state.error).toBe("Username already taken.");
+  });
+
+  test("sets loading to false", () => {
+    const state = authReducer({ ...initialState, loading: true }, action);
+    expect(state.loading).toBe(false);
+  });
+
+  test("does not overwrite user or sessionToken when they were already set", () => {
+    const prev = { ...initialState, user: "existing-user", sessionToken: "r:existing-tok" };
+    const state = authReducer(prev, action);
+    expect(state.user).toBe("existing-user");
+    expect(state.sessionToken).toBe("r:existing-tok");
   });
 });
 

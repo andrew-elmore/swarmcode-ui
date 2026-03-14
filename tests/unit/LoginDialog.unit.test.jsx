@@ -194,3 +194,107 @@ describe("LoginDialog — cancel behaviour", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+// ─── CARD-088: Sign Up mode ────────────────────────────────────────────────────
+
+describe("LoginDialog — Sign Up mode", () => {
+  test("clicking 'Don't have an account? Sign Up' switches dialog title to 'Sign Up'", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /don't have an account/i }));
+    expect(screen.getByRole("heading", { name: "Sign Up" })).toBeInTheDocument();
+  });
+
+  test("First Name, Last Name, Account Name fields visible in Sign Up mode", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /don't have an account/i }));
+    expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/last name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/account name/i)).toBeInTheDocument();
+  });
+
+  test("First Name, Last Name, Account Name fields NOT visible in Sign In mode", () => {
+    renderDialog();
+    expect(screen.queryByLabelText(/first name/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/last name/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/account name/i)).not.toBeInTheDocument();
+  });
+
+  test("clicking 'Already have an account? Sign In' switches back to Sign In", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /don't have an account/i }));
+    expect(screen.getByRole("heading", { name: "Sign Up" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /already have an account/i }));
+    expect(screen.getByRole("heading", { name: "Sign In" })).toBeInTheDocument();
+  });
+
+  test("submit in Sign Up mode dispatches createAccount with all 5 params", async () => {
+    Parse.Cloud.run.mockResolvedValue({});
+    Parse.User.logIn.mockResolvedValue({
+      getUsername: () => "alice",
+      getSessionToken: () => "r:tok-signup",
+    });
+
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /don't have an account/i }));
+
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: "alice" } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "Pass1!" } });
+    fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: "Smith" } });
+    fireEvent.change(screen.getByLabelText(/account name/i), { target: { value: "Acme" } });
+
+    const signUpBtn = screen.getAllByRole("button").find((b) => b.textContent === "Sign Up");
+    fireEvent.click(signUpBtn);
+
+    await waitFor(() =>
+      expect(Parse.Cloud.run).toHaveBeenCalledWith("createAccount", {
+        username: "alice",
+        password: "Pass1!",
+        firstName: "Alice",
+        lastName: "Smith",
+        accountName: "Acme",
+      })
+    );
+  });
+
+  test("calls onClose after successful sign-up", async () => {
+    Parse.Cloud.run.mockResolvedValue({});
+    Parse.User.logIn.mockResolvedValue({
+      getUsername: () => "alice",
+      getSessionToken: () => "r:tok-signup",
+    });
+
+    const onClose = jest.fn();
+    renderDialog({ onClose });
+    fireEvent.click(screen.getByRole("button", { name: /don't have an account/i }));
+
+    fireEvent.change(screen.getByLabelText(/username/i), { target: { value: "alice" } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: "Pass1!" } });
+    fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: "Alice" } });
+    fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: "Smith" } });
+    fireEvent.change(screen.getByLabelText(/account name/i), { target: { value: "Acme" } });
+
+    const signUpBtn = screen.getAllByRole("button").find((b) => b.textContent === "Sign Up");
+    fireEvent.click(signUpBtn);
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+});
+
+// ─── CARD-088: Submit button text ─────────────────────────────────────────────
+
+describe("LoginDialog — submit button text", () => {
+  test("shows 'Sign Up' (not 'Sign In') when in sign-up mode with loading=false", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("button", { name: /don't have an account/i }));
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.some((b) => b.textContent === "Sign Up")).toBe(true);
+    expect(buttons.every((b) => b.textContent !== "Sign In")).toBe(true);
+  });
+
+  test("shows 'Signing up…' when in sign-up mode with loading=true", () => {
+    renderDialog({}, { loading: true });
+    fireEvent.click(screen.getByRole("button", { name: /don't have an account/i }));
+    expect(screen.getByText("Signing up…")).toBeInTheDocument();
+  });
+});
