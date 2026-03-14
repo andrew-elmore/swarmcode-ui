@@ -411,6 +411,7 @@ describe("api.js: LiveQuery subscriptions use Project Pointer", () => {
 
     Parse.Query.mockImplementationOnce(function () {
       this.equalTo = equalToSpy;
+      this.include = jest.fn();
       this.subscribe = jest.fn().mockResolvedValue(mockSub);
     });
 

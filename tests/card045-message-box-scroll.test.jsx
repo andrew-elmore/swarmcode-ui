@@ -21,6 +21,8 @@ import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+import authReducer from "../src/store/authSlice";
+import commandsReducer from "../src/store/commandsSlice";
 import App from "../src/App";
 import MessagesView from "../src/components/MessagesView";
 
@@ -63,10 +65,12 @@ function createTestStore(overrides = {}) {
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
+      auth: authReducer,
+      commands: commandsReducer,
     },
     preloadedState: {
-      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
-      agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
+      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null, queue: [], currentIndex: -1 },
+      agents: { agents: DEFAULT_AGENTS, allAgents: [], loading: false, error: null },
       project: { project: { objectId: "test-board-id" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
@@ -157,7 +161,7 @@ describe("CARD-045: MessagesView layout constrains to available space", () => {
 describe("CARD-045: ChatView scroll structure with agent selected", () => {
   function createStoreWithAgent() {
     return createTestStore({
-      agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
+      agents: { agents: DEFAULT_AGENTS, allAgents: [], loading: false, error: null },
       messages: {
         conversations: {
           "pm-1": {

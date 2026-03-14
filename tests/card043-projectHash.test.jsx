@@ -20,6 +20,7 @@ import messagesReducer, { loadConversation, loadMoreMessages } from "../src/stor
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import commandsReducer from "../src/store/commandsSlice";
+import authReducer from "../src/store/authSlice";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
@@ -57,9 +58,10 @@ function createTestStore(preloadedState = {}) {
       projects: projectsReducer,
       tts: ttsReducer,
       commands: commandsReducer,
+      auth: authReducer,
     },
     preloadedState: {
-      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
+      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null, queue: [], currentIndex: -1 },
       ...preloadedState,
     },
   });

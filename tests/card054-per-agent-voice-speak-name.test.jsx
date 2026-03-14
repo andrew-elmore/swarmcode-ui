@@ -28,6 +28,8 @@ import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer, { setRate } from "../src/store/ttsSlice";
+import authReducer from "../src/store/authSlice";
+import commandsReducer from "../src/store/commandsSlice";
 
 // Mock speechSynthesis API for jsdom
 window.speechSynthesis = {
@@ -107,10 +109,12 @@ function createTestStore(overrides = {}) {
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
+      auth: authReducer,
+      commands: commandsReducer,
     },
     preloadedState: {
       tts: { ...DEFAULT_TTS_STATE, ...(overrides.tts || {}) },
-      agents: overrides.agents || { agents: DEFAULT_AGENTS, loading: false, error: null },
+      agents: overrides.agents || { agents: DEFAULT_AGENTS, allAgents: [], loading: false, error: null },
       project: { project: { objectId: "test-board-id" }, cards: [], loading: false, error: null, sprints: [], sprintFilter: "" },
       messages: {
         conversations: {},

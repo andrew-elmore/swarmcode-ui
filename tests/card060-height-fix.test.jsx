@@ -21,6 +21,8 @@ import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+import authReducer from "../src/store/authSlice";
+import commandsReducer from "../src/store/commandsSlice";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
@@ -55,8 +57,9 @@ const DEFAULT_TTS_STATE = {
   enabled: false,
   volume: 1.0,
   rate: 1.0,
-
   error: null,
+  queue: [],
+  currentIndex: -1,
 };
 
 function createTestStore() {
@@ -68,10 +71,12 @@ function createTestStore() {
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
+      auth: authReducer,
+      commands: commandsReducer,
     },
     preloadedState: {
       tts: DEFAULT_TTS_STATE,
-      agents: { agents: DEFAULT_AGENTS, loading: false, error: null },
+      agents: { agents: DEFAULT_AGENTS, allAgents: [], loading: false, error: null },
       project: { project: null, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },

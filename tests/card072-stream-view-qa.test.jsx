@@ -16,6 +16,8 @@ import articlesReducer from "../src/store/articlesSlice";
 import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
+import authReducer from "../src/store/authSlice";
+import commandsReducer from "../src/store/commandsSlice";
 import * as api from "../src/services/api";
 
 // Mock speechSynthesis API for jsdom
@@ -89,10 +91,12 @@ function createTestStore(overrides = {}) {
       project: projectReducer,
       messages: messagesReducer,
       projects: projectsReducer,
+      auth: authReducer,
+      commands: commandsReducer,
     },
     preloadedState: {
       tts: { ...DEFAULT_TTS_STATE, ...(overrides.tts || {}) },
-      agents: overrides.agents || { agents: [], loading: false, error: null },
+      agents: overrides.agents || { agents: [], allAgents: [], loading: false, error: null },
       project: overrides.project || {
         project: null,
         cards: [],

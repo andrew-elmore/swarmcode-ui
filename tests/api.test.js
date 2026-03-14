@@ -97,6 +97,7 @@ describe("api.subscribeToMessages", () => {
     };
     Parse.Query.mockImplementationOnce(() => ({
       equalTo: jest.fn(),
+      include: jest.fn().mockReturnThis(),
       subscribe: jest.fn().mockResolvedValue(mockSubscription),
     }));
 
@@ -143,10 +144,12 @@ describe("api.subscribeToMessages", () => {
     Parse.Query
       .mockImplementationOnce(() => ({
         equalTo: jest.fn(),
+        include: jest.fn().mockReturnThis(),
         subscribe: jest.fn().mockResolvedValue(mockSub1),
       }))
       .mockImplementationOnce(() => ({
         equalTo: jest.fn(),
+        include: jest.fn().mockReturnThis(),
         subscribe: jest.fn().mockResolvedValue(mockSub2),
       }));
 

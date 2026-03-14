@@ -31,6 +31,8 @@ import projectReducer from "../src/store/projectSlice";
 import messagesReducer, { selectAgent, setMobileDrawerOpen } from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+import authReducer from "../src/store/authSlice";
+import commandsReducer from "../src/store/commandsSlice";
 import App from "../src/App";
 import ChatView from "../src/components/ChatView";
 import AgentSidebar from "../src/components/AgentSidebar";
@@ -102,6 +104,8 @@ function createTestStore(overrides = {}) {
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
+      auth: authReducer,
+      commands: commandsReducer,
     },
     preloadedState: {
       tts: DEFAULT_TTS_STATE,

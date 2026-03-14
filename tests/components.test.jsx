@@ -16,6 +16,8 @@ import projectReducer from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+import authReducer from "../src/store/authSlice";
+import commandsReducer from "../src/store/commandsSlice";
 import App from "../src/App";
 import BoardView from "../src/components/BoardView";
 import MessagesView from "../src/components/MessagesView";
@@ -71,9 +73,11 @@ function createTestStore(preloadedState = {}) {
       messages: messagesReducer,
       projects: projectsReducer,
       tts: ttsReducer,
+      auth: authReducer,
+      commands: commandsReducer,
     },
     preloadedState: {
-      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null },
+      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null, queue: [], currentIndex: -1 },
       project: {
         project: { objectId: "test-board-id" },
         cards: [],
@@ -116,6 +120,7 @@ beforeEach(() => {
   api.subscribeToPings.mockResolvedValue(jest.fn());
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
+  api.listArticles.mockResolvedValue({ articles: [] });
   api.getAgents.mockResolvedValue({
     agents: [
       { name: "pm-1", description: "PM Agent", isActive: true, sortOrder: 0 },
@@ -316,6 +321,7 @@ const DEFAULT_AGENTS_STATE = {
     { name: "qa-1", description: "QA Agent", isActive: true, sortOrder: 3 },
     { name: "devops-1", description: "DevOps Agent", isActive: true, sortOrder: 4 },
   ],
+  allAgents: [],
   loading: false,
   error: null,
 };
@@ -323,12 +329,12 @@ const DEFAULT_AGENTS_STATE = {
 // ─── MessagesView Component ──────────────────────────────────────────────────
 
 describe("MessagesView", () => {
-  // Helper to render MessagesView and wait for the subscribeToMessages effect to settle
+  // Helper to render MessagesView and wait for the component to settle.
+  // Note: subscribeToMessages moved to App.jsx (CARD-092), so we wait for the sidebar instead.
   async function renderMessages(store) {
     const result = renderWithProviders(<MessagesView />, store ? { store } : undefined);
-    // Wait for the useEffect that calls subscribeToMessages to complete
     await waitFor(() => {
-      expect(api.subscribeToMessages).toHaveBeenCalled();
+      expect(screen.getByText("All Agents")).toBeInTheDocument();
     });
     return result;
   }
@@ -367,8 +373,11 @@ describe("MessagesView", () => {
   });
 
   test("subscribes to LiveQuery messages on mount", async () => {
-    await renderMessages();
-    expect(api.subscribeToMessages).toHaveBeenCalled();
+    // CARD-092: subscription moved to App.jsx — render App to test this behaviour
+    renderWithProviders(<App />);
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
   });
 
   test("shows chat view with empty state when agent is selected", async () => {
@@ -595,7 +604,7 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
-    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("All Agents")).toBeInTheDocument());
 
     expect(screen.getByText("Load older messages")).toBeInTheDocument();
   });
@@ -620,7 +629,7 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
-    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("All Agents")).toBeInTheDocument());
 
     expect(screen.queryByText("Load older messages")).not.toBeInTheDocument();
   });
@@ -645,7 +654,7 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
-    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("All Agents")).toBeInTheDocument());
 
     const loadingBtn = screen.getByText("Loading...");
     expect(loadingBtn).toBeInTheDocument();
@@ -672,7 +681,7 @@ describe("ChatView — lazy loading", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
     renderWithProviders(<MessagesView />, { store });
-    await waitFor(() => expect(api.subscribeToMessages).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText("All Agents")).toBeInTheDocument());
 
     expect(screen.getByText(/no messages yet/i)).toBeInTheDocument();
   });
