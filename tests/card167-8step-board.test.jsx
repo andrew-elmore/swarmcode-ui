@@ -76,13 +76,16 @@ function createTestStore(boardState = {}) {
         loading: false,
         error: null,
       },
-      board: {
-        board: { projectHash: "abc123", objectId: "b1" },
+      // CARD-089: fetchProject moved to ProjectLayout — preload board state directly
+      project: {
+        project: { projectHash: "abc123", objectId: "b1" },
         cards: [],
         sprints: [],
         sprintFilter: null,
+        selectedCard: null,
         loading: false,
         error: null,
+        lastPoll: null,
         ...boardState,
       },
     },
@@ -90,12 +93,8 @@ function createTestStore(boardState = {}) {
 }
 
 function renderBoard(cards = [], sprints = []) {
-  api.getOrCreateProject.mockResolvedValue({
-    board: { objectId: "b1", projectHash: "abc123", projectPath: "C:\\Test\\Project", nextId: 100 },
-    cards,
-    sprints,
-  });
-  const store = createTestStore();
+  // CARD-089: BoardView no longer calls fetchProject — preload state directly
+  const store = createTestStore({ cards, sprints });
   return render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>

@@ -29,6 +29,7 @@ import commandsReducer from "../src/store/commandsSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+import { MemoryRouter } from "react-router-dom";
 import ArticlesView from "../src/components/ArticlesView";
 import AgentsView from "../src/components/AgentsView";
 import BoardView from "../src/components/BoardView";
@@ -184,7 +185,7 @@ function createTestStore(overrides = {}) {
     preloadedState: {
       agents: { ...DEFAULT_AGENTS, ...overrides.agents },
       articles: { ...DEFAULT_ARTICLES, ...overrides.articles },
-      board: { ...DEFAULT_BOARD, ...overrides.project },
+      project: { ...DEFAULT_BOARD, ...overrides.project },
       commands: { ...DEFAULT_COMMANDS, ...overrides.commands },
       messages: { ...DEFAULT_MESSAGES, ...overrides.messages },
       projects: { ...DEFAULT_PROJECTS, ...overrides.projects },
@@ -197,7 +198,11 @@ function renderWithProviders(ui, storeOverrides = {}) {
   const store = createTestStore(storeOverrides);
   const result = render(
     <Provider store={store}>
-      <ThemeProvider theme={theme}>{ui}</ThemeProvider>
+      <ThemeProvider theme={theme}>
+        <MemoryRouter initialEntries={['/']}>
+          {ui}
+        </MemoryRouter>
+      </ThemeProvider>
     </Provider>,
   );
   return { ...result, store };
@@ -393,20 +398,12 @@ describe("CARD-193: BoardView scroll container", () => {
     }
   });
 
-  test("renders many cards inside their column scroll container", async () => {
+  test("renders many cards inside their column scroll container", () => {
+    // CARD-089: BoardView reads from Redux — preload cards directly
     const manyCards = generateCards(10, "implement");
-    api.getOrCreateProject.mockResolvedValue({
-      board: { objectId: "b1", projectHash: "test-hash-193", projectPath: "C:\\Test\\Project", nextId: 100 },
-      cards: manyCards,
-      sprints: [],
-    });
+    renderWithProviders(<BoardView />, { project: { cards: manyCards } });
 
-    renderWithProviders(<BoardView />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("board-column-implement")).toBeInTheDocument();
-    });
-
+    expect(screen.getByTestId("board-column-implement")).toBeInTheDocument();
     const implementColumn = screen.getByTestId("board-column-implement");
 
     // All 10 cards should be accessible inside the column's scroll container
@@ -415,7 +412,8 @@ describe("CARD-193: BoardView scroll container", () => {
     }
   });
 
-  test("cards in different columns are isolated to their respective containers", async () => {
+  test("cards in different columns are isolated to their respective containers", () => {
+    // CARD-089: BoardView reads from Redux — preload cards directly
     const implementCards = generateCards(3, "implement");
     const testCards = Array.from({ length: 2 }, (_, i) => ({
       cardId: `CARD-${2000 + i}`,
@@ -427,16 +425,8 @@ describe("CARD-193: BoardView scroll container", () => {
       sprintId: null,
     }));
 
-    api.getOrCreateProject.mockResolvedValue({
-      board: { objectId: "b1", projectHash: "test-hash-193", projectPath: "C:\\Test\\Project", nextId: 100 },
-      cards: [...implementCards, ...testCards],
-      sprints: [],
-    });
-
-    renderWithProviders(<BoardView />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId("board-column-implement")).toBeInTheDocument();
+    renderWithProviders(<BoardView />, {
+      project: { cards: [...implementCards, ...testCards] },
     });
 
     const implementColumn = screen.getByTestId("board-column-implement");

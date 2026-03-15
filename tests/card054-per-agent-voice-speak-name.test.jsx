@@ -76,6 +76,7 @@ jest.mock("../src/services/api", () => ({
   deleteSprint: jest.fn(),
 }));
 
+import { MemoryRouter } from "react-router-dom";
 import * as api from "../src/services/api";
 import App from "../src/App";
 
@@ -134,7 +135,9 @@ function renderWithProviders(store) {
     ...render(
       <Provider store={store}>
         <ThemeProvider theme={theme}>
-          <App />
+          <MemoryRouter initialEntries={['/']}>
+            <App />
+          </MemoryRouter>
         </ThemeProvider>
       </Provider>
     ),

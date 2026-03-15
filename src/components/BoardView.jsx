@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Paper from "@mui/material/Paper";
@@ -15,7 +15,7 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import AddIcon from "@mui/icons-material/Add";
 import { useAppDispatch, useAppSelector } from "../store";
-import { fetchProject, setSprintFilter } from "../store/projectSlice";
+import { setSprintFilter } from "../store/projectSlice";
 import { STATUSES, PRIORITY_COLORS, getSprintDisplayName } from "../constants";
 import CreateCardDialog from "./CreateCardDialog";
 import CardDetailDialog from "./CardDetailDialog";
@@ -43,12 +43,6 @@ export default function BoardView() {
     key: s.name,
     label: s.name.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
   }));
-
-  useEffect(() => {
-    if (activeProject) {
-      dispatch(fetchProject(activeProject.path));
-    }
-  }, [dispatch, activeProject]);
 
   if (!activeProject) {
     return (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
@@ -17,6 +18,7 @@ import { projectNameFromPath } from "../constants";
 
 export default function ProjectSelector() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { projects, activeProject } = useAppSelector((s) => s.projects);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -38,8 +40,8 @@ export default function ProjectSelector() {
     const path = e.target.value;
     const project = projects.find((p) => p.path === path);
     if (project) {
-      dispatch(setActiveProject(project));
       dispatch(addRecentProject({ path: project.path, name: project.name }));
+      navigate(`/${project.objectId}`);
     }
   };
 
@@ -48,10 +50,11 @@ export default function ProjectSelector() {
     const path = newPath.trim();
     const name = projectNameFromPath(path);
     await dispatch(addRecentProject({ path, name }));
-    dispatch(setActiveProject({ path, name }));
+    const result = await dispatch(fetchRecentProjects()).unwrap();
+    const newProject = result.projects.find((p) => p.path === path);
+    if (newProject) navigate(`/${newProject.objectId}`);
     setNewPath("");
     setAddOpen(false);
-    dispatch(fetchRecentProjects());
   };
 
   return (

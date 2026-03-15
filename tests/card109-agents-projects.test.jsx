@@ -32,6 +32,7 @@ import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import commandsReducer from "../src/store/commandsSlice";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import AgentsView from "../src/components/AgentsView";
 
 // --- API Mocks ---
@@ -163,7 +164,11 @@ function renderAgentsView(overrides = {}) {
   const result = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <AgentsView />
+        <MemoryRouter initialEntries={['/proj-test/agents']}>
+          <Routes>
+            <Route path="/:projectId/agents" element={<AgentsView />} />
+          </Routes>
+        </MemoryRouter>
       </ThemeProvider>
     </Provider>
   );

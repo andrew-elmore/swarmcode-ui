@@ -15,7 +15,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
-import projectReducer, { setSprintFilter } from "../src/store/projectSlice";
+import projectReducer, { setSprintFilter, fetchProject } from "../src/store/projectSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
@@ -106,31 +106,11 @@ beforeEach(() => {
   api.getAgents.mockResolvedValue({ agents: [] });
 });
 
-// Helper to render BoardView and wait for it to finish loading
-async function renderBoardView(storeOverrides = {}) {
-  const store = createTestStore({
-    project: {
-      project: null,
-      cards: [],
-      sprints: [],
-      sprintFilter: null,
-      selectedCard: null,
-      loading: false,
-      error: null,
-      lastPoll: null,
-    },
-    projects: {
-      projects: [],
-      activeProject: { path: "/test", name: "test" },
-      loading: false,
-      error: null,
-    },
-    ...storeOverrides,
-  });
-
+// Helper to render BoardView with preloaded board state (CARD-089: fetchProject moved to ProjectLayout)
+async function renderBoardView(projectOverrides = {}) {
+  const store = createBoardLoadedStore(projectOverrides);
   const result = renderWithProviders(<BoardView />, { store });
 
-  // Wait for the board to load (fetchProject to complete)
   await waitFor(() => {
     expect(screen.getByText("Board")).toBeInTheDocument();
   });
@@ -172,8 +152,7 @@ describe("CARD-063: BoardView sprint filter dropdown", () => {
   });
 
   test("sprint filter dropdown is hidden when no sprints exist", async () => {
-    api.getOrCreateProject.mockResolvedValue({ project: MOCK_BOARD, cards: MOCK_CARDS, sprints: [] });
-    await renderBoardView();
+    await renderBoardView({ sprints: [] });
 
     // No Sprint select should appear on BoardView when sprints is empty
     // The only "Sprint" text should not be a form label
@@ -238,15 +217,12 @@ describe("CARD-063: BoardView sprint chip on cards", () => {
 
   test("card without sprint does not render extra chip", async () => {
     // Use a single card with no sprint
-    api.getOrCreateProject.mockResolvedValue({
-      board: MOCK_BOARD,
+    await renderBoardView({
       cards: [
         { cardId: "CARD-003", title: "Card C", status: "implement", priority: "low", assignee: "qa-1", sprint: null },
       ],
       sprints: [],
     });
-
-    await renderBoardView();
 
     expect(screen.getByText("Card C")).toBeInTheDocument();
     // No sprint chips should be present (no "Sprint X" text as chip)
@@ -295,17 +271,17 @@ describe("CARD-063: BoardView column counts with sprint filter", () => {
 
 describe("projectSlice sprint state", () => {
   test("fetchProject populates sprints from API response", async () => {
+    // CARD-089: fetchProject is now dispatched by ProjectLayout, not BoardView.
+    // Test the Redux thunk directly.
     const store = createTestStore({
       project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
 
-    renderWithProviders(<BoardView />, { store });
+    await store.dispatch(fetchProject("/test"));
 
-    await waitFor(() => {
-      const state = store.getState().project;
-      expect(state.sprints).toEqual(MOCK_SPRINTS);
-    });
+    const state = store.getState().project;
+    expect(state.sprints).toEqual(MOCK_SPRINTS);
   });
 
   test("fetchProject defaults sprints to empty array when API response omits sprints", async () => {
@@ -316,15 +292,10 @@ describe("projectSlice sprint state", () => {
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
 
-    renderWithProviders(<BoardView />, { store });
+    await store.dispatch(fetchProject("/test"));
 
-    await waitFor(() => {
-      const state = store.getState().project;
-      expect(state.project).toBeTruthy();
-    });
-
-    // sprints should default to [] when not in response
     const state = store.getState().project;
+    expect(state.project).toBeTruthy();
     expect(Array.isArray(state.sprints)).toBe(true);
     expect(state.sprints).toEqual([]);
   });

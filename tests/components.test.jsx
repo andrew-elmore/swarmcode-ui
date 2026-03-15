@@ -10,6 +10,7 @@ import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { ThemeProvider, createTheme } from "@mui/material";
 import * as api from "../src/services/api";
+import { MemoryRouter, Routes, Route } from "react-router-dom";
 import agentsReducer from "../src/store/agentsSlice";
 import articlesReducer from "../src/store/articlesSlice";
 import projectReducer from "../src/store/projectSlice";
@@ -93,12 +94,16 @@ function createTestStore(preloadedState = {}) {
   });
 }
 
-function renderWithProviders(ui, { store, ...options } = {}) {
+function renderWithProviders(ui, { store, initialPath = '/', ...options } = {}) {
   const testStore = store || createTestStore();
   function Wrapper({ children }) {
     return (
       <Provider store={testStore}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter initialEntries={[initialPath]}>
+            {children}
+          </MemoryRouter>
+        </ThemeProvider>
       </Provider>
     );
   }
@@ -136,68 +141,90 @@ afterEach(() => jest.restoreAllMocks());
 
 // ─── App Component ───────────────────────────────────────────────────────────
 
+// CARD-089: tabs only appear at /:projectId routes; "/" shows ProjectsView
+const APP_PROJ_STORE = {
+  projects: {
+    projects: [{ objectId: 'projA111', path: '/test', name: 'Test' }],
+    activeProject: { objectId: 'projA111', path: '/test', name: 'Test' },
+    loading: false, error: null,
+  },
+};
+
 describe("App", () => {
-  test("renders SwarmCode title in app bar", async () => {
-    renderWithProviders(<App />);
+  test("renders SwarmCode title in app bar", () => {
+    renderWithProviders(<App />, { initialPath: '/' });
     expect(screen.getByText("SwarmCode")).toBeInTheDocument();
   });
 
-  test("renders Messages, Board, and Projects tabs", () => {
-    renderWithProviders(<App />);
+  test("renders stream/messages/board tabs at project route", () => {
+    // CARD-089: tabs only render when at /:projectId
+    renderWithProviders(<App />, { initialPath: '/projA111' });
+    expect(screen.getByRole("tab", { name: /stream/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /messages/i })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: /board/i })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: /projects/i })).toBeInTheDocument();
   });
 
-  test("shows MessagesView by default", () => {
-    renderWithProviders(<App />);
-    // Default tab is Messages → shows AgentSidebar and ChatView placeholder
-    expect(screen.getByText("All Agents")).toBeInTheDocument();
-    expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
+  test("shows ProjectsView at root path", () => {
+    // CARD-089: "/" renders ProjectsView (no tabs)
+    renderWithProviders(<App />, { initialPath: '/' });
+    expect(screen.getByText(/no projects yet/i)).toBeInTheDocument();
   });
 
   test("shows ProjectSelector in the app bar", () => {
-    renderWithProviders(<App />);
+    renderWithProviders(<App />, { initialPath: '/' });
     // ProjectSelector renders an Add button with title "Add project"
     expect(screen.getByTitle("Add project")).toBeInTheDocument();
   });
 
+  test("shows MessagesView when at /:projectId/messages", async () => {
+    renderWithProviders(<App />, { initialPath: '/projA111/messages' });
+    await waitFor(() => {
+      expect(screen.getByText("All Agents")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Select an agent to start chatting")).toBeInTheDocument();
+  });
+
   test("switches to BoardView when Board tab is clicked", async () => {
     const user = userEvent.setup();
-    renderWithProviders(<App />);
+    const store = createTestStore({
+      ...APP_PROJ_STORE,
+      project: {
+        project: { objectId: 'projA111' },
+        cards: [], sprints: [], sprintFilter: null,
+        selectedCard: null, loading: false, error: null, lastPoll: null,
+      },
+    });
+    renderWithProviders(<App />, { store, initialPath: '/projA111' });
 
     await user.click(screen.getByRole("tab", { name: /board/i }));
 
-    // No active project → BoardView shows "Select a project" prompt
+    // BoardView renders "New Card" button — uniquely identifies BoardView content
     await waitFor(() => {
-      expect(screen.getByText(/select a project/i)).toBeInTheDocument();
+      expect(screen.getByText("New Card")).toBeInTheDocument();
     });
   });
 
   test("switches back to MessagesView when Messages tab is clicked", async () => {
     const user = userEvent.setup();
-    renderWithProviders(<App />);
+    const store = createTestStore({
+      ...APP_PROJ_STORE,
+      project: {
+        project: { objectId: 'projA111' },
+        cards: [], sprints: [], sprintFilter: null,
+        selectedCard: null, loading: false, error: null, lastPoll: null,
+      },
+    });
+    renderWithProviders(<App />, { store, initialPath: '/projA111' });
 
     await user.click(screen.getByRole("tab", { name: /board/i }));
     await waitFor(() => {
-      expect(screen.getByText(/select a project/i)).toBeInTheDocument();
+      expect(screen.getByText("New Card")).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("tab", { name: /messages/i }));
 
     await waitFor(() => {
       expect(screen.getByText("All Agents")).toBeInTheDocument();
-    });
-  });
-
-  test("switches to ProjectsView when Projects tab is clicked", async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<App />);
-
-    await user.click(screen.getByRole("tab", { name: /projects/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/no projects yet/i)).toBeInTheDocument();
     });
   });
 });
@@ -220,52 +247,37 @@ describe("BoardView", () => {
     expect(screen.getByRole("progressbar")).toBeInTheDocument();
   });
 
-  test("shows error alert when error exists", async () => {
-    api.getOrCreateProject.mockRejectedValue(new Error("Network error"));
-
+  test("shows error alert when error exists", () => {
+    // CARD-089: BoardView reads from Redux state — preload error directly
     const store = createTestStore({
-      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
-      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: "Network error", lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
     renderWithProviders(<BoardView />, { store });
-
-    await waitFor(() => {
-      expect(screen.getByText("Network error")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Network error")).toBeInTheDocument();
   });
 
-  test("renders Board heading and New Card button when board loaded", async () => {
-    const mockBoard = { objectId: "b1", projectHash: "abc", nextId: 1 };
-    api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: [] });
-
+  test("renders Board heading and New Card button when board loaded", () => {
+    // CARD-089: BoardView no longer calls fetchProject — preload state directly
     const store = createTestStore({
-      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
-      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      project: { project: { objectId: "b1" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
     renderWithProviders(<BoardView />, { store });
 
-    await waitFor(() => {
-      expect(screen.getByText("Board")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Board")).toBeInTheDocument();
     expect(screen.getByText("New Card")).toBeInTheDocument();
   });
 
-  test("renders all 6 Kanban columns", async () => {
-    const mockBoard = { objectId: "b1", projectHash: "abc", nextId: 1 };
-    api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: [] });
-
+  test("renders all 8 Kanban columns", () => {
+    // CARD-089: BoardView no longer calls fetchProject — preload state directly
     const store = createTestStore({
-      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
-      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      project: { project: { objectId: "b1" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
     renderWithProviders(<BoardView />, { store });
 
-    await waitFor(() => {
-      expect(screen.getByText("Create")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Create")).toBeInTheDocument();
     expect(screen.getByText("Scope")).toBeInTheDocument();
     expect(screen.getByText("Implement")).toBeInTheDocument();
     expect(screen.getByText("Code Review")).toBeInTheDocument();
@@ -275,40 +287,34 @@ describe("BoardView", () => {
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
-  test("renders cards in correct columns", async () => {
-    const mockBoard = { objectId: "b1", projectHash: "abc", nextId: 3 };
+  test("renders cards in correct columns", () => {
+    // CARD-089: BoardView no longer calls fetchProject — preload cards directly
     const mockCards = [
       { cardId: "CARD-001", title: "Fix bug", status: "scope", priority: "high" },
       { cardId: "CARD-002", title: "Add feature", status: "implement", priority: "medium" },
     ];
-    api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: mockCards });
-
     const store = createTestStore({
-      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
-      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      project: { project: { objectId: "b1" }, cards: mockCards, sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/test", name: "test" }, loading: false, error: null },
     });
     renderWithProviders(<BoardView />, { store });
 
-    await waitFor(() => {
-      expect(screen.getByText("Fix bug")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Fix bug")).toBeInTheDocument();
     expect(screen.getByText("Add feature")).toBeInTheDocument();
     expect(screen.getByText("CARD-001")).toBeInTheDocument();
     expect(screen.getByText("CARD-002")).toBeInTheDocument();
   });
 
-  test("fetches board when active project is set", async () => {
+  test("renders board when active project is set", () => {
+    // CARD-089: BoardView no longer calls fetchProject (moved to ProjectLayout)
+    // Verify that when activeProject is set and board is preloaded, the board renders
     const store = createTestStore({
-      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
-      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
+      project: { project: { objectId: "b1" }, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
       projects: { projects: [], activeProject: { path: "/my/project", name: "project" }, loading: false, error: null },
     });
     renderWithProviders(<BoardView />, { store });
 
-    await waitFor(() => {
-      expect(api.getOrCreateProject).toHaveBeenCalledWith("/my/project");
-    });
+    expect(screen.getByText("Board")).toBeInTheDocument();
   });
 });
 
@@ -1067,30 +1073,44 @@ describe("ProjectsView", () => {
     });
   });
 
-  test("clicking a project sets it as active", async () => {
+  test("clicking a project navigates to project route", async () => {
+    // CARD-089: ProjectsView calls navigate(/:objectId); verify navigation happened.
     const user = userEvent.setup();
-    api.addRecentProject.mockResolvedValue({ success: true });
     const store = createTestStore({
-      project: { project: null, cards: [], sprints: [], sprintFilter: null, selectedCard: null, loading: false, error: null, lastPoll: null },
-      messages: { messages: [], sending: false, polling: false, error: null, lastPoll: null },
       projects: {
         projects: [
-          { path: "/proj/alpha", name: "alpha", lastOpened: "2026-01-01" },
-          { path: "/proj/beta", name: "beta", lastOpened: "2026-01-01" },
+          { objectId: 'projBeta', path: "/proj/beta", name: "beta" },
         ],
-        activeProject: { path: "/proj/alpha", name: "alpha" },
+        activeProject: null,
         loading: false,
         error: null,
       },
     });
-    renderWithProviders(<ProjectsView />, { store });
+
+    // Render with a minimal Routes setup to capture navigation
+    render(
+      <Provider store={store}>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter initialEntries={['/']}>
+            <Routes>
+              <Route path="/" element={<ProjectsView />} />
+              <Route path="/:projectId" element={<div data-testid="project-page">Project page</div>} />
+            </Routes>
+          </MemoryRouter>
+        </ThemeProvider>
+      </Provider>
+    );
+
+    // Wait for the project list to render
+    await waitFor(() => {
+      expect(screen.getByText("beta")).toBeInTheDocument();
+    });
 
     await user.click(screen.getByText("beta"));
 
+    // After clicking, navigation takes us to /:projectId
     await waitFor(() => {
-      const active = store.getState().projects.activeProject;
-      expect(active.path).toBe("/proj/beta");
-      expect(active.name).toBe("beta");
+      expect(screen.getByTestId("project-page")).toBeInTheDocument();
     });
   });
 });

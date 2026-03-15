@@ -27,6 +27,7 @@ import commandsReducer from "../src/store/commandsSlice";
 import messagesReducer from "../src/store/messagesSlice";
 import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
+import { MemoryRouter } from "react-router-dom";
 import BoardView from "../src/components/BoardView";
 import ArticlesView from "../src/components/ArticlesView";
 import ProjectsView from "../src/components/ProjectsView";
@@ -155,7 +156,11 @@ function renderWithProviders(ui, storeOverrides = {}) {
   const store = createTestStore(storeOverrides);
   const result = render(
     <Provider store={store}>
-      <ThemeProvider theme={theme}>{ui}</ThemeProvider>
+      <ThemeProvider theme={theme}>
+        <MemoryRouter initialEntries={['/']}>
+          {ui}
+        </MemoryRouter>
+      </ThemeProvider>
     </Provider>,
   );
   return { ...result, store };
@@ -184,28 +189,20 @@ afterEach(() => {
 // ─── BoardView ──────────────────────────────────────────────────────────────
 
 describe("BoardView — error-alert", () => {
-  test("renders error-alert testid when board fetch fails", async () => {
-    api.getOrCreateProject.mockRejectedValue(new Error("Board fetch failed"));
-
+  test("renders error-alert testid when board fetch fails", () => {
+    // CARD-089: BoardView reads from Redux — preload error state directly
     renderWithProviders(<BoardView />, {
-      project: { ...DEFAULT_BOARD, project: null },
+      project: { ...DEFAULT_BOARD, project: null, error: "Board fetch failed" },
     });
 
-    await waitFor(() => {
-      expect(screen.getByTestId("error-alert")).toBeInTheDocument();
-    });
+    expect(screen.getByTestId("error-alert")).toBeInTheDocument();
     expect(screen.getByTestId("error-alert")).toHaveTextContent("Board fetch failed");
   });
 
-  test("error-alert is not dismissible (no close button)", async () => {
-    api.getOrCreateProject.mockRejectedValue(new Error("Board fetch failed"));
-
+  test("error-alert is not dismissible (no close button)", () => {
+    // CARD-089: BoardView reads from Redux — preload error state directly
     renderWithProviders(<BoardView />, {
-      project: { ...DEFAULT_BOARD, project: null },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("error-alert")).toBeInTheDocument();
+      project: { ...DEFAULT_BOARD, project: null, error: "Board fetch failed" },
     });
 
     // BoardView Alert has no onClose — no close button inside the alert

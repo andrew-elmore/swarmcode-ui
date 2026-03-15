@@ -38,6 +38,11 @@ const appSrc = fs.readFileSync(
   path.resolve(__dirname, '..', 'src', 'App.jsx'),
   'utf8'
 );
+// CARD-089: resetConversations + fetchProject moved to ProjectLayout.jsx
+const projectLayoutSrc = fs.readFileSync(
+  path.resolve(__dirname, '..', 'src', 'components', 'ProjectLayout.jsx'),
+  'utf8'
+);
 
 // ─── Mock API ─────────────────────────────────────────────────────────────────
 
@@ -130,10 +135,10 @@ describe('CARD-214 Unit: App.jsx subscribeToMessages effect source', () => {
     expect(effectBlock).toContain('if (!projectId) return');
   });
 
-  test('resetConversations is dispatched before fetchProject in activeProject effect', () => {
-    // Extract the activeProject effect block
+  test('resetConversations is dispatched before fetchProject in ProjectLayout effect', () => {
+    // CARD-089: resetConversations + fetchProject moved to ProjectLayout.jsx
     const effectBlock =
-      appSrc.match(/if \(activeProject\)\s*\{[\s\S]*?dispatch\(fetchProject\(/)?.[0] ?? '';
+      projectLayoutSrc.match(/if \(found && activeProject[\s\S]*?dispatch\(fetchProject\(/)?.[0] ?? '';
     expect(effectBlock).not.toBe('');
 
     const resetIdx = effectBlock.indexOf('dispatch(resetConversations())');
@@ -144,9 +149,10 @@ describe('CARD-214 Unit: App.jsx subscribeToMessages effect source', () => {
     expect(resetIdx).toBeLessThan(fetchProjectIdx);
   });
 
-  test('resetConversations is imported from messagesSlice in App.jsx', () => {
-    expect(appSrc).toMatch(
-      /import\s*\{[^}]*resetConversations[^}]*\}\s*from\s*["']\.\/store\/messagesSlice["']/
+  test('resetConversations is imported from messagesSlice in ProjectLayout.jsx', () => {
+    // CARD-089: import moved from App.jsx to ProjectLayout.jsx
+    expect(projectLayoutSrc).toMatch(
+      /import\s*\{[^}]*resetConversations[^}]*\}\s*from\s*["']\.\.\/store\/messagesSlice["']/
     );
   });
 

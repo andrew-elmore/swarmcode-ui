@@ -21,6 +21,7 @@ import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import commandsReducer from "../src/store/commandsSlice";
 import authReducer from "../src/store/authSlice";
+import { MemoryRouter } from "react-router-dom";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
@@ -67,12 +68,16 @@ function createTestStore(preloadedState = {}) {
   });
 }
 
-function renderWithProviders(ui, { store, ...options } = {}) {
+function renderWithProviders(ui, { store, initialPath = '/', ...options } = {}) {
   const testStore = store || createTestStore();
   function Wrapper({ children }) {
     return (
       <Provider store={testStore}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter initialEntries={[initialPath]}>
+            {children}
+          </MemoryRouter>
+        </ThemeProvider>
       </Provider>
     );
   }
@@ -106,27 +111,27 @@ afterEach(() => jest.restoreAllMocks());
 // ─── Bug 1: App dispatches fetchProject on startup ──────────────────────────
 
 describe("CARD-043 Bug 1: App.jsx dispatches fetchProject on startup", () => {
-  test("calls getOrCreateProject when activeProject is set (Messages tab default)", async () => {
+  test("calls getOrCreateProject when navigated to /:projectId (via ProjectLayout)", async () => {
     const mockBoard = { objectId: "b1", projectHash: "hash-123", nextId: 1 };
     api.getOrCreateProject.mockResolvedValue({ project: mockBoard, cards: [] });
 
+    // ProjectLayout triggers fetchProject when URL matches a known project
     const store = createTestStore({
       projects: {
-        projects: [{ path: "/test/project", name: "project" }],
-        activeProject: { path: "/test/project", name: "project" },
+        projects: [{ objectId: "projA111", path: "/test/project", name: "project" }],
+        activeProject: null,
         loading: false,
         error: null,
       },
     });
 
-    renderWithProviders(<App />, { store });
+    // Render App at /:projectId so ProjectLayout fires
+    renderWithProviders(<App />, { store, initialPath: '/projA111' });
 
-    // App.jsx useEffect should dispatch fetchProject with activeProject.path
     await waitFor(() => {
       expect(api.getOrCreateProject).toHaveBeenCalledWith("/test/project");
     });
 
-    // After fetchProject resolves, board.board.objectId should be set in store
     await waitFor(() => {
       const boardState = store.getState().project;
       expect(boardState.project).not.toBeNull();
@@ -134,7 +139,7 @@ describe("CARD-043 Bug 1: App.jsx dispatches fetchProject on startup", () => {
     });
   });
 
-  test("does NOT call getOrCreateProject when no activeProject", async () => {
+  test("does NOT call getOrCreateProject when at '/' with no project in URL", async () => {
     api.getOrCreateProject.mockClear();
 
     const store = createTestStore({
@@ -146,7 +151,7 @@ describe("CARD-043 Bug 1: App.jsx dispatches fetchProject on startup", () => {
       },
     });
 
-    renderWithProviders(<App />, { store });
+    renderWithProviders(<App />, { store, initialPath: '/' });
 
     // Give effects time to run
     await new Promise((r) => setTimeout(r, 100));

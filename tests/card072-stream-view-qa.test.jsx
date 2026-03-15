@@ -67,6 +67,7 @@ jest.mock("../src/services/api", () => ({
   deleteSprint: jest.fn(),
 }));
 
+import { MemoryRouter } from "react-router-dom";
 import StreamView from "../src/components/StreamView";
 import App from "../src/App";
 
@@ -142,12 +143,21 @@ function renderStreamView(ttsOverrides = {}) {
   return { ...result, store };
 }
 
-function renderApp(overrides = {}) {
-  const store = createTestStore(overrides);
+function renderApp(overrides = {}, initialPath = '/projA111') {
+  const store = createTestStore({
+    projects: {
+      projects: [{ objectId: 'projA111', path: '/test', name: 'Test' }],
+      activeProject: { objectId: 'projA111', path: '/test', name: 'Test' },
+      loading: false, error: null,
+    },
+    ...overrides,
+  });
   const result = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <App />
+        <MemoryRouter initialEntries={[initialPath]}>
+          <App />
+        </MemoryRouter>
       </ThemeProvider>
     </Provider>
   );
@@ -269,15 +279,18 @@ describe("CARD-072 QA: App.jsx integration", () => {
     renderApp();
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs[3]).toHaveTextContent("Stream");
+    // With CARD-089 routing, Stream is the first tab (index 0)
+    expect(tabs[0]).toHaveTextContent("Stream");
     expect(screen.queryByText("TTS")).not.toBeInTheDocument();
   });
 
   test("navigating to Stream tab renders StreamView with Audio Stream heading", async () => {
-    renderApp();
+    // Render at /projA111/board so we can click Stream tab to navigate
+    renderApp({}, '/projA111/board');
 
     const tabs = screen.getAllByRole("tab");
-    fireEvent.click(tabs[3]);
+    // Stream tab is index 0 with CARD-089 routing
+    fireEvent.click(tabs[0]);
 
     await waitFor(() => {
       expect(screen.getByText("Audio Stream")).toBeInTheDocument();

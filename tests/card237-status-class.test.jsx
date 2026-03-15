@@ -433,14 +433,22 @@ describe("ST-5: BoardView — columns derived from statuses", () => {
       { objectId: "x2", name: "in_review", order: 1 },
       { objectId: "x3", name: "closed", order: 2 },
     ];
-    api.getOrCreateProject.mockResolvedValue({
-      project: { objectId: "proj-1" },
-      cards: [],
-      sprints: [],
-      statuses: customStatuses,
+    // CARD-089: BoardView reads statuses from Redux — preload directly
+    const store = createTestStore({
+      project: {
+        project: { objectId: "proj-1" },
+        cards: [],
+        sprints: [],
+        statuses: customStatuses,
+        sprintFilter: null,
+        selectedCard: null,
+        loading: false,
+        error: null,
+        lastPoll: null,
+      },
     });
 
-    renderWithProviders(<BoardView />);
+    renderWithProviders(<BoardView />, { store });
 
     await waitFor(() => {
       expect(screen.getByTestId("board-column-open")).toBeInTheDocument();
@@ -453,14 +461,22 @@ describe("ST-5: BoardView — columns derived from statuses", () => {
     const customStatuses = [
       { objectId: "x1", name: "custom_only", order: 0 },
     ];
-    api.getOrCreateProject.mockResolvedValue({
-      project: { objectId: "proj-1" },
-      cards: [],
-      sprints: [],
-      statuses: customStatuses,
+    // CARD-089: BoardView reads statuses from Redux — preload directly
+    const store = createTestStore({
+      project: {
+        project: { objectId: "proj-1" },
+        cards: [],
+        sprints: [],
+        statuses: customStatuses,
+        sprintFilter: null,
+        selectedCard: null,
+        loading: false,
+        error: null,
+        lastPoll: null,
+      },
     });
 
-    renderWithProviders(<BoardView />);
+    renderWithProviders(<BoardView />, { store });
 
     await waitFor(() => {
       expect(screen.getByTestId("board-column-custom_only")).toBeInTheDocument();
@@ -479,14 +495,22 @@ describe("ST-5: BoardView — columns derived from statuses", () => {
     const customStatuses = [
       { objectId: "x1", name: "code_review", order: 0 },
     ];
-    api.getOrCreateProject.mockResolvedValue({
-      project: { objectId: "proj-1" },
-      cards: [],
-      sprints: [],
-      statuses: customStatuses,
+    // CARD-089: BoardView reads statuses from Redux — preload directly
+    const store = createTestStore({
+      project: {
+        project: { objectId: "proj-1" },
+        cards: [],
+        sprints: [],
+        statuses: customStatuses,
+        sprintFilter: null,
+        selectedCard: null,
+        loading: false,
+        error: null,
+        lastPoll: null,
+      },
     });
 
-    renderWithProviders(<BoardView />);
+    renderWithProviders(<BoardView />, { store });
 
     await waitFor(() => {
       expect(screen.getByText(/Code Review/)).toBeInTheDocument();

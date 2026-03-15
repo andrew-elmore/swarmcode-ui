@@ -33,6 +33,7 @@ import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import authReducer from "../src/store/authSlice";
 import commandsReducer from "../src/store/commandsSlice";
+import { MemoryRouter } from "react-router-dom";
 import App from "../src/App";
 import ChatView from "../src/components/ChatView";
 import AgentSidebar from "../src/components/AgentSidebar";
@@ -127,12 +128,16 @@ function createTestStore(overrides = {}) {
   });
 }
 
-function renderWithProviders(ui, { store, ...options } = {}) {
+function renderWithProviders(ui, { store, initialPath = '/', ...options } = {}) {
   const testStore = store || createTestStore();
   function Wrapper({ children }) {
     return (
       <Provider store={testStore}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter initialEntries={[initialPath]}>
+            {children}
+          </MemoryRouter>
+        </ThemeProvider>
       </Provider>
     );
   }
@@ -152,68 +157,59 @@ afterEach(() => jest.restoreAllMocks());
 
 // ─── Desktop: Agent name in AppBar ──────────────────────────────────────────
 
+// With CARD-089 routing, tabs are visible at /:projectId routes.
+// Messages tab is index 1 (Stream=0, Messages=1, Board=2, Agents=3, Commands=4, Articles=5).
+const PROJ_STORE_OVERRIDE = {
+  projects: {
+    projects: [{ objectId: 'projA111', path: '/test', name: 'Test' }],
+    activeProject: { objectId: 'projA111', path: '/test', name: 'Test' },
+    loading: false, error: null,
+  },
+};
+
+const MESSAGES_WITH_PM1 = {
+  conversations: {
+    all: { messages: [], loaded: false, hasMore: false, loadingMore: false },
+    "pm-1": { messages: [], loaded: false, hasMore: true, loadingMore: false },
+  },
+  unreadCounts: { all: 0, "pm-1": 0 },
+  selectedAgent: "pm-1",
+  sending: false,
+  error: null,
+  mobileDrawerOpen: false,
+  messages: [],
+  polling: false,
+  lastPoll: null,
+};
+
 describe("CARD-057: Desktop — agent name in AppBar on Messages tab", () => {
   test("selected agent description shows in AppBar when on Messages tab", () => {
-    const store = createTestStore({
-      messages: {
-        conversations: {
-          all: { messages: [], loaded: false, hasMore: false, loadingMore: false },
-          "pm-1": { messages: [], loaded: false, hasMore: true, loadingMore: false },
-        },
-        unreadCounts: { all: 0, "pm-1": 0 },
-        selectedAgent: "pm-1",
-        sending: false,
-        error: null,
-        mobileDrawerOpen: false,
-        messages: [],
-        polling: false,
-        lastPoll: null,
-      },
-    });
-    renderWithProviders(<App />, { store });
+    const store = createTestStore({ ...PROJ_STORE_OVERRIDE, messages: MESSAGES_WITH_PM1 });
+    // Render at /:projectId/messages so tabValue === 1 (Messages)
+    renderWithProviders(<App />, { store, initialPath: '/projA111/messages' });
 
-    // "PM Agent" should appear in the AppBar (agent description)
     const appBar = screen.getByRole("banner");
     expect(within(appBar).getByText("PM Agent")).toBeInTheDocument();
   });
 
   test("agent name NOT shown in AppBar on Board tab", () => {
-    const store = createTestStore({
-      messages: {
-        conversations: {
-          all: { messages: [], loaded: false, hasMore: false, loadingMore: false },
-          "pm-1": { messages: [], loaded: false, hasMore: true, loadingMore: false },
-        },
-        unreadCounts: { all: 0, "pm-1": 0 },
-        selectedAgent: "pm-1",
-        sending: false,
-        error: null,
-        mobileDrawerOpen: false,
-        messages: [],
-        polling: false,
-        lastPoll: null,
-      },
-    });
-    renderWithProviders(<App />, { store });
+    const store = createTestStore({ ...PROJ_STORE_OVERRIDE, messages: MESSAGES_WITH_PM1 });
+    renderWithProviders(<App />, { store, initialPath: '/projA111/messages' });
 
-    // Switch to Board tab (index 1)
+    // Switch to Board tab (index 2 with CARD-089: Stream=0, Messages=1, Board=2)
     const tabs = screen.getAllByRole("tab");
-    fireEvent.click(tabs[1]);
+    fireEvent.click(tabs[2]);
 
-    // "PM Agent" should NOT appear in the AppBar after switching away from Messages
     const appBar = screen.getByRole("banner");
     expect(within(appBar).queryByText("PM Agent")).not.toBeInTheDocument();
   });
 
   test("agent name NOT shown when no agent is selected", () => {
-    const store = createTestStore();
-    renderWithProviders(<App />, { store });
+    const store = createTestStore({ ...PROJ_STORE_OVERRIDE });
+    renderWithProviders(<App />, { store, initialPath: '/projA111/messages' });
 
-    // No agent selected — no agent name in AppBar
     const appBar = screen.getByRole("banner");
-    // Only "SwarmCode" title and tab labels should be in the AppBar
     expect(within(appBar).getByText("SwarmCode")).toBeInTheDocument();
-    // No agent description text
     expect(within(appBar).queryByText("PM Agent")).not.toBeInTheDocument();
     expect(within(appBar).queryByText("Developer")).not.toBeInTheDocument();
   });
@@ -345,97 +341,63 @@ describe("CARD-057: mobileDrawerOpen Redux state", () => {
 
 describe("CARD-057: Tab switching hides Messages-specific AppBar elements", () => {
   test("switching from Messages to Agents hides agent name from AppBar", () => {
-    const store = createTestStore({
-      messages: {
-        conversations: {
-          all: { messages: [], loaded: false, hasMore: false, loadingMore: false },
-          "pm-1": { messages: [], loaded: false, hasMore: true, loadingMore: false },
-        },
-        unreadCounts: { all: 0, "pm-1": 0 },
-        selectedAgent: "pm-1",
-        sending: false,
-        error: null,
-        mobileDrawerOpen: false,
-        messages: [],
-        polling: false,
-        lastPoll: null,
-      },
-    });
-    renderWithProviders(<App />, { store });
+    const store = createTestStore({ ...PROJ_STORE_OVERRIDE, messages: MESSAGES_WITH_PM1 });
+    renderWithProviders(<App />, { store, initialPath: '/projA111/messages' });
 
     const appBar = screen.getByRole("banner");
 
     // On Messages tab: agent name visible
     expect(within(appBar).getByText("PM Agent")).toBeInTheDocument();
 
-    // Switch to Agents tab (index 2)
+    // Switch to Agents tab (index 3: Stream=0, Messages=1, Board=2, Agents=3)
     const tabs = screen.getAllByRole("tab");
-    fireEvent.click(tabs[2]);
+    fireEvent.click(tabs[3]);
 
-    // Agent name should no longer be in the AppBar
     expect(within(appBar).queryByText("PM Agent")).not.toBeInTheDocument();
   });
 
   test("switching between non-Messages tabs does not show agent name", () => {
     const store = createTestStore({
+      ...PROJ_STORE_OVERRIDE,
       messages: {
         conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
         unreadCounts: { all: 0 },
         selectedAgent: "pm-1",
-        sending: false,
-        error: null,
-        mobileDrawerOpen: false,
-        messages: [],
-        polling: false,
-        lastPoll: null,
+        sending: false, error: null, mobileDrawerOpen: false,
+        messages: [], polling: false, lastPoll: null,
       },
     });
-    renderWithProviders(<App />, { store });
+    renderWithProviders(<App />, { store, initialPath: '/projA111' });
 
     const appBar = screen.getByRole("banner");
     const tabs = screen.getAllByRole("tab");
 
-    // Go to Board tab
-    fireEvent.click(tabs[1]);
+    // Board tab (index 2)
+    fireEvent.click(tabs[2]);
     expect(within(appBar).queryByText("PM Agent")).not.toBeInTheDocument();
 
-    // Go to TTS tab
+    // Agents tab (index 3)
     fireEvent.click(tabs[3]);
     expect(within(appBar).queryByText("PM Agent")).not.toBeInTheDocument();
 
-    // Go to Projects tab
+    // Commands tab (index 4)
     fireEvent.click(tabs[4]);
     expect(within(appBar).queryByText("PM Agent")).not.toBeInTheDocument();
   });
 
   test("returning to Messages tab re-shows agent name", () => {
-    const store = createTestStore({
-      messages: {
-        conversations: {
-          all: { messages: [], loaded: false, hasMore: false, loadingMore: false },
-          "pm-1": { messages: [], loaded: false, hasMore: true, loadingMore: false },
-        },
-        unreadCounts: { all: 0, "pm-1": 0 },
-        selectedAgent: "pm-1",
-        sending: false,
-        error: null,
-        mobileDrawerOpen: false,
-        messages: [],
-        polling: false,
-        lastPoll: null,
-      },
-    });
-    renderWithProviders(<App />, { store });
+    const store = createTestStore({ ...PROJ_STORE_OVERRIDE, messages: MESSAGES_WITH_PM1 });
+    renderWithProviders(<App />, { store, initialPath: '/projA111/messages' });
 
     const appBar = screen.getByRole("banner");
     const tabs = screen.getAllByRole("tab");
 
-    // Switch away from Messages
-    fireEvent.click(tabs[1]);
+    // Switch away to Board (index 2)
+    fireEvent.click(tabs[2]);
     expect(within(appBar).queryByText("PM Agent")).not.toBeInTheDocument();
 
-    // Switch back to Messages
-    fireEvent.click(tabs[0]);
+    // Switch back to Messages (index 1)
+    fireEvent.click(tabs[1]);
     expect(within(appBar).getByText("PM Agent")).toBeInTheDocument();
   });
 });

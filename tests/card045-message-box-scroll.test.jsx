@@ -23,6 +23,7 @@ import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import authReducer from "../src/store/authSlice";
 import commandsReducer from "../src/store/commandsSlice";
+import { MemoryRouter } from "react-router-dom";
 import App from "../src/App";
 import MessagesView from "../src/components/MessagesView";
 
@@ -93,7 +94,11 @@ function renderWithProviders(ui, { store, ...options } = {}) {
   function Wrapper({ children }) {
     return (
       <Provider store={testStore}>
-        <ThemeProvider theme={theme}>{children}</ThemeProvider>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter initialEntries={['/']}>
+            {children}
+          </MemoryRouter>
+        </ThemeProvider>
       </Provider>
     );
   }

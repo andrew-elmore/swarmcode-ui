@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -21,7 +22,6 @@ import { useAppDispatch, useAppSelector } from "../store";
 import {
   fetchRecentProjects,
   addRecentProject,
-  setActiveProject,
   deleteProject,
   clearError,
 } from "../store/projectsSlice";
@@ -29,6 +29,7 @@ import { projectNameFromPath } from "../constants";
 
 export default function ProjectsView() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { projects, activeProject, error } = useAppSelector((s) => s.projects);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -57,15 +58,16 @@ export default function ProjectsView() {
     const path = newPath.trim();
     const name = projectNameFromPath(path);
     await dispatch(addRecentProject({ path, name }));
-    dispatch(setActiveProject({ path, name }));
+    const result = await dispatch(fetchRecentProjects()).unwrap();
+    const newProject = result.projects.find((p) => p.path === path);
+    if (newProject) navigate(`/${newProject.objectId}`);
     setNewPath("");
     setAddOpen(false);
-    dispatch(fetchRecentProjects());
   };
 
   const handleSelectProject = (project) => {
-    dispatch(setActiveProject(project));
     dispatch(addRecentProject({ path: project.path, name: project.name }));
+    navigate(`/${project.objectId}`);
   };
 
   return (

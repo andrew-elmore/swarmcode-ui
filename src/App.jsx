@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import AppBar from "@mui/material/AppBar";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
@@ -11,15 +12,13 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import MailIcon from "@mui/icons-material/Mail";
-import FolderIcon from "@mui/icons-material/Folder";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import HeadphonesIcon from "@mui/icons-material/Headphones";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
 import { useAppDispatch, useAppSelector } from "./store";
-import { fetchProject } from "./store/projectSlice";
-import { appendMessage, setMobileDrawerOpen, resetConversations } from "./store/messagesSlice";
+import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
 import { updateCommand, setPing } from "./store/commandsSlice";
 import { logoutUser, restoreSession } from "./store/authSlice";
@@ -32,16 +31,22 @@ import LoginDialog from "./components/LoginDialog";
 import MessagesView from "./components/MessagesView";
 import ProjectsView from "./components/ProjectsView";
 import ProjectSelector from "./components/ProjectSelector";
+import ProjectLayout from "./components/ProjectLayout";
 import StreamView from "./components/StreamView";
 import { buildAgentLabels } from "./constants";
 
+// Tab index -> URL path segment mapping
+// Tab 0: Stream (/:projectId index), Tab 1: Messages, Tab 2: Board,
+// Tab 3: Agents, Tab 4: Commands, Tab 5: Articles
+const TAB_PATHS = ['', 'messages', 'board', 'agents', 'commands', 'articles'];
+
 export default function App() {
-  const [tab, setTab] = useState(0);
   const [loginOpen, setLoginOpen] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const dispatch = useAppDispatch();
-  const activeProject = useAppSelector((s) => s.projects.activeProject);
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
   const projectId = useAppSelector((s) => s.project.project?.objectId);
@@ -63,18 +68,22 @@ export default function App() {
 
   const agentLabels = buildAgentLabels(agents);
 
-  const isMessagesTab = tab === 0;
+  // Derive active tab from URL
+  const pathParts = location.pathname.split('/').filter(Boolean);
+  const projectIdInUrl = pathParts[0];
+  const pathSeg = pathParts[1] ?? '';
+  const tabValue = projectIdInUrl ? TAB_PATHS.indexOf(pathSeg) : -1;
+
+  const isMessagesTab = tabValue === 1;
+
+  const handleTabChange = (_, v) => {
+    if (!projectIdInUrl) return;
+    const seg = TAB_PATHS[v];
+    navigate(seg ? `/${projectIdInUrl}/${seg}` : `/${projectIdInUrl}`);
+  };
 
   // Restore Parse session from localStorage on mount so AppBar reflects login state
   useEffect(() => { dispatch(restoreSession()); }, [dispatch]);
-
-  // Load project on startup so projectId is available for all tabs (including Messages)
-  useEffect(() => {
-    if (activeProject) {
-      dispatch(resetConversations());
-      dispatch(fetchProject(activeProject.path));
-    }
-  }, [dispatch, activeProject]);
 
   // LiveQuery subscription lives in App so it stays active across all tabs.
   // Re-subscribes when projectId or liveQueryRefreshFlag changes.
@@ -159,35 +168,35 @@ export default function App() {
           >
             SwarmCode
           </Typography>
-          <Tabs
-            value={tab}
-            onChange={(_, v) => setTab(v)}
-            textColor="inherit"
-            indicatorColor="secondary"
-            sx={{ minHeight: isMobile ? 40 : undefined }}
-          >
-            {isMobile ? (
-              [
-                <Tab key="messages" data-testid="tab-messages" icon={<MailIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="board" data-testid="tab-board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="projects" data-testid="tab-projects" icon={<FolderIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-                <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
-              ]
-            ) : (
-              [
-                <Tab key="messages" data-testid="tab-messages" icon={<MailIcon />} iconPosition="start" label="Messages" />,
-                <Tab key="board" data-testid="tab-board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
-                <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} iconPosition="start" label="Agents" />,
-                <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} iconPosition="start" label="Stream" />,
-                <Tab key="projects" data-testid="tab-projects" icon={<FolderIcon />} iconPosition="start" label="Projects" />,
-                <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} iconPosition="start" label="Commands" />,
-                <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} iconPosition="start" label="Articles" />,
-              ]
-            )}
-          </Tabs>
+          {projectIdInUrl && (
+            <Tabs
+              value={tabValue}
+              onChange={handleTabChange}
+              textColor="inherit"
+              indicatorColor="secondary"
+              sx={{ minHeight: isMobile ? 40 : undefined }}
+            >
+              {isMobile ? (
+                [
+                  <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                  <Tab key="messages" data-testid="tab-messages" icon={<MailIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                  <Tab key="board" data-testid="tab-board" icon={<DashboardIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                  <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                  <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                  <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                ]
+              ) : (
+                [
+                  <Tab key="stream" data-testid="tab-stream" icon={<HeadphonesIcon />} iconPosition="start" label="Stream" />,
+                  <Tab key="messages" data-testid="tab-messages" icon={<MailIcon />} iconPosition="start" label="Messages" />,
+                  <Tab key="board" data-testid="tab-board" icon={<DashboardIcon />} iconPosition="start" label="Board" />,
+                  <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} iconPosition="start" label="Agents" />,
+                  <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} iconPosition="start" label="Commands" />,
+                  <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} iconPosition="start" label="Articles" />,
+                ]
+              )}
+            </Tabs>
+          )}
           {!isMobile && <Box sx={{ flex: 1 }} />}
           {/* Desktop: show selected agent name in AppBar when on Messages tab */}
           {!isMobile && isMessagesTab && selectedAgent && (
@@ -260,13 +269,17 @@ export default function App() {
       <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
 
       <Box component="main" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-        <Box sx={{ display: tab === 0 ? 'flex' : 'none', height: '100%' }}><MessagesView /></Box>
-        <Box sx={{ display: tab === 1 ? 'block' : 'none', height: '100%' }}><BoardView /></Box>
-        <Box sx={{ display: tab === 2 ? 'block' : 'none', height: '100%' }}><AgentsView /></Box>
-        <Box sx={{ display: tab === 3 ? 'block' : 'none', height: '100%' }}><StreamView /></Box>
-        <Box sx={{ display: tab === 4 ? 'block' : 'none', height: '100%' }}><ProjectsView /></Box>
-        <Box sx={{ display: tab === 5 ? 'block' : 'none', height: '100%' }}><CommandsView /></Box>
-        <Box sx={{ display: tab === 6 ? 'block' : 'none', height: '100%' }}><ArticlesView /></Box>
+        <Routes>
+          <Route path="/" element={<ProjectsView />} />
+          <Route path="/:projectId" element={<ProjectLayout />}>
+            <Route index element={<StreamView />} />
+            <Route path="messages" element={<MessagesView />} />
+            <Route path="board" element={<BoardView />} />
+            <Route path="agents" element={<AgentsView />} />
+            <Route path="commands" element={<CommandsView />} />
+            <Route path="articles" element={<ArticlesView />} />
+          </Route>
+        </Routes>
       </Box>
     </Box>
   );

@@ -23,6 +23,7 @@ import projectsReducer from "../src/store/projectsSlice";
 import ttsReducer from "../src/store/ttsSlice";
 import authReducer from "../src/store/authSlice";
 import commandsReducer from "../src/store/commandsSlice";
+import { MemoryRouter } from "react-router-dom";
 import App from "../src/App";
 
 jest.mock("../src/services/api", () => ({
@@ -99,7 +100,9 @@ function renderApp() {
   const result = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <App />
+        <MemoryRouter initialEntries={['/']}>
+          <App />
+        </MemoryRouter>
       </ThemeProvider>
     </Provider>
   );

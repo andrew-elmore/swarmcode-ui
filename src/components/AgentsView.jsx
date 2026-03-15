@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -40,14 +41,15 @@ import {
   updateProjectAgent,
   clearError,
 } from "../store/agentsSlice";
-import { fetchProject } from "../store/projectSlice";
 import { fetchRecentProjects } from "../store/projectsSlice";
 import AgentEditDialog from "./AgentEditDialog";
 
 export default function AgentsView() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { projectId: projectIdParam } = useParams();
   const { agents, allAgents, loading, error } = useAppSelector((s) => s.agents);
-  const { activeProject, projects } = useAppSelector((s) => s.projects);
+  const { projects } = useAppSelector((s) => s.projects);
   const { project } = useAppSelector((s) => s.project);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -57,16 +59,8 @@ export default function AgentsView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [selectedProjectPath, setSelectedProjectPath] = useState(activeProject?.path || "");
 
   const projectId = project?.objectId;
-
-  // Ensure project is loaded so we have projectId
-  useEffect(() => {
-    if (activeProject && !project) {
-      dispatch(fetchProject(activeProject.path));
-    }
-  }, [dispatch, activeProject, project]);
 
   // Load projects for dropdown
   useEffect(() => {
@@ -74,14 +68,6 @@ export default function AgentsView() {
       dispatch(fetchRecentProjects());
     }
   }, [dispatch, projects.length]);
-
-  // When dropdown selection changes, fetch the board for that project
-  // so projectId updates and triggers agent fetch
-  useEffect(() => {
-    if (selectedProjectPath && selectedProjectPath !== activeProject?.path) {
-      dispatch(fetchProject(selectedProjectPath));
-    }
-  }, [dispatch, selectedProjectPath, activeProject]);
 
   // Load global agents
   useEffect(() => {
@@ -187,14 +173,17 @@ export default function AgentsView() {
         <TextField
           select
           label="Project"
-          value={selectedProjectPath}
-          onChange={(e) => setSelectedProjectPath(e.target.value)}
+          value={projectIdParam || ""}
+          onChange={(e) => {
+            const found = projects.find((p) => p.objectId === e.target.value);
+            if (found) navigate(`/${found.objectId}/agents`);
+          }}
           fullWidth
           size="small"
           sx={{ mb: 2 }}
         >
           {projects.map((p) => (
-            <MenuItem key={p.path} value={p.path}>
+            <MenuItem key={p.objectId} value={p.objectId}>
               {p.name}
             </MenuItem>
           ))}
