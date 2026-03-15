@@ -52,13 +52,42 @@ beforeAll(() => {
     get: jest.fn(() => null),
     configurable: true,
   });
+
+  // Mock SpeechSynthesisUtterance — not defined in jsdom
+  if (!global.SpeechSynthesisUtterance) {
+    global.SpeechSynthesisUtterance = class {
+      constructor(text) { this.text = text; this.rate = 1; this.volume = 1; this.voice = null; this.onend = null; this.onerror = null; }
+    };
+  }
 });
 
 afterEach(() => jest.clearAllMocks());
 
 // ─── Store / render helpers ───────────────────────────────────────────────────
 
-function makeStoreWithQueue(queueItems = []) {
+const BASE_PROJECT_STATE = {
+  project: { objectId: "projA111" },
+  cards: [],
+  sprints: [],
+  sprintFilter: null,
+  selectedCard: null,
+  loading: false,
+  error: null,
+  lastPoll: null,
+};
+
+const BASE_MESSAGES_STATE = {
+  conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
+  unreadCounts: { all: 0 },
+  selectedAgent: null,
+  sending: false,
+  refreshing: false,
+  error: null,
+  liveQueryRefreshFlag: false,
+  mobileDrawerOpen: false,
+};
+
+function makeStore({ queueItems = [], agents = [], ttsOverrides = {} } = {}) {
   const queue = queueItems.map((item, i) => ({
     id: i + 1,
     status: "done",
@@ -83,34 +112,17 @@ function makeStoreWithQueue(queueItems = []) {
         queue,
         currentIndex: -1,
         streamLoading: false,
+        ...ttsOverrides,
       },
-      agents: { agents: [], allAgents: [], loading: false, error: null },
-      messages: {
-        conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
-        unreadCounts: { all: 0 },
-        selectedAgent: null,
-        sending: false,
-        refreshing: false,
-        error: null,
-        liveQueryRefreshFlag: false,
-        mobileDrawerOpen: false,
-      },
-      project: {
-        project: { objectId: "projA111" },
-        cards: [],
-        sprints: [],
-        sprintFilter: null,
-        selectedCard: null,
-        loading: false,
-        error: null,
-        lastPoll: null,
-      },
+      agents: { agents, allAgents: [], loading: false, error: null },
+      messages: BASE_MESSAGES_STATE,
+      project: BASE_PROJECT_STATE,
     },
   });
 }
 
-function renderStreamViewWithQueue(queueItems = []) {
-  const store = makeStoreWithQueue(queueItems);
+function renderStreamView({ queueItems = [], agents = [], ttsOverrides = {} } = {}) {
+  const store = makeStore({ queueItems, agents, ttsOverrides });
   render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
@@ -123,6 +135,11 @@ function renderStreamViewWithQueue(queueItems = []) {
     </Provider>
   );
   return { store };
+}
+
+// Keep backwards-compat alias for existing tests
+function renderStreamViewWithQueue(queueItems = []) {
+  return renderStreamView({ queueItems });
 }
 
 // ─── Timestamp rendering ──────────────────────────────────────────────────────
@@ -236,5 +253,101 @@ describe("CARD-096 Integration: auto-scroll on queue length change", () => {
     renderStreamViewWithQueue([]);
     const queueList = document.querySelector('[data-testid="stream-queue"]');
     expect(queueList).not.toBeNull();
+  });
+});
+
+// ─── CARD-097: compact control bar ───────────────────────────────────────────
+
+describe("CARD-097 Integration: compact control bar — all four testids present", () => {
+  test("stream-toggle is in the DOM", async () => {
+    renderStreamView();
+    expect(screen.getByTestId("stream-toggle")).toBeInTheDocument();
+  });
+
+  test("stream-status is in the DOM", async () => {
+    renderStreamView();
+    expect(screen.getByTestId("stream-status")).toBeInTheDocument();
+  });
+
+  test("stream-volume is in the DOM", async () => {
+    renderStreamView();
+    expect(screen.getByTestId("stream-volume")).toBeInTheDocument();
+  });
+
+  test("stream-speed is in the DOM", async () => {
+    renderStreamView();
+    expect(screen.getByTestId("stream-speed")).toBeInTheDocument();
+  });
+
+  test("stream-status shows 'Paused' when TTS is disabled", async () => {
+    renderStreamView({ ttsOverrides: { enabled: false } });
+    expect(screen.getByTestId("stream-status")).toHaveTextContent("Paused");
+  });
+
+  test("stream-status shows 'Listening' when TTS is enabled and idle", async () => {
+    renderStreamView({ ttsOverrides: { enabled: true, currentIndex: -1 } });
+    expect(screen.getByTestId("stream-status")).toHaveTextContent("Listening");
+  });
+
+  test("stream-status shows 'Speaking...' when TTS is enabled and playing", async () => {
+    const speakingQueue = [{ id: 1, from: "pm-1", message: "hello", status: "speaking", createdAt: null }];
+    renderStreamView({
+      ttsOverrides: { enabled: true, currentIndex: 0, queue: speakingQueue },
+    });
+    expect(screen.getByTestId("stream-status")).toHaveTextContent("Speaking...");
+  });
+});
+
+// ─── CARD-097: message list — no maxHeight cap ───────────────────────────────
+
+describe("CARD-097 Integration: message list has no maxHeight inline style", () => {
+  test("stream-queue element has no max-height inline style", async () => {
+    renderStreamViewWithQueue([]);
+    const queueEl = screen.getByTestId("stream-queue");
+    // Inline style from MUI sx is applied to the element
+    // maxHeight:320 was removed in CARD-097 — the element must not carry it
+    expect(queueEl.style.maxHeight).toBeFalsy();
+  });
+
+  test("stream-queue element is visible and in the DOM", async () => {
+    renderStreamViewWithQueue([]);
+    expect(screen.getByTestId("stream-queue")).toBeInTheDocument();
+  });
+});
+
+// ─── CARD-097: PTT horizontal strip ──────────────────────────────────────────
+
+const PTT_AGENTS = [
+  { name: "pm-1", description: "PM Agent", voice: "en_US-amy-medium", isActive: true, sortOrder: 0 },
+  { name: "developer-1", description: "Developer", voice: "en_US-joe-medium", isActive: true, sortOrder: 1 },
+];
+
+describe("CARD-097 Integration: PTT strip renders agent buttons", () => {
+  test("stt-button-pm-1 is in the DOM when pm-1 is in agents store", async () => {
+    renderStreamView({ agents: PTT_AGENTS });
+    expect(screen.getByTestId("stt-button-pm-1")).toBeInTheDocument();
+  });
+
+  test("stt-button-developer-1 is in the DOM when developer-1 is in agents store", async () => {
+    renderStreamView({ agents: PTT_AGENTS });
+    expect(screen.getByTestId("stt-button-developer-1")).toBeInTheDocument();
+  });
+
+  test("stt-button-all is always present (regardless of agent list)", async () => {
+    renderStreamView({ agents: [] });
+    expect(screen.getByTestId("stt-button-all")).toBeInTheDocument();
+  });
+
+  test("mic-status is present below the PTT strip", async () => {
+    renderStreamView({ agents: PTT_AGENTS });
+    expect(screen.getByTestId("mic-status")).toBeInTheDocument();
+  });
+
+  test("all four testids (stream-toggle, stream-queue, stream-volume, stream-speed) coexist with PTT strip", async () => {
+    renderStreamView({ agents: PTT_AGENTS });
+    expect(screen.getByTestId("stream-toggle")).toBeInTheDocument();
+    expect(screen.getByTestId("stream-queue")).toBeInTheDocument();
+    expect(screen.getByTestId("stream-volume")).toBeInTheDocument();
+    expect(screen.getByTestId("stream-speed")).toBeInTheDocument();
   });
 });

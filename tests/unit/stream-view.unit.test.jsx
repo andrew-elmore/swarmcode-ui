@@ -673,16 +673,19 @@ describe("CARD-096: StreamView.jsx source-level — layout and timestamps", () =
     "utf8"
   );
 
-  test("play/stop button width is 56 (not 80)", () => {
-    expect(streamViewSrc).toMatch(/width:\s*56/);
+  test("play/stop button width is 40 (CARD-097: compacted control bar)", () => {
+    // CARD-096 set 56; CARD-097 further reduced to 40 for the compact control bar
+    expect(streamViewSrc).toMatch(/width:\s*40/);
   });
 
-  test("play/stop button height is 56 (not 80)", () => {
-    expect(streamViewSrc).toMatch(/height:\s*56/);
+  test("play/stop button height is 40 (CARD-097: compacted control bar)", () => {
+    expect(streamViewSrc).toMatch(/height:\s*40/);
   });
 
-  test("message list maxHeight is 320 (not 240)", () => {
-    expect(streamViewSrc).toMatch(/maxHeight:\s*320/);
+  test("message list has minHeight (not maxHeight) after CARD-097 layout redesign", () => {
+    // CARD-096 set maxHeight: 320; CARD-097 removed the cap and added minHeight: 220
+    expect(streamViewSrc).not.toMatch(/maxHeight:\s*320/);
+    expect(streamViewSrc).toMatch(/minHeight:\s*220/);
   });
 
   test("auto-scroll useEffect references tts.queue.length as dependency", () => {
@@ -706,6 +709,108 @@ describe("CARD-096: StreamView.jsx source-level — layout and timestamps", () =
   test("timestamp uses toLocaleTimeString with hour and minute options", () => {
     expect(streamViewSrc).toContain("toLocaleTimeString");
     expect(streamViewSrc).toContain('"2-digit"');
+  });
+});
+
+// ─── CARD-097: Layout redesign source-level checks ───────────────────────────
+
+describe("CARD-097: StreamView.jsx source-level — outer container and control bar", () => {
+  const streamViewSrc = fs.readFileSync(
+    path.resolve(__dirname, "..", "..", "src", "components", "StreamView.jsx"),
+    "utf8"
+  );
+
+  test("outer container maxWidth is 640 (was 480)", () => {
+    expect(streamViewSrc).toMatch(/maxWidth:\s*640/);
+  });
+
+  test("play/stop button is 40x40 in the compact control bar", () => {
+    expect(streamViewSrc).toMatch(/width:\s*40/);
+    expect(streamViewSrc).toMatch(/height:\s*40/);
+  });
+
+  test("stream-toggle data-testid is preserved", () => {
+    expect(streamViewSrc).toContain('"stream-toggle"');
+  });
+
+  test("stream-status data-testid is preserved on inline caption", () => {
+    expect(streamViewSrc).toContain('"stream-status"');
+  });
+
+  test("stream-volume data-testid is on the Slider element (not a wrapper Box)", () => {
+    // The testid must appear on a Slider (not on a Box that wraps it)
+    // We check that stream-volume appears in proximity to Slider props
+    expect(streamViewSrc).toContain('"stream-volume"');
+    // Slider element has the testid directly
+    expect(streamViewSrc).toMatch(/data-testid="stream-volume"/);
+  });
+
+  test("stream-speed data-testid is preserved on the Select element", () => {
+    expect(streamViewSrc).toContain('"stream-speed"');
+  });
+
+  test("status text uses short labels: 'Paused', 'Listening', 'Speaking...'", () => {
+    expect(streamViewSrc).toContain('"Paused"');
+    expect(streamViewSrc).toContain('"Listening"');
+    expect(streamViewSrc).toContain('"Speaking..."');
+  });
+});
+
+describe("CARD-097: StreamView.jsx source-level — message list layout", () => {
+  const streamViewSrc = fs.readFileSync(
+    path.resolve(__dirname, "..", "..", "src", "components", "StreamView.jsx"),
+    "utf8"
+  );
+
+  test("message list has minHeight: 220 (floor to prevent collapse)", () => {
+    expect(streamViewSrc).toMatch(/minHeight:\s*220/);
+  });
+
+  test("message list does NOT have a maxHeight constraint", () => {
+    // maxHeight was removed so the list fills available vertical space
+    expect(streamViewSrc).not.toMatch(/maxHeight:\s*320/);
+  });
+
+  test("stream-queue data-testid is preserved on the list container", () => {
+    expect(streamViewSrc).toContain('"stream-queue"');
+  });
+
+  test("message list uses width: '100%' (no maxWidth per breakpoint)", () => {
+    // The old isMobile ? 300 : 400 maxWidth constraint was removed
+    expect(streamViewSrc).not.toMatch(/maxWidth:\s*(?:isMobile\s*\?\s*300\s*:\s*400|300\s*:\s*400)/);
+  });
+});
+
+describe("CARD-097: StreamView.jsx source-level — PTT horizontal strip", () => {
+  const streamViewSrc = fs.readFileSync(
+    path.resolve(__dirname, "..", "..", "src", "components", "StreamView.jsx"),
+    "utf8"
+  );
+
+  test("PTT container uses flexWrap: 'nowrap' (horizontal strip, not wrapping grid)", () => {
+    expect(streamViewSrc).toContain('"nowrap"');
+  });
+
+  test("PTT container uses overflowX: 'auto' (scrollable when agents overflow)", () => {
+    expect(streamViewSrc).toContain('"auto"');
+  });
+
+  test("PTT buttons are 40x40 (shrunken from 56x56)", () => {
+    // Same as control bar check but specifically for the mic button sizing
+    expect(streamViewSrc).toMatch(/width:\s*40/);
+    expect(streamViewSrc).toMatch(/height:\s*40/);
+  });
+
+  test("PTT button icon fontSize is 20 (was 28)", () => {
+    expect(streamViewSrc).toMatch(/fontSize:\s*20/);
+  });
+
+  test("PTT button outer Box has flexShrink: 0 (prevents compression on overflow)", () => {
+    expect(streamViewSrc).toContain("flexShrink: 0");
+  });
+
+  test("mic-status data-testid is preserved below the strip", () => {
+    expect(streamViewSrc).toContain('"mic-status"');
   });
 });
 

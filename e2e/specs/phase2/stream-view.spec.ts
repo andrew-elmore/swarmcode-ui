@@ -559,28 +559,109 @@ test.describe('Stream View — CARD-096: timestamps, auto-scroll, layout', () =>
     expect(isScrolledToBottom).toBe(true);
   });
 
-  test('play button dimensions are 56x56 (layout check)', async ({ page }) => {
+  test('play button dimensions are 40x40 (CARD-097: compact control bar)', async ({ page }) => {
     await page.goto(`/${projectId}`);
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(STREAM_TOGGLE)).toBeVisible({ timeout: 5_000 });
 
     const box = await page.locator(STREAM_TOGGLE).boundingBox();
     expect(box).not.toBeNull();
-    // Allow ±4px tolerance for border/padding in different viewports
-    expect(box!.width).toBeGreaterThanOrEqual(52);
-    expect(box!.width).toBeLessThanOrEqual(64);
-    expect(box!.height).toBeGreaterThanOrEqual(52);
-    expect(box!.height).toBeLessThanOrEqual(64);
+    // CARD-097 reduced the button from 56x56 to 40x40; allow ±4px tolerance
+    expect(box!.width).toBeGreaterThanOrEqual(36);
+    expect(box!.width).toBeLessThanOrEqual(48);
+    expect(box!.height).toBeGreaterThanOrEqual(36);
+    expect(box!.height).toBeLessThanOrEqual(48);
   });
 
-  test('message queue maxHeight is 320 — list does not exceed it', async ({ page }) => {
+  test('message queue has a minHeight floor (CARD-097: maxHeight cap removed)', async ({ page }) => {
     await page.goto(`/${projectId}`);
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
     await expect(page.locator(STREAM_QUEUE)).toBeVisible({ timeout: 5_000 });
 
     const box = await page.locator(STREAM_QUEUE).boundingBox();
     expect(box).not.toBeNull();
-    // Container height must not exceed maxHeight: 320 (allow small tolerance for border)
-    expect(box!.height).toBeLessThanOrEqual(325);
+    // CARD-097 removed maxHeight:320 and added minHeight:220 so the list fills space
+    // The queue must be at least the minHeight floor when rendered
+    expect(box!.height).toBeGreaterThanOrEqual(200); // 220px minus border/padding tolerance
+  });
+});
+
+// ─── CARD-097: layout redesign ────────────────────────────────────────────────
+
+test.describe('Stream View — CARD-097: compact control bar and layout redesign', () => {
+  let projectId: string;
+  let projectPath: string;
+
+  test.beforeAll(async () => {
+    const project = await createTestProject('CARD-097 Layout Test');
+    projectId = project.projectId;
+    projectPath = project.path;
+    await seedDefaultAgents(projectId);
+  });
+
+  test.afterAll(async () => {
+    if (projectPath) await teardownProject(projectPath);
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.speechSynthesis.speak = (utterance: SpeechSynthesisUtterance) => {
+        setTimeout(() => utterance.onend?.({ type: 'end' } as SpeechSynthesisEvent), 50);
+      };
+      window.speechSynthesis.cancel = () => {};
+      window.speechSynthesis.getVoices = () => [];
+    });
+  });
+
+  test('all four control bar testids are visible in a single row', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+
+    // All four controls must be present
+    await expect(page.locator(STREAM_TOGGLE)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(STREAM_STATUS)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(STREAM_VOLUME)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(STREAM_SPEED)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('stream-status shows "Paused" when TTS is off (short label fits compact bar)', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(STREAM_STATUS)).toContainText('Paused', { timeout: 5_000 });
+  });
+
+  test('control bar elements are vertically aligned (same row)', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(STREAM_TOGGLE)).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator(STREAM_STATUS)).toBeVisible({ timeout: 5_000 });
+
+    const toggleBox = await page.locator(STREAM_TOGGLE).boundingBox();
+    const statusBox = await page.locator(STREAM_STATUS).boundingBox();
+    expect(toggleBox).not.toBeNull();
+    expect(statusBox).not.toBeNull();
+
+    // Both elements must be in the same horizontal band (within 20px of each other vertically)
+    const verticalDiff = Math.abs(toggleBox!.y - statusBox!.y);
+    expect(verticalDiff).toBeLessThan(20);
+  });
+
+  test('stream-queue is visible and not hidden behind control overflow', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(STREAM_QUEUE)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('PTT strip buttons are visible (stt-button-all always present)', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-testid="stt-button-all"]')).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('PTT agent buttons are visible for seeded agents', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    // pm-1 and developer-1 were seeded
+    await expect(page.locator('[data-testid="stt-button-pm-1"]')).toBeVisible({ timeout: 5_000 });
   });
 });

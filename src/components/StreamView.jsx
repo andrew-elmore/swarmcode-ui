@@ -307,7 +307,7 @@ export default function StreamView() {
       data-testid="stream-view"
       sx={{
         p: isMobile ? 2 : 3,
-        maxWidth: 480,
+        maxWidth: 640,
         mx: "auto",
         display: "flex",
         flexDirection: "column",
@@ -329,40 +329,77 @@ export default function StreamView() {
         </IconButton>
       </Box>
 
-      {/* Play / Stop button */}
-      <IconButton
-        onClick={handleToggle}
-        color={tts.enabled ? "error" : "primary"}
+      {/* Compact control bar: play/stop + status + volume + speed */}
+      <Box
         sx={{
-          width: 56,
-          height: 56,
-          border: 2,
-          borderColor: tts.enabled ? "error.main" : "primary.main",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          px: 1.5,
+          py: 0.75,
+          borderRadius: 2,
+          border: `1px solid ${theme.palette.divider}`,
+          bgcolor: theme.palette.background.paper,
         }}
-        aria-label={tts.enabled ? "Stop stream" : "Start stream"}
-        data-testid="stream-toggle"
       >
-        {tts.enabled ? (
-          <StopIcon sx={{ fontSize: 28 }} />
-        ) : (
-          <PlayArrowIcon sx={{ fontSize: 28 }} />
-        )}
-      </IconButton>
+        <IconButton
+          onClick={handleToggle}
+          size="small"
+          color={tts.enabled ? "error" : "primary"}
+          sx={{ width: 40, height: 40, border: 1.5, borderColor: tts.enabled ? "error.main" : "primary.main", flexShrink: 0 }}
+          aria-label={tts.enabled ? "Stop stream" : "Start stream"}
+          data-testid="stream-toggle"
+        >
+          {tts.enabled ? <StopIcon sx={{ fontSize: 22 }} /> : <PlayArrowIcon sx={{ fontSize: 22 }} />}
+        </IconButton>
 
-      <Typography variant="body2" color="text.secondary" data-testid="stream-status">
-        {tts.enabled
-          ? tts.currentIndex >= 0
-            ? "Speaking..."
-            : "Listening for messages"
-          : "Press play to start"}
-      </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          noWrap
+          sx={{ minWidth: 64, flexShrink: 0 }}
+          data-testid="stream-status"
+        >
+          {tts.enabled
+            ? tts.currentIndex >= 0 ? "Speaking..." : "Listening"
+            : "Paused"}
+        </Typography>
+
+        <Slider
+          size="small"
+          min={0}
+          max={1}
+          step={0.05}
+          value={tts.volume}
+          onChange={handleVolumeChange}
+          aria-label="Volume"
+          data-testid="stream-volume"
+          sx={{ flex: 1, mx: 0.5 }}
+        />
+
+        <Typography variant="caption" sx={{ minWidth: 30, textAlign: "right", flexShrink: 0 }}>
+          {Math.round(tts.volume * 100)}%
+        </Typography>
+
+        <Select
+          size="small"
+          value={tts.rate}
+          onChange={handleSpeedChange}
+          sx={{ minWidth: 70, flexShrink: 0 }}
+          data-testid="stream-speed"
+        >
+          {SPEED_OPTIONS.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+          ))}
+        </Select>
+      </Box>
 
       {/* Message queue */}
       <Box
         sx={{
           width: "100%",
-          maxWidth: isMobile ? 300 : 400,
-          maxHeight: 320,
+          minHeight: 220,
           overflow: "auto",
           borderRadius: 2,
           border: `1px solid ${theme.palette.divider}`,
@@ -436,61 +473,22 @@ export default function StreamView() {
         )}
       </Box>
 
-      {/* Volume */}
-      <Box sx={{ width: "100%", maxWidth: 300 }} data-testid="stream-volume">
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          <Typography variant="body2" sx={{ minWidth: 60 }}>
-            Volume
-          </Typography>
-          <Slider
-            size="small"
-            min={0}
-            max={1}
-            step={0.05}
-            value={tts.volume}
-            onChange={handleVolumeChange}
-            aria-label="Volume"
-          />
-          <Typography variant="body2" sx={{ minWidth: 40 }}>
-            {Math.round(tts.volume * 100)}%
-          </Typography>
-        </Box>
-      </Box>
-
-      {/* Speed */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-        <Typography variant="body2">Speed</Typography>
-        <Select
-          size="small"
-          value={tts.rate}
-          onChange={handleSpeedChange}
-          sx={{ minWidth: 80 }}
-          data-testid="stream-speed"
-        >
-          {SPEED_OPTIONS.map((opt) => (
-            <MenuItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </Box>
-
       {/* Per-agent hold-to-talk buttons */}
       <Divider sx={{ width: "100%", maxWidth: 300, my: 1 }} />
       <Typography variant="subtitle2" color="text.secondary">
         Voice Commands
       </Typography>
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center", maxWidth: 360 }}>
+      <Box sx={{ display: "flex", flexWrap: "nowrap", overflowX: "auto", gap: 1, width: "100%", pb: 0.5 }}>
         {agents.map((agent) => (
-          <Box key={agent.name} sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+          <Box key={agent.name} sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
             <IconButton
               onPointerDown={() => handleMicDown(agent.name)}
               onPointerUp={handleMicUp}
               onPointerLeave={listeningAgent === agent.name ? handleMicUp : undefined}
               color={listeningAgent === agent.name ? "error" : "default"}
               sx={{
-                width: 56,
-                height: 56,
+                width: 40,
+                height: 40,
                 border: 2,
                 borderColor: listeningAgent === agent.name ? "error.main" : "grey.400",
                 ...(listeningAgent === agent.name && {
@@ -505,20 +503,20 @@ export default function StreamView() {
               aria-label={`Hold to send to ${agent.name}`}
               data-testid={`stt-button-${agent.name}`}
             >
-              <MicIcon sx={{ fontSize: 28 }} />
+              <MicIcon sx={{ fontSize: 20 }} />
             </IconButton>
             <Typography variant="caption">{agent.name}</Typography>
           </Box>
         ))}
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
           <IconButton
             onPointerDown={() => handleMicDown("all")}
             onPointerUp={handleMicUp}
             onPointerLeave={listeningAgent === "all" ? handleMicUp : undefined}
             color={listeningAgent === "all" ? "error" : "default"}
             sx={{
-              width: 56,
-              height: 56,
+              width: 40,
+              height: 40,
               border: 2,
               borderColor: listeningAgent === "all" ? "error.main" : "grey.400",
               ...(listeningAgent === "all" && {
@@ -533,7 +531,7 @@ export default function StreamView() {
             aria-label="Hold to send to all agents"
             data-testid="stt-button-all"
           >
-            <MicIcon sx={{ fontSize: 28 }} />
+            <MicIcon sx={{ fontSize: 20 }} />
           </IconButton>
           <Typography variant="caption">All Agents</Typography>
         </Box>
