@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
@@ -7,6 +8,7 @@ import Select from "@mui/material/Select";
 import MenuItem from "@mui/material/MenuItem";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import CircularProgress from "@mui/material/CircularProgress";
 import List from "@mui/material/List";
 import ListItemButton from "@mui/material/ListItemButton";
 import ListItemText from "@mui/material/ListItemText";
@@ -17,6 +19,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import MicIcon from "@mui/icons-material/Mic";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import { useAppDispatch, useAppSelector } from "../store";
 import {
   setEnabled,
@@ -27,6 +30,7 @@ import {
   advanceQueue,
   skipToMessage,
   clearQueue,
+  fetchStreamMessages,
 } from "../store/ttsSlice";
 import { sendMessage } from "../store/messagesSlice";
 import { ttsPreprocess } from "../utils/ttsPreprocess";
@@ -52,7 +56,9 @@ const CHROME_PAUSE_INTERVAL_MS = 14000;
 
 export default function StreamView() {
   const dispatch = useAppDispatch();
+  const { projectId: projectIdParam } = useParams();
   const tts = useAppSelector((s) => s.tts);
+  const streamLoading = useAppSelector((s) => s.tts.streamLoading);
   const agents = useAppSelector((s) => s.agents.agents);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -181,6 +187,13 @@ export default function StreamView() {
       speakingIndexRef.current = -1;
     };
   }, [stopChromeWorkaround]);
+
+  // Preload last 20 messages on mount
+  useEffect(() => {
+    if (projectIdParam) {
+      dispatch(fetchStreamMessages(projectIdParam));
+    }
+  }, [dispatch, projectIdParam]);
 
   // Push-to-talk handlers
   const handleMicDown = useCallback(() => {
@@ -323,7 +336,18 @@ export default function StreamView() {
         mt: isMobile ? 2 : 4,
       }}
     >
-      <Typography variant="h6">Audio Stream</Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+        <Typography variant="h6">Audio Stream</Typography>
+        <IconButton
+          size="small"
+          onClick={() => dispatch(fetchStreamMessages(projectIdParam))}
+          disabled={streamLoading}
+          data-testid="stream-refresh"
+          aria-label="Refresh stream"
+        >
+          {streamLoading ? <CircularProgress size={18} /> : <RefreshIcon />}
+        </IconButton>
+      </Box>
 
       {/* Play / Stop button */}
       <IconButton

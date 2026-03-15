@@ -54,6 +54,7 @@ jest.mock("../src/services/api", () => ({
   }),
   subscribeToCommands: jest.fn().mockResolvedValue(jest.fn()),
   subscribeToPings: jest.fn().mockResolvedValue(jest.fn()),
+  getRecentMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -83,6 +84,7 @@ const DEFAULT_TTS_STATE = {
   error: null,
   queue: [],
   currentIndex: -1,
+  streamLoading: false,
 };
 
 function createTestStore(ttsOverrides = {}) {
@@ -119,7 +121,7 @@ function renderApp(ttsOverrides = {}) {
   const result = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <MemoryRouter initialEntries={['/']}>
+        <MemoryRouter initialEntries={['/test-board-id']}>
           <App />
         </MemoryRouter>
       </ThemeProvider>
@@ -134,6 +136,7 @@ beforeEach(() => {
   api.getOrCreateProject.mockResolvedValue({ project: null, cards: [], sprints: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: [] });
+  api.getRecentMessages.mockResolvedValue({ messages: [] });
 });
 
 describe("CARD-051: TTS speaks message only, no agent name prefix", () => {

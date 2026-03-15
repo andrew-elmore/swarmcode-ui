@@ -54,6 +54,7 @@ jest.mock("../src/services/api", () => ({
   }),
   subscribeToCommands: jest.fn().mockResolvedValue(() => {}),
   subscribeToPings: jest.fn().mockResolvedValue(() => {}),
+  getRecentMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -81,6 +82,7 @@ const DEFAULT_TTS = {
   error: null,
   queue: [],
   currentIndex: -1,
+  streamLoading: false,
 };
 
 const DEFAULT_AGENTS = [
@@ -136,7 +138,7 @@ function renderApp(overrides = {}) {
   const result = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
-        <MemoryRouter initialEntries={['/']}>
+        <MemoryRouter initialEntries={['/test-board-id']}>
           <App />
         </MemoryRouter>
       </ThemeProvider>
@@ -151,6 +153,7 @@ beforeEach(() => {
   api.getOrCreateProject.mockResolvedValue({ project: null, cards: [], sprints: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: [] });
+  api.getRecentMessages.mockResolvedValue({ messages: [] });
 });
 
 // ─── LiveQuery subscription ──────────────────────────────────────────────────

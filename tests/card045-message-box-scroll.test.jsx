@@ -39,6 +39,7 @@ jest.mock("../src/services/api", () => ({
   subscribeToMessages: jest.fn(),
   subscribeToCommands: jest.fn(),
   subscribeToPings: jest.fn(),
+  getRecentMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -70,7 +71,7 @@ function createTestStore(overrides = {}) {
       commands: commandsReducer,
     },
     preloadedState: {
-      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null, queue: [], currentIndex: -1 },
+      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null, queue: [], currentIndex: -1, streamLoading: false },
       agents: { agents: DEFAULT_AGENTS, allAgents: [], loading: false, error: null },
       project: { project: { objectId: "test-board-id" }, cards: [], selectedCard: null, loading: false, error: null, lastPoll: null },
       messages: {
@@ -95,7 +96,7 @@ function renderWithProviders(ui, { store, ...options } = {}) {
     return (
       <Provider store={testStore}>
         <ThemeProvider theme={theme}>
-          <MemoryRouter initialEntries={['/']}>
+          <MemoryRouter initialEntries={['/test-board-id']}>
             {children}
           </MemoryRouter>
         </ThemeProvider>
@@ -112,6 +113,7 @@ beforeEach(() => {
   api.subscribeToMessages.mockResolvedValue(jest.fn());
   api.subscribeToCommands.mockResolvedValue(jest.fn());
   api.subscribeToPings.mockResolvedValue(jest.fn());
+  api.getRecentMessages.mockResolvedValue({ messages: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
 });

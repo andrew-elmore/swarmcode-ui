@@ -42,6 +42,7 @@ jest.mock("../src/services/api", () => ({
   subscribeToMessages: jest.fn(),
   subscribeToCommands: jest.fn(),
   subscribeToPings: jest.fn(),
+  getRecentMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -78,7 +79,7 @@ function createTestStore(preloadedState = {}) {
       commands: commandsReducer,
     },
     preloadedState: {
-      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null, queue: [], currentIndex: -1 },
+      tts: { enabled: false, volume: 1.0, rate: 1.0, error: null, queue: [], currentIndex: -1, streamLoading: false },
       project: {
         project: { objectId: "test-board-id" },
         cards: [],
@@ -123,6 +124,7 @@ beforeEach(() => {
   api.subscribeToMessages.mockResolvedValue(jest.fn()); // returns unsubscribe function
   api.subscribeToCommands.mockResolvedValue(jest.fn());
   api.subscribeToPings.mockResolvedValue(jest.fn());
+  api.getRecentMessages.mockResolvedValue({ messages: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
   api.listArticles.mockResolvedValue({ articles: [] });
@@ -497,7 +499,7 @@ describe("MessagesView", () => {
     const unsubscribeFn = jest.fn();
     api.subscribeToMessages.mockResolvedValue(unsubscribeFn);
 
-    const { unmount } = renderWithProviders(<App />);
+    const { unmount } = renderWithProviders(<App />, { initialPath: '/test-board-id' });
     await waitFor(() => {
       expect(api.subscribeToMessages).toHaveBeenCalled();
     });
@@ -536,7 +538,7 @@ describe("MessagesView", () => {
       projects: { projects: [], activeProject: null, loading: false, error: null },
     });
 
-    renderWithProviders(<App />, { store });
+    renderWithProviders(<App />, { store, initialPath: '/test-board-id' });
 
     await waitFor(() => {
       expect(liveQueryCallback).toBeTruthy();

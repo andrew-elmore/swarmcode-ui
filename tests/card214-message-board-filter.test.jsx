@@ -129,10 +129,11 @@ describe('CARD-214 Unit: App.jsx subscribeToMessages effect source', () => {
     expect(effectBlock).toContain('liveQueryRefreshFlag');
   });
 
-  test('subscribeToMessages useEffect has if (!projectId) return guard', () => {
+  test('subscribeToMessages useEffect has if (!projectIdInUrl) return guard', () => {
+    // CARD-092: variable renamed from projectId to projectIdInUrl
     const effectBlock =
-      appSrc.match(/\/\/ LiveQuery subscription[\s\S]*?}, \[dispatch, projectId, liveQueryRefreshFlag\]\)/)?.[0] ?? '';
-    expect(effectBlock).toContain('if (!projectId) return');
+      appSrc.match(/\/\/ LiveQuery subscription[\s\S]*?}, \[dispatch, projectIdInUrl, liveQueryRefreshFlag\]\)/)?.[0] ?? '';
+    expect(effectBlock).toContain('if (!projectIdInUrl) return');
   });
 
   test('resetConversations is dispatched before fetchProject in ProjectLayout effect', () => {

@@ -1,4 +1,5 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import * as api from "../services/api";
 
 const STORAGE_KEY = "swarmcode_tts";
 
@@ -28,6 +29,13 @@ function saveToStorage(state) {
 
 const saved = loadFromStorage();
 
+export const fetchStreamMessages = createAsyncThunk(
+  "tts/fetchStreamMessages",
+  async (projectId) => {
+    return api.getRecentMessages(projectId);
+  }
+);
+
 const ttsSlice = createSlice({
   name: "tts",
   initialState: {
@@ -37,6 +45,7 @@ const ttsSlice = createSlice({
     error: null,
     queue: [],          // Array of { id, from, message, status: 'pending'|'speaking'|'done' }
     currentIndex: -1,   // Index of currently speaking message (-1 = idle)
+    streamLoading: false,
   },
   reducers: {
     setEnabled(state, action) {
@@ -107,6 +116,44 @@ const ttsSlice = createSlice({
       state.queue = [];
       state.currentIndex = -1;
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(fetchStreamMessages.pending, (state) => {
+      state.streamLoading = true;
+    });
+    builder.addCase(fetchStreamMessages.fulfilled, (state, action) => {
+      state.streamLoading = false;
+      const incoming = action.payload?.messages ?? [];
+
+      // Map historical messages to done-status queue items
+      const historicalItems = incoming.map((msg) => ({
+        id: _nextId++,
+        from: msg.from || '',
+        message: msg.message || '',
+        status: 'done',
+      }));
+
+      // Find the first active (pending or speaking) item to preserve it and everything after
+      const firstActiveIdx = state.queue.findIndex((item) => item.status !== 'done');
+      const activeItems = firstActiveIdx === -1 ? [] : state.queue.slice(firstActiveIdx);
+
+      // Remember what was speaking so we can recalculate its index
+      const speakingItem = state.currentIndex >= 0 ? state.queue[state.currentIndex] : null;
+
+      // Rebuild queue: fresh done-prefix + preserved active items
+      state.queue = [...historicalItems, ...activeItems];
+
+      // Recalculate currentIndex
+      if (speakingItem) {
+        const newIdx = state.queue.findIndex((item) => item.id === speakingItem.id);
+        state.currentIndex = newIdx;
+      } else {
+        state.currentIndex = -1;
+      }
+    });
+    builder.addCase(fetchStreamMessages.rejected, (state) => {
+      state.streamLoading = false;
+    });
   },
 });
 

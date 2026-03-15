@@ -48,6 +48,9 @@ jest.mock("../src/services/api", () => ({
   sendMessage: jest.fn(),
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn(),
+  subscribeToCommands: jest.fn(),
+  subscribeToPings: jest.fn(),
+  getRecentMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -94,6 +97,7 @@ const DEFAULT_TTS_STATE = {
   error: null,
   queue: [],
   currentIndex: -1,
+  streamLoading: false,
 };
 
 function createTestStore(overrides = {}) {
@@ -147,6 +151,9 @@ function renderWithProviders(ui, { store, initialPath = '/', ...options } = {}) 
 beforeEach(() => {
   api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
   api.subscribeToMessages.mockResolvedValue(jest.fn());
+  api.subscribeToCommands.mockResolvedValue(jest.fn());
+  api.subscribeToPings.mockResolvedValue(jest.fn());
+  api.getRecentMessages.mockResolvedValue({ messages: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
   api.getAllAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });

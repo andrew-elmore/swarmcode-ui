@@ -49,7 +49,6 @@ export default function App() {
   const dispatch = useAppDispatch();
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
-  const projectId = useAppSelector((s) => s.project.project?.objectId);
   const liveQueryRefreshFlag = useAppSelector((s) => s.messages.liveQueryRefreshFlag);
   const tts = useAppSelector((s) => s.tts);
   const ttsRef = useRef(tts);
@@ -86,13 +85,13 @@ export default function App() {
   useEffect(() => { dispatch(restoreSession()); }, [dispatch]);
 
   // LiveQuery subscription lives in App so it stays active across all tabs.
-  // Re-subscribes when projectId or liveQueryRefreshFlag changes.
+  // Re-subscribes when projectIdInUrl or liveQueryRefreshFlag changes.
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectIdInUrl) return;
 
     let unsubscribe = null;
 
-    subscribeToMessages(projectId, (msg) => {
+    subscribeToMessages(projectIdInUrl, (msg) => {
       // Resolve Pointer objectIds to agent names via agentIdMap.
       const idMap = agentIdMapRef.current;
       const resolvedFrom = (msg.fromId && idMap[msg.fromId]) || msg.from;
@@ -117,19 +116,19 @@ export default function App() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [dispatch, projectId, liveQueryRefreshFlag]);
+  }, [dispatch, projectIdInUrl, liveQueryRefreshFlag]);
 
   // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectIdInUrl) return;
     let unsubCmd = null;
     let unsubPing = null;
 
-    subscribeToCommands(projectId, (event) => {
+    subscribeToCommands(projectIdInUrl, (event) => {
       dispatch(updateCommand(event.command));
     }).then((unsub) => { unsubCmd = unsub; });
 
-    subscribeToPings(projectId, (ping) => {
+    subscribeToPings(projectIdInUrl, (ping) => {
       dispatch(setPing(ping));
     }).then((unsub) => { unsubPing = unsub; });
 
@@ -137,7 +136,7 @@ export default function App() {
       if (unsubCmd) unsubCmd();
       if (unsubPing) unsubPing();
     };
-  }, [dispatch, projectId, liveQueryRefreshFlag]);
+  }, [dispatch, projectIdInUrl, liveQueryRefreshFlag]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>

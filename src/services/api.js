@@ -27,6 +27,11 @@ export async function sendMessage({ projectId, from, to, message }) {
 }
 
 
+export async function getRecentMessages(projectId, limit = 20) {
+  return callFunction("getRecentMessages", { projectId, limit });
+}
+
+
 export async function getConversation(projectId, userA, userB, { limit, before } = {}) {
   const params = { projectId, user1: userA, user2: userB };
   if (limit) params.limit = limit;

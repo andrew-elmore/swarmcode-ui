@@ -1,7 +1,13 @@
+/**
+ * Stream View E2E Tests
+ * CARD-092 additions: preload on init, refresh button
+ */
+
 import { test, expect } from '@playwright/test';
 import { createTestProject, seedDefaultAgents, teardownProject } from '../../fixtures/seed';
 import { AgentSimulator } from '../../fixtures/agent-simulator';
 import { selectProject } from '../../helpers/navigation';
+import { callFunction } from '../../helpers/api-client';
 import {
   TAB_STREAM,
   STREAM_VIEW,
@@ -154,6 +160,98 @@ test.describe('Stream View — UI and Controls', () => {
     await expect(page.locator(STREAM_QUEUE).getByText('No messages yet')).toBeVisible({
       timeout: 3000,
     });
+  });
+});
+
+// ─── CARD-092: preload on init + refresh button ───────────────────────────────
+
+test.describe('Stream View — CARD-092: preload on init and refresh button', () => {
+  let projectId: string;
+  let projectPath: string;
+
+  test.beforeAll(async () => {
+    const project = await createTestProject('CARD-092 Stream Preload Test');
+    projectId = project.projectId;
+    projectPath = project.path;
+    await seedDefaultAgents(project.projectId);
+
+    // Seed broadcast messages (to='all') so getRecentMessages returns data
+    for (let i = 0; i < 3; i++) {
+      await callFunction('sendMessage', {
+        projectId,
+        from: 'pm-1',
+        to: 'all',
+        message: `Broadcast message ${i + 1}`,
+      });
+    }
+  });
+
+  test.afterAll(async () => {
+    if (projectPath) await teardownProject(projectPath);
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.speechSynthesis.speak = (utterance: SpeechSynthesisUtterance) => {
+        setTimeout(() => utterance.onend?.({ type: 'end' } as SpeechSynthesisEvent), 50);
+      };
+      window.speechSynthesis.cancel = () => {};
+      window.speechSynthesis.getVoices = () => [];
+    });
+  });
+
+  test('stream-refresh button is visible on Stream page', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator('[data-testid="stream-view"]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-testid="stream-refresh"]')).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('stream-queue is visible on page load (not blank)', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator('[data-testid="stream-view"]')).toBeVisible({ timeout: 15_000 });
+    // queue container is always present (even empty)
+    await expect(page.locator(STREAM_QUEUE)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('preloaded broadcast messages appear in stream-queue before TTS Start', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator('[data-testid="stream-view"]')).toBeVisible({ timeout: 15_000 });
+
+    // Messages should load automatically without clicking Start
+    await expect(page.locator(STREAM_QUEUE_ITEM).first()).toBeVisible({ timeout: 10_000 });
+
+    // Verify the seeded messages appear
+    await expect(page.locator(STREAM_QUEUE).getByText('Broadcast message 1')).toBeVisible({
+      timeout: 5_000,
+    });
+  });
+
+  test('refresh button reloads messages without navigating away', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator('[data-testid="stream-view"]')).toBeVisible({ timeout: 15_000 });
+
+    // Wait for initial load
+    await expect(page.locator(STREAM_QUEUE_ITEM).first()).toBeVisible({ timeout: 10_000 });
+
+    // Click refresh — should not navigate away or break the view
+    await page.locator('[data-testid="stream-refresh"]').click();
+
+    // Stream view should still be visible after refresh
+    await expect(page.locator('[data-testid="stream-view"]')).toBeVisible({ timeout: 5_000 });
+
+    // Queue should still contain items after refresh
+    await expect(page.locator(STREAM_QUEUE_ITEM).first()).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('preloaded messages do not start TTS (TTS starts idle)', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator('[data-testid="stream-view"]')).toBeVisible({ timeout: 15_000 });
+
+    // Wait for preloaded messages to appear
+    await expect(page.locator(STREAM_QUEUE_ITEM).first()).toBeVisible({ timeout: 10_000 });
+
+    // Status should be "Press play to start" — TTS is NOT automatically started
+    await expect(page.locator(STREAM_STATUS)).toContainText('Press play to start');
   });
 });
 
