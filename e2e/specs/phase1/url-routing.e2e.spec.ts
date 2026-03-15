@@ -1,6 +1,7 @@
 /**
  * CARD-089 E2E Tests — URL Router
  * CARD-090 E2E Tests — Agents load on direct URL navigation
+ * CARD-091 E2E Tests — Project switch preserves current sub-route
  *
  * Covers:
  *   1. "/" shows Projects page with no tab bar
@@ -10,6 +11,7 @@
  *   5. Browser back / forward navigation
  *   6. AgentsView project dropdown navigates to /:newId/agents
  *   7. CARD-090: direct URL to /:projectId/agents loads agents list
+ *   8. CARD-091: project switch from sub-route preserves sub-path
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -421,5 +423,100 @@ test.describe('CARD-090: direct URL to /:projectId/agents loads agents list', ()
     for (const name of ['pm-1', 'senior-dev-1', 'developer-1', 'qa-1', 'devops-1']) {
       await expect(page.locator(agentListItem(name))).toBeVisible({ timeout: 10_000 });
     }
+  });
+});
+
+// ─── Suite 8: CARD-091 — project switch preserves sub-route ───────────────────
+//
+// Regression guard: switching projects from a sub-route (e.g. /board, /agents)
+// must navigate to the same sub-route for the new project, not reset to Stream.
+
+test.describe('CARD-091: project switch preserves current sub-route', () => {
+  let projectA: { projectId: string; path: string; name: string };
+  let projectB: { projectId: string; path: string; name: string };
+
+  test.beforeAll(async () => {
+    projectA = await createTestProject('CARD-091 Sub-Route A');
+    projectB = await createTestProject('CARD-091 Sub-Route B');
+    await seedDefaultAgents(projectA.projectId);
+    await seedDefaultAgents(projectB.projectId);
+  });
+
+  test.afterAll(async () => {
+    if (projectA?.path) await teardownProject(projectA.path);
+    if (projectB?.path) await teardownProject(projectB.path);
+  });
+
+  test('switching project from /board stays on /board for new project', async ({ page }) => {
+    await page.goto(`/${projectA.projectId}/board`);
+    await expect(page.locator(TAB_BOARD)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(TAB_BOARD)).toHaveAttribute('aria-selected', 'true');
+
+    const selector = page.locator('[data-testid="project-selector"]');
+    await expect(selector).toBeVisible({ timeout: 5_000 });
+    await selector.click();
+
+    await expect(page.getByRole('option', { name: new RegExp(projectB.name) })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('option', { name: new RegExp(projectB.name) }).click();
+
+    await expect(async () => {
+      expect(await getPathname(page)).toBe(`/${projectB.projectId}/board`);
+    }).toPass({ timeout: 8_000 });
+
+    await expect(page.locator(TAB_BOARD)).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('switching project from /agents stays on /agents for new project', async ({ page }) => {
+    await page.goto(`/${projectA.projectId}/agents`);
+    await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 15_000 });
+
+    const selector = page.locator('[data-testid="project-selector"]');
+    await selector.click();
+
+    await expect(page.getByRole('option', { name: new RegExp(projectB.name) })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('option', { name: new RegExp(projectB.name) }).click();
+
+    await expect(async () => {
+      expect(await getPathname(page)).toBe(`/${projectB.projectId}/agents`);
+    }).toPass({ timeout: 8_000 });
+
+    await expect(page.locator(TAB_AGENTS)).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('switching project from /messages stays on /messages for new project', async ({ page }) => {
+    await page.goto(`/${projectA.projectId}/messages`);
+    await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 15_000 });
+
+    const selector = page.locator('[data-testid="project-selector"]');
+    await selector.click();
+
+    await expect(page.getByRole('option', { name: new RegExp(projectB.name) })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('option', { name: new RegExp(projectB.name) }).click();
+
+    await expect(async () => {
+      expect(await getPathname(page)).toBe(`/${projectB.projectId}/messages`);
+    }).toPass({ timeout: 8_000 });
+
+    await expect(page.locator(TAB_MESSAGES)).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('switching project from /:projectId (Stream) navigates to /:newId without sub-path', async ({ page }) => {
+    await page.goto(`/${projectA.projectId}`);
+    await expect(page.locator(TAB_STREAM)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(TAB_STREAM)).toHaveAttribute('aria-selected', 'true');
+
+    const selector = page.locator('[data-testid="project-selector"]');
+    await selector.click();
+
+    await expect(page.getByRole('option', { name: new RegExp(projectB.name) })).toBeVisible({ timeout: 5_000 });
+    await page.getByRole('option', { name: new RegExp(projectB.name) }).click();
+
+    // Should navigate to /:projectB without a sub-path segment
+    await expect(async () => {
+      const pathname = await getPathname(page);
+      expect(pathname).toBe(`/${projectB.projectId}`);
+    }).toPass({ timeout: 8_000 });
+
+    await expect(page.locator(TAB_STREAM)).toHaveAttribute('aria-selected', 'true');
   });
 });

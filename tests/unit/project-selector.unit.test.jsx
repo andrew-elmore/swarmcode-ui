@@ -1,9 +1,19 @@
 /**
  * CARD-089 Unit Tests — src/components/ProjectSelector.jsx
+ * CARD-091 Unit Tests — sub-route preservation on project switch
  *
  * Tests navigate() behavior introduced by the URL router:
  *   - Selecting a project calls navigate(`/${project.objectId}`)
  *   - Adding a new project calls navigate(`/${newProject.objectId}`) after fetch
+ *
+ * CARD-091 tests verify that both handleSelect and handleAddProject preserve the
+ * current sub-route when switching projects:
+ *   - /projA/board → /projB/board
+ *   - /projA/messages → /projB/messages
+ *   - /projA/agents → /projB/agents
+ *   - /projA/commands → /projB/commands
+ *   - /projA/articles → /projB/articles
+ *   - /projA (Stream index) → /projB (no sub-path appended)
  */
 
 import React from 'react';
@@ -217,5 +227,122 @@ describe('ProjectSelector — handleAddProject navigates to new project', () => 
     // Should still be at '/' since new project not found in response
     await waitFor(() => expect(api.getRecentProjects).toHaveBeenCalled());
     expect(screen.getByTestId('location-display')).toHaveTextContent('/');
+  });
+});
+
+// ─── CARD-091 helpers ──────────────────────────────────────────────────────────
+
+/** Render ProjectSelector starting at a specific URL path. */
+function renderSelectorAt(initialPath, preloadedState = {}) {
+  const store = makeStore(preloadedState);
+  render(
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <LocationDisplay />
+          <ProjectSelector />
+        </MemoryRouter>
+      </ThemeProvider>
+    </Provider>
+  );
+  return { store };
+}
+
+const TWO_PROJECT_STATE = {
+  projects: {
+    projects: [PROJECT_A, PROJECT_B],
+    activeProject: PROJECT_A,
+    loading: false,
+    error: null,
+  },
+};
+
+// ─── CARD-091: handleSelect preserves sub-route ────────────────────────────────
+
+describe('CARD-091: handleSelect preserves current sub-route when switching projects', () => {
+  const SUB_ROUTES = ['board', 'messages', 'agents', 'commands', 'articles'];
+
+  SUB_ROUTES.forEach((subRoute) => {
+    test(`switching from /projA111/${subRoute} to Project B navigates to /projB222/${subRoute}`, async () => {
+      renderSelectorAt(`/projA111/${subRoute}`, TWO_PROJECT_STATE);
+
+      expect(screen.getByTestId('location-display')).toHaveTextContent(`/projA111/${subRoute}`);
+
+      fireEvent.mouseDown(screen.getByTestId('project-selector').querySelector('[role="combobox"]'));
+      await waitFor(() => screen.getByRole('option', { name: 'Project B' }));
+      fireEvent.click(screen.getByRole('option', { name: 'Project B' }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('location-display')).toHaveTextContent(`/projB222/${subRoute}`)
+      );
+    });
+  });
+
+  test('switching from /:projectId (Stream index) navigates to /:newId without sub-path', async () => {
+    renderSelectorAt('/projA111', TWO_PROJECT_STATE);
+
+    expect(screen.getByTestId('location-display')).toHaveTextContent('/projA111');
+
+    fireEvent.mouseDown(screen.getByTestId('project-selector').querySelector('[role="combobox"]'));
+    await waitFor(() => screen.getByRole('option', { name: 'Project B' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Project B' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-display').textContent).toBe('/projB222')
+    );
+  });
+
+  test('switching from / (Projects page) navigates to /:newId without sub-path', async () => {
+    renderSelectorAt('/', TWO_PROJECT_STATE);
+
+    fireEvent.mouseDown(screen.getByTestId('project-selector').querySelector('[role="combobox"]'));
+    await waitFor(() => screen.getByRole('option', { name: 'Project B' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Project B' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-display').textContent).toBe('/projB222')
+    );
+  });
+});
+
+// ─── CARD-091: handleAddProject preserves sub-route ───────────────────────────
+
+describe('CARD-091: handleAddProject preserves current sub-route when adding a project', () => {
+  const NEW_PROJECT = { objectId: 'newProj999', path: '/path/new', name: 'new' };
+
+  beforeEach(() => {
+    api.getRecentProjects.mockResolvedValue({
+      projects: [PROJECT_A, PROJECT_B, NEW_PROJECT],
+    });
+  });
+
+  test('adding a project from /projA111/board navigates to /:newId/board', async () => {
+    renderSelectorAt('/projA111/board', TWO_PROJECT_STATE);
+
+    fireEvent.click(screen.getByTestId('add-project-button'));
+    await waitFor(() => screen.getByLabelText(/project path/i));
+    fireEvent.change(screen.getByLabelText(/project path/i), {
+      target: { value: '/path/new' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-display')).toHaveTextContent('/newProj999/board')
+    );
+  });
+
+  test('adding a project from /projA111 (Stream index) navigates to /:newId without sub-path', async () => {
+    renderSelectorAt('/projA111', TWO_PROJECT_STATE);
+
+    fireEvent.click(screen.getByTestId('add-project-button'));
+    await waitFor(() => screen.getByLabelText(/project path/i));
+    fireEvent.change(screen.getByLabelText(/project path/i), {
+      target: { value: '/path/new' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location-display').textContent).toBe('/newProj999')
+    );
   });
 });
