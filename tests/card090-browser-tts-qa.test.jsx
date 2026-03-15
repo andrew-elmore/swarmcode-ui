@@ -263,14 +263,14 @@ function renderStreamView(ttsOverrides = {}, agentsOverrides = {}) {
 beforeEach(() => jest.clearAllMocks());
 
 describe("CARD-090 QA: StreamView queue UI", () => {
-  test("status text: 'Press play to start' when disabled", () => {
+  test("status text: 'Paused' when disabled", () => {
     renderStreamView({ enabled: false });
-    expect(screen.getByText("Press play to start")).toBeInTheDocument();
+    expect(screen.getByText("Paused")).toBeInTheDocument();
   });
 
-  test("status text: 'Listening for messages' when enabled and idle", () => {
+  test("status text: 'Listening' when enabled and idle", () => {
     renderStreamView({ enabled: true, currentIndex: -1 });
-    expect(screen.getByText("Listening for messages")).toBeInTheDocument();
+    expect(screen.getByText("Listening")).toBeInTheDocument();
   });
 
   test("status text: 'Speaking...' when speaking", () => {

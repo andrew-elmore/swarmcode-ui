@@ -202,12 +202,12 @@ describe("CARD-072 QA: toggle state transitions", () => {
   test("status text toggles with button", () => {
     renderStreamView({ enabled: false });
 
-    expect(screen.getByText("Press play to start")).toBeInTheDocument();
+    expect(screen.getByText("Paused")).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText("Start stream"));
 
-    expect(screen.getByText("Listening for messages")).toBeInTheDocument();
-    expect(screen.queryByText("Press play to start")).not.toBeInTheDocument();
+    expect(screen.getByText("Listening")).toBeInTheDocument();
+    expect(screen.queryByText("Paused")).not.toBeInTheDocument();
   });
 });
 
@@ -263,12 +263,10 @@ describe("CARD-072 QA: minimal UI — no extra elements", () => {
 
     expect(screen.getByText("Audio Stream")).toBeInTheDocument();
     expect(screen.getByLabelText("Start stream")).toBeInTheDocument();
-    expect(screen.getByText("Press play to start")).toBeInTheDocument();
+    expect(screen.getByText("Paused")).toBeInTheDocument();
     // CARD-090: Queue area instead of canvas
     expect(screen.getByText("Queue empty")).toBeInTheDocument();
-    expect(screen.getByText("Volume")).toBeInTheDocument();
     expect(screen.getByRole("slider", { name: "Volume" })).toBeInTheDocument();
-    expect(screen.getByText("Speed")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeInTheDocument();
 
     // No per-agent voice table

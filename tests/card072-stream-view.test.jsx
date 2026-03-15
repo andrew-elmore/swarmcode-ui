@@ -92,7 +92,7 @@ describe("CARD-072: StreamView rendering", () => {
   test("renders play button when stream is inactive", () => {
     renderStreamView({ enabled: false });
     expect(screen.getByLabelText("Start stream")).toBeInTheDocument();
-    expect(screen.getByText("Press play to start")).toBeInTheDocument();
+    expect(screen.getByText("Paused")).toBeInTheDocument();
   });
 
   test("renders stop button when stream is active", () => {
@@ -100,9 +100,8 @@ describe("CARD-072: StreamView rendering", () => {
     expect(screen.getByLabelText("Stop stream")).toBeInTheDocument();
   });
 
-  test("renders volume label and percentage", () => {
+  test("renders volume percentage", () => {
     renderStreamView({ volume: 0.7 });
-    expect(screen.getByText("Volume")).toBeInTheDocument();
     expect(screen.getByText("70%")).toBeInTheDocument();
   });
 
@@ -113,7 +112,7 @@ describe("CARD-072: StreamView rendering", () => {
 
   test("renders speed selector", () => {
     renderStreamView();
-    expect(screen.getByText("Speed")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
 
   test("renders message queue area instead of canvas", () => {
@@ -230,7 +229,7 @@ describe("CARD-090: StreamView message queue", () => {
 describe("CARD-072: StreamView speed options", () => {
   test("includes 2x speed option (new addition)", () => {
     renderStreamView();
-    const speedSelect = screen.getByText("Speed").closest("div").querySelector("[role='combobox']");
+    const speedSelect = screen.getByRole("combobox");
     expect(speedSelect).toBeInTheDocument();
   });
 });
