@@ -1,16 +1,23 @@
 /**
- * CARD-096 QA: Push-to-talk voice command feature — StreamView integration tests.
+ * CARD-096 QA: Push-to-talk voice command feature — StreamView regression tests.
  *
- * Tests the mic button UI, SpeechRecognition interaction, message dispatch,
- * error handling, and edge cases.
+ * Updated for CARD-093: per-agent hold-to-talk buttons replace single mic button.
+ * The old single "mic-button" + parseVoiceCommand agent identification has been
+ * replaced with explicit per-agent buttons (data-testid='stt-button-{agentName}')
+ * and an All Agents button (data-testid='stt-button-all').
+ *
+ * These tests verify the CARD-093 implementation via StreamView:
+ *   TC-01 to TC-03: Button rendering + default state
+ *   TC-04 to TC-07: SpeechRecognition lifecycle
+ *   TC-08 to TC-11: sendMessage dispatch behavior
+ *   TC-12 to TC-15: Error handling
+ *   TC-16 to TC-18: Edge cases
  *
  * Author: qa-1
- * Date: 2026-02-11
+ * Updated: 2026-03-15 (CARD-093: per-agent hold-to-talk)
  */
 
-// ─── SpeechRecognition mock (MUST be set BEFORE StreamView import) ───────────
-// StreamView.jsx captures SpeechRecognition at module scope, so we must
-// install the mock on window before the import runs.
+// ─── SpeechRecognition mock ──────────────────────────────────────────────────
 
 let mockRecognitionInstance = null;
 
@@ -33,7 +40,7 @@ function createMockRecognitionInstance() {
 const MockSpeechRecognition = jest.fn().mockImplementation(createMockRecognitionInstance);
 window.SpeechRecognition = MockSpeechRecognition;
 
-// speechSynthesis mock (also needed before import for the TTS useEffect)
+// speechSynthesis mock
 window.speechSynthesis = {
   cancel: jest.fn(),
   speak: jest.fn(),
@@ -55,7 +62,7 @@ global.SpeechSynthesisUtterance = class SpeechSynthesisUtterance {
   }
 };
 
-// ─── Now safe to import ──────────────────────────────────────────────────────
+// ─── Imports ─────────────────────────────────────────────────────────────────
 
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
@@ -82,6 +89,9 @@ jest.mock("../src/services/api", () => ({
   sendMessage: jest.fn().mockResolvedValue({ result: {} }),
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn().mockResolvedValue(jest.fn()),
+  subscribeToCommands: jest.fn().mockResolvedValue(jest.fn()),
+  subscribeToPings: jest.fn().mockResolvedValue(jest.fn()),
+  getRecentMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),
   deleteProject: jest.fn(),
@@ -95,6 +105,8 @@ jest.mock("../src/services/api", () => ({
   deleteSprint: jest.fn(),
 }));
 
+import * as api from "../src/services/api";
+
 // ─── Theme & store helpers ───────────────────────────────────────────────────
 
 const theme = createTheme();
@@ -107,6 +119,7 @@ const DEFAULT_TTS_STATE = {
   error: null,
   queue: [],
   currentIndex: -1,
+  streamLoading: false,
 };
 
 const TEST_AGENTS = [
@@ -128,9 +141,9 @@ function createTestStore(overrides = {}) {
     },
     preloadedState: {
       tts: { ...DEFAULT_TTS_STATE, ...(overrides.tts || {}) },
-      agents: overrides.agents || { agents: TEST_AGENTS, loading: false, error: null },
-      board: overrides.project || {
-        board: { projectHash: "test-hash-123", objectId: "board-096-1" },
+      agents: overrides.agents || { agents: TEST_AGENTS, allAgents: [], loading: false, error: null },
+      project: overrides.project || {
+        project: { objectId: "board-096-1" },
         cards: [],
         sprints: [],
         sprintFilter: null,
@@ -146,10 +159,9 @@ function createTestStore(overrides = {}) {
         unreadCounts: { all: 0 },
         selectedAgent: null,
         sending: false,
+        refreshing: false,
         error: null,
-        messages: [],
-        polling: false,
-        lastPoll: null,
+        liveQueryRefreshFlag: false,
         mobileDrawerOpen: false,
       },
       projects: overrides.projects || {
@@ -174,49 +186,57 @@ function renderStreamView(overrides = {}) {
   return { ...result, store };
 }
 
+// Helper: build a final speech result event
+function makeSpeechResult(transcript) {
+  const result = [{ transcript }];
+  result.isFinal = true;
+  const results = [result];
+  results.length = 1;
+  return { results };
+}
+
 // ─── Setup & teardown ────────────────────────────────────────────────────────
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.useFakeTimers();
   mockRecognitionInstance = null;
-});
-
-afterEach(() => {
-  jest.useRealTimers();
+  window.SpeechRecognition = MockSpeechRecognition;
+  api.getRecentMessages.mockResolvedValue({ messages: [] });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TC-01 to TC-03: Mic button rendering
+// TC-01 to TC-03: Button rendering + default state
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-096 QA: Mic button rendering", () => {
-  test("TC-01: mic button renders with data-testid", () => {
+  test("TC-01: per-agent mic buttons render for each agent in the store", () => {
     renderStreamView();
-    expect(screen.getByTestId("mic-button")).toBeInTheDocument();
+    expect(screen.getByTestId("stt-button-pm-1")).toBeInTheDocument();
+    expect(screen.getByTestId("stt-button-developer-1")).toBeInTheDocument();
+    expect(screen.getByTestId("stt-button-senior-dev-1")).toBeInTheDocument();
+    expect(screen.getByTestId("stt-button-qa-1")).toBeInTheDocument();
+    expect(screen.getByTestId("stt-button-devops-1")).toBeInTheDocument();
   });
 
-  test("TC-02: 'Voice Command' heading is displayed", () => {
+  test("TC-02: 'Voice Commands' section heading is displayed", () => {
     renderStreamView();
-    expect(screen.getByText("Voice Command")).toBeInTheDocument();
+    expect(screen.getByText("Voice Commands")).toBeInTheDocument();
   });
 
-  test("TC-03: default status text shows 'Hold mic to speak a command'", () => {
+  test("TC-03: default status text shows 'Hold a button to speak'", () => {
     renderStreamView();
-    expect(screen.getByText("Hold mic to speak a command")).toBeInTheDocument();
+    expect(screen.getByTestId("mic-status")).toHaveTextContent("Hold a button to speak");
   });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// TC-04 to TC-07: SpeechRecognition interaction
+// TC-04 to TC-07: SpeechRecognition lifecycle
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-096 QA: SpeechRecognition interaction", () => {
-  test("TC-04: pressing mic button creates SpeechRecognition and calls start()", () => {
+  test("TC-04: pressing per-agent button creates SpeechRecognition and calls start()", () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
 
     expect(MockSpeechRecognition).toHaveBeenCalledTimes(1);
     expect(mockRecognitionInstance).not.toBeNull();
@@ -228,44 +248,30 @@ describe("CARD-096 QA: SpeechRecognition interaction", () => {
 
   test("TC-05: releasing mic button calls recognition.stop()", () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
-    fireEvent.pointerUp(micBtn);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    fireEvent.pointerUp(screen.getByTestId("stt-button-pm-1"));
 
     expect(mockRecognitionInstance.stop).toHaveBeenCalledTimes(1);
   });
 
-  test("TC-06: while listening, button has aria-label 'Listening...'", () => {
+  test("TC-06: while listening, mic-status shows 'Listening for pm-1...'", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
 
-    fireEvent.pointerDown(micBtn);
-
-    expect(micBtn).toHaveAttribute("aria-label", "Listening...");
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for pm-1...");
+    });
   });
 
-  test("TC-07: interim results display live transcript", async () => {
+  test("TC-07: pressing a different agent button starts recognition for that agent", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
+    // Press developer-1 button
+    fireEvent.pointerDown(screen.getByTestId("stt-button-developer-1"));
 
-    fireEvent.pointerDown(micBtn);
-
-    // Simulate an interim result
-    await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: false,
-            0: { transcript: "pm one create" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for developer-1...");
     });
-
-    expect(screen.getByText("pm one create")).toBeInTheDocument();
+    expect(mockRecognitionInstance.start).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -274,144 +280,65 @@ describe("CARD-096 QA: SpeechRecognition interaction", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-096 QA: Message dispatch", () => {
-  test("TC-08: valid command dispatches sendMessage with correct agent and message", async () => {
+  test("TC-08: sendMessage called with correct agent and message after recording ends", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
 
-    fireEvent.pointerDown(micBtn);
-
-    // Simulate final result
     await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: true,
-            0: { transcript: "pm one create a login page" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
-    });
-
-    // Recognition ends (triggers processing useEffect)
-    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("create a login page"));
       mockRecognitionInstance.onend();
     });
 
-    // Check that sendMessage API was called
-    const api = require("../src/services/api");
     await waitFor(() => {
       expect(api.sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: "pm-1",
-          message: "create a login page",
-        })
+        expect.objectContaining({ to: "pm-1", message: "create a login page" })
       );
     });
   });
 
-  test("TC-09: 'team' broadcasts via single sendMessage with to='all'", async () => {
+  test("TC-09: All Agents button dispatches sendMessage with to='all'", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-all"));
 
     await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: true,
-            0: { transcript: "team please do a status update" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
-    });
-
-    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("please do a status update"));
       mockRecognitionInstance.onend();
     });
 
-    const api = require("../src/services/api");
     await waitFor(() => {
-      // Single API call with to="all" for server-side broadcast
       expect(api.sendMessage).toHaveBeenCalledTimes(1);
       expect(api.sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({
-          to: "all",
-          message: "do a status update",
-        })
+        expect.objectContaining({ to: "all", message: "please do a status update" })
       );
     });
-
-    // Confirmation text should indicate broadcast
-    expect(screen.getByText("Sent to all agents")).toBeInTheDocument();
   });
 
-  test("TC-10: sent confirmation message appears after successful send", async () => {
+  test("TC-10: mic-status shows 'Sent to developer-1' after dispatch", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-developer-1"));
 
     await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: true,
-            0: { transcript: "developer one fix the bug" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
-    });
-
-    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("fix the bug"));
       mockRecognitionInstance.onend();
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Sent to developer-1")).toBeInTheDocument();
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Sent to developer-1");
     });
   });
 
-  test("TC-11: sent confirmation clears after timeout", async () => {
+  test("TC-11: mic-status shows 'Sent to all agents' after all-agents dispatch", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-all"));
 
     await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: true,
-            0: { transcript: "qa one run the tests" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
-    });
-
-    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("team please respond"));
       mockRecognitionInstance.onend();
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Sent to qa-1")).toBeInTheDocument();
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Sent to all agents");
     });
-
-    // Advance timer past the 2-second confirmation timeout
-    await act(async () => {
-      jest.advanceTimersByTime(2500);
-    });
-
-    expect(screen.queryByText("Sent to qa-1")).not.toBeInTheDocument();
-    expect(screen.getByText("Hold mic to speak a command")).toBeInTheDocument();
   });
 });
 
@@ -420,81 +347,50 @@ describe("CARD-096 QA: Message dispatch", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-096 QA: Error handling", () => {
-  test("TC-12: mic button renders and no unsupported error shown when SpeechRecognition is available", () => {
+  test("TC-12: stt-button-all renders and no unsupported-browser error shown when SpeechRecognition is available", () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-    expect(micBtn).toBeInTheDocument();
+    expect(screen.getByTestId("stt-button-all")).toBeInTheDocument();
     expect(screen.queryByText("Voice commands not supported in this browser")).not.toBeInTheDocument();
   });
 
-  test("TC-13: no agent match shows identification error", async () => {
+  test("TC-13: unsupported browser shows error in mic-status when button pressed", () => {
+    delete window.SpeechRecognition;
+    delete window.webkitSpeechRecognition;
+
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
 
-    fireEvent.pointerDown(micBtn);
+    expect(screen.getByTestId("mic-status")).toHaveTextContent(
+      "Voice commands not supported in this browser"
+    );
 
-    await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: true,
-            0: { transcript: "hello world do something" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
-    });
+    // Restore for other tests
+    window.SpeechRecognition = MockSpeechRecognition;
+  });
+
+  test("TC-14: sendMessage NOT dispatched when onend fires without a transcript", async () => {
+    renderStreamView();
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
 
     await act(async () => {
+      // onend fires without any onresult — transcript stays empty
       mockRecognitionInstance.onend();
     });
 
-    await waitFor(() => {
-      expect(screen.getByText(/Couldn't identify agent/)).toBeInTheDocument();
-    });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(api.sendMessage).not.toHaveBeenCalled();
   });
 
-  test("TC-14: empty message after agent name shows error", async () => {
+  test("TC-15: recognition error 'not-allowed' shows 'Microphone access denied'", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
-
-    await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: true,
-            0: { transcript: "pm one" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
-    });
-
-    await act(async () => {
-      mockRecognitionInstance.onend();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Please include a message after the agent name")).toBeInTheDocument();
-    });
-  });
-
-  test("TC-15: recognition error 'not-allowed' shows mic denied message", async () => {
-    renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
 
     await act(async () => {
       mockRecognitionInstance.onerror({ error: "not-allowed" });
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Microphone access denied")).toBeInTheDocument();
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Microphone access denied");
     });
   });
 });
@@ -504,62 +400,37 @@ describe("CARD-096 QA: Error handling", () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe("CARD-096 QA: Edge cases", () => {
-  test("TC-16: pointer leave while listening triggers stop", () => {
+  test("TC-16: pointer leave on active agent button triggers stop", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    await waitFor(() => expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for pm-1..."));
 
-    fireEvent.pointerDown(micBtn);
-    expect(mockRecognitionInstance.start).toHaveBeenCalled();
-
-    // Simulate pointer leaving the button while still pressed
-    fireEvent.pointerLeave(micBtn);
-
+    // pointerLeave on active button
+    fireEvent.pointerLeave(screen.getByTestId("stt-button-pm-1"));
     expect(mockRecognitionInstance.stop).toHaveBeenCalledTimes(1);
   });
 
-  test("TC-17: CheckCircle icon shown during sent confirmation", async () => {
+  test("TC-17: pointer leave on INACTIVE button does NOT stop recognition", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
+    // Start recording on pm-1
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    await waitFor(() => expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for pm-1..."));
 
-    fireEvent.pointerDown(micBtn);
-
-    await act(async () => {
-      mockRecognitionInstance.onresult({
-        results: [
-          {
-            isFinal: true,
-            0: { transcript: "devops one check the pipeline" },
-            length: 1,
-          },
-        ],
-        length: 1,
-      });
-    });
-
-    await act(async () => {
-      mockRecognitionInstance.onend();
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText("Sent to devops-1")).toBeInTheDocument();
-    });
-
-    // CheckCircleIcon should be rendered (identified by its data-testid)
-    expect(screen.getByTestId("CheckCircleIcon")).toBeInTheDocument();
+    // pointerLeave on developer-1 (not active) — should not stop
+    fireEvent.pointerLeave(screen.getByTestId("stt-button-developer-1"));
+    expect(mockRecognitionInstance.stop).not.toHaveBeenCalled();
   });
 
   test("TC-18: 'no-speech' recognition error displays correctly", async () => {
     renderStreamView();
-    const micBtn = screen.getByTestId("mic-button");
-
-    fireEvent.pointerDown(micBtn);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
 
     await act(async () => {
       mockRecognitionInstance.onerror({ error: "no-speech" });
     });
 
     await waitFor(() => {
-      expect(screen.getByText("No speech detected, try again")).toBeInTheDocument();
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("No speech detected, try again");
     });
   });
 });

@@ -13,14 +13,17 @@
  */
 
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { Provider } from "react-redux";
 import { configureStore } from "@reduxjs/toolkit";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider, createTheme } from "@mui/material";
+import fs from "fs";
+import path from "path";
 import ttsReducer from "../../src/store/ttsSlice";
 import agentsReducer from "../../src/store/agentsSlice";
 import messagesReducer from "../../src/store/messagesSlice";
+import projectReducer from "../../src/store/projectSlice";
 import StreamView from "../../src/components/StreamView";
 
 jest.mock("../../src/services/api", () => ({
@@ -238,5 +241,426 @@ describe("CARD-092: stream-refresh button behavior", () => {
       const refreshBtn = screen.getByTestId("stream-refresh");
       expect(refreshBtn.querySelector("[class*='MuiCircularProgress']")).not.toBeNull();
     });
+  });
+});
+
+// ─── CARD-093: Per-agent hold-to-talk STT buttons ─────────────────────────────
+
+// MockSpeechRecognition — controlled in tests
+let mockRecognitionInstance = null;
+
+class MockSpeechRecognition {
+  constructor() {
+    this.start = jest.fn();
+    this.stop = jest.fn();
+    this.onresult = null;
+    this.onerror = null;
+    this.onend = null;
+    this.continuous = false;
+    this.interimResults = false;
+    this.lang = "";
+    mockRecognitionInstance = this;
+  }
+}
+
+const STT_AGENTS = [
+  { name: "pm-1", description: "PM Agent", voice: "en_US-amy-medium", isActive: true, sortOrder: 0 },
+  { name: "developer-1", description: "Developer", voice: "en_US-joe-medium", isActive: true, sortOrder: 1 },
+];
+
+function makeStoreWithAgents(agents = [], ttsOverrides = {}) {
+  return configureStore({
+    reducer: {
+      tts: ttsReducer,
+      agents: agentsReducer,
+      messages: messagesReducer,
+      project: projectReducer,
+    },
+    preloadedState: {
+      tts: {
+        enabled: false,
+        volume: 1.0,
+        rate: 1.0,
+        error: null,
+        queue: [],
+        currentIndex: -1,
+        streamLoading: false,
+        ...ttsOverrides,
+      },
+      agents: { agents, allAgents: [], loading: false, error: null },
+      messages: {
+        conversations: { all: { messages: [], loaded: false, hasMore: false, loadingMore: false } },
+        unreadCounts: { all: 0 },
+        selectedAgent: null,
+        sending: false,
+        refreshing: false,
+        error: null,
+        liveQueryRefreshFlag: false,
+        mobileDrawerOpen: false,
+      },
+      project: {
+        project: { objectId: "projA111" },
+        cards: [],
+        sprints: [],
+        sprintFilter: null,
+        selectedCard: null,
+        loading: false,
+        error: null,
+        lastPoll: null,
+      },
+    },
+  });
+}
+
+function renderStreamViewWithAgents(agents = [], ttsOverrides = {}, projectId = "projA111") {
+  const store = makeStoreWithAgents(agents, ttsOverrides);
+  render(
+    <Provider store={store}>
+      <ThemeProvider theme={theme}>
+        <MemoryRouter initialEntries={[`/${projectId}`]}>
+          <Routes>
+            <Route path="/:projectId" element={<StreamView />} />
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>
+    </Provider>
+  );
+  return { store };
+}
+
+// Helper: build an onresult event with a final transcript
+function makeSpeechResult(transcript) {
+  const result = [{ transcript }];
+  result.isFinal = true;
+  const results = [result];
+  results.length = 1;
+  return { results };
+}
+
+// ─── Rendering ───────────────────────────────────────────────────────────────
+
+describe("CARD-093: per-agent STT buttons rendering", () => {
+  test("renders stt-button-pm-1 when pm-1 is in agents store", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    expect(screen.getByTestId("stt-button-pm-1")).toBeInTheDocument();
+  });
+
+  test("renders stt-button-developer-1 when developer-1 is in agents store", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    expect(screen.getByTestId("stt-button-developer-1")).toBeInTheDocument();
+  });
+
+  test("renders stt-button-all always (regardless of agent list)", () => {
+    renderStreamViewWithAgents([]);
+    expect(screen.getByTestId("stt-button-all")).toBeInTheDocument();
+  });
+
+  test("stt-button-all renders even alongside per-agent buttons", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    expect(screen.getByTestId("stt-button-all")).toBeInTheDocument();
+  });
+
+  test("per-agent buttons have correct aria-labels", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    expect(screen.getByLabelText("Hold to send to pm-1")).toBeInTheDocument();
+    expect(screen.getByLabelText("Hold to send to developer-1")).toBeInTheDocument();
+  });
+
+  test("all-agents button has correct aria-label", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    expect(screen.getByLabelText("Hold to send to all agents")).toBeInTheDocument();
+  });
+
+  test("renders agent name caption below each button", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    // Agent names appear as captions below each button
+    const captions = screen.getAllByText("pm-1");
+    expect(captions.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("developer-1").length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("renders 'All Agents' caption below all-agents button", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    expect(screen.getByText("All Agents")).toBeInTheDocument();
+  });
+});
+
+// ─── Default mic-status text ──────────────────────────────────────────────────
+
+describe("CARD-093: mic-status default state", () => {
+  test("shows 'Hold a button to speak' by default (no agent listening)", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    expect(screen.getByTestId("mic-status")).toHaveTextContent("Hold a button to speak");
+  });
+});
+
+// ─── Hold-to-talk mechanics ───────────────────────────────────────────────────
+
+describe("CARD-093: hold-to-talk with SpeechRecognition", () => {
+  beforeEach(() => {
+    mockRecognitionInstance = null;
+    window.SpeechRecognition = MockSpeechRecognition;
+    delete window.webkitSpeechRecognition;
+  });
+
+  afterEach(() => {
+    delete window.SpeechRecognition;
+  });
+
+  test("pointerDown on agent button calls SpeechRecognition.start()", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    expect(mockRecognitionInstance).not.toBeNull();
+    expect(mockRecognitionInstance.start).toHaveBeenCalledTimes(1);
+  });
+
+  test("mic-status shows 'Listening for pm-1...' while recording for pm-1", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for pm-1...");
+    });
+  });
+
+  test("mic-status shows 'Listening for all...' while recording for all-agents button", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-all"));
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for all...");
+    });
+  });
+
+  test("pointerUp calls SpeechRecognition.stop()", () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    fireEvent.pointerUp(screen.getByTestId("stt-button-pm-1"));
+    expect(mockRecognitionInstance.stop).toHaveBeenCalledTimes(1);
+  });
+
+  test("after onend fires, mic-status returns to 'Hold a button to speak'", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    await waitFor(() => expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for pm-1..."));
+
+    await act(async () => {
+      mockRecognitionInstance.onend();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Hold a button to speak");
+    });
+  });
+});
+
+// ─── sendMessage dispatch ─────────────────────────────────────────────────────
+
+describe("CARD-093: sendMessage dispatched after transcript", () => {
+  beforeEach(() => {
+    mockRecognitionInstance = null;
+    window.SpeechRecognition = MockSpeechRecognition;
+    delete window.webkitSpeechRecognition;
+    api.sendMessage.mockResolvedValue({ success: true });
+  });
+
+  afterEach(() => {
+    delete window.SpeechRecognition;
+  });
+
+  test("sendMessage dispatched with { to: agentName, message: transcript } for agent button", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("deploy the fix"));
+      mockRecognitionInstance.onend();
+    });
+
+    await waitFor(() => {
+      expect(api.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "pm-1", message: "deploy the fix" })
+      );
+    });
+  });
+
+  test("sendMessage dispatched with { to: 'all', message: transcript } for all-agents button", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-all"));
+
+    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("status update"));
+      mockRecognitionInstance.onend();
+    });
+
+    await waitFor(() => {
+      expect(api.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ to: "all", message: "status update" })
+      );
+    });
+  });
+
+  test("mic-status shows 'Sent to pm-1' after agent dispatch", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("hello pm-1"));
+      mockRecognitionInstance.onend();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Sent to pm-1");
+    });
+  });
+
+  test("mic-status shows 'Sent to all agents' after all-agents dispatch", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-all"));
+
+    await act(async () => {
+      mockRecognitionInstance.onresult(makeSpeechResult("team update"));
+      mockRecognitionInstance.onend();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Sent to all agents");
+    });
+  });
+
+  test("sendMessage NOT dispatched when transcript is empty", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    await act(async () => {
+      // onend fires without onresult — transcript stays ""
+      mockRecognitionInstance.onend();
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(api.sendMessage).not.toHaveBeenCalled();
+  });
+});
+
+// ─── sttStatus on error ───────────────────────────────────────────────────────
+
+describe("CARD-093: sttStatus error messages", () => {
+  beforeEach(() => {
+    mockRecognitionInstance = null;
+    window.SpeechRecognition = MockSpeechRecognition;
+    delete window.webkitSpeechRecognition;
+  });
+
+  afterEach(() => {
+    delete window.SpeechRecognition;
+  });
+
+  test("onerror 'not-allowed' shows 'Microphone access denied'", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    await act(async () => {
+      mockRecognitionInstance.onerror({ error: "not-allowed" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Microphone access denied");
+    });
+  });
+
+  test("onerror 'no-speech' shows 'No speech detected, try again'", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    await act(async () => {
+      mockRecognitionInstance.onerror({ error: "no-speech" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("No speech detected, try again");
+    });
+  });
+
+  test("onerror 'network' shows 'Speech recognition unavailable'", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    await act(async () => {
+      mockRecognitionInstance.onerror({ error: "network" });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("mic-status")).toHaveTextContent("Speech recognition unavailable");
+    });
+  });
+
+  test("unsupported browser shows 'Voice commands not supported in this browser'", () => {
+    // Remove SpeechRecognition to simulate unsupported browser
+    delete window.SpeechRecognition;
+    delete window.webkitSpeechRecognition;
+
+    renderStreamViewWithAgents(STT_AGENTS);
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+
+    expect(screen.getByTestId("mic-status")).toHaveTextContent(
+      "Voice commands not supported in this browser"
+    );
+  });
+});
+
+// ─── onPointerLeave guard ─────────────────────────────────────────────────────
+
+describe("CARD-093: onPointerLeave guard (only fires for active button)", () => {
+  beforeEach(() => {
+    mockRecognitionInstance = null;
+    window.SpeechRecognition = MockSpeechRecognition;
+    delete window.webkitSpeechRecognition;
+  });
+
+  afterEach(() => {
+    delete window.SpeechRecognition;
+  });
+
+  test("pointerLeave on non-active button does NOT call recognition.stop()", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+
+    // Start recording on pm-1
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    await waitFor(() => expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for pm-1..."));
+
+    // pointerLeave on developer-1 (not the active button) — should NOT stop
+    fireEvent.pointerLeave(screen.getByTestId("stt-button-developer-1"));
+    expect(mockRecognitionInstance.stop).not.toHaveBeenCalled();
+  });
+
+  test("pointerLeave on active button DOES call recognition.stop()", async () => {
+    renderStreamViewWithAgents(STT_AGENTS);
+
+    // Start recording on pm-1
+    fireEvent.pointerDown(screen.getByTestId("stt-button-pm-1"));
+    await waitFor(() => expect(screen.getByTestId("mic-status")).toHaveTextContent("Listening for pm-1..."));
+
+    // pointerLeave on pm-1 (the active button) — SHOULD stop
+    fireEvent.pointerLeave(screen.getByTestId("stt-button-pm-1"));
+    expect(mockRecognitionInstance.stop).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ─── voiceCommandParser removed ───────────────────────────────────────────────
+
+describe("CARD-093: voiceCommandParser removed", () => {
+  const streamViewSrc = fs.readFileSync(
+    path.resolve(__dirname, "..", "..", "src", "components", "StreamView.jsx"),
+    "utf8"
+  );
+
+  test("StreamView.jsx does not import parseVoiceCommand", () => {
+    expect(streamViewSrc).not.toContain("parseVoiceCommand");
+    expect(streamViewSrc).not.toContain("voiceCommandParser");
+  });
+
+  test("voiceCommandParser.js has been deleted from src/utils/", () => {
+    const utilsDir = path.resolve(__dirname, "..", "..", "src", "utils");
+    const files = fs.readdirSync(utilsDir);
+    expect(files).not.toContain("voiceCommandParser.js");
   });
 });

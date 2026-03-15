@@ -18,7 +18,6 @@ import { useTheme } from "@mui/material/styles";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import MicIcon from "@mui/icons-material/Mic";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { useAppDispatch, useAppSelector } from "../store";
 import {
@@ -34,7 +33,6 @@ import {
 } from "../store/ttsSlice";
 import { sendMessage } from "../store/messagesSlice";
 import { ttsPreprocess } from "../utils/ttsPreprocess";
-import { parseVoiceCommand } from "../utils/voiceCommandParser";
 
 // Resolved at call time (not module level) so test mocks on window are picked up
 function getSpeechRecognition() {
@@ -69,12 +67,11 @@ export default function StreamView() {
   const speakingIndexRef = useRef(-1); // track which index we're already speaking
 
   // Push-to-talk state
-  const [isListening, setIsListening] = useState(false);
+  const [listeningAgent, setListeningAgent] = useState(null);
   const [transcript, setTranscript] = useState("");
-  const [micError, setMicError] = useState("");
-  const [sentConfirmation, setSentConfirmation] = useState("");
+  const [sttStatus, setSttStatus] = useState("");
   const recognitionRef = useRef(null);
-  const sentTimerRef = useRef(null);
+  const lastAgentRef = useRef(null); // captures agent name at recording start for dispatch after onend
 
   // Resolve a browser SpeechSynthesisVoice by name
   const resolveVoice = useCallback((agentName) => {
@@ -196,16 +193,17 @@ export default function StreamView() {
   }, [dispatch, projectIdParam]);
 
   // Push-to-talk handlers
-  const handleMicDown = useCallback(() => {
+  const handleMicDown = useCallback((agentName) => {
     const SR = getSpeechRecognition();
     if (!SR) {
-      setMicError("Voice commands not supported in this browser");
+      setSttStatus("Voice commands not supported in this browser");
       return;
     }
 
-    setMicError("");
+    setSttStatus("");
     setTranscript("");
-    setSentConfirmation("");
+    lastAgentRef.current = agentName;
+    setListeningAgent(agentName);
 
     const recognition = new SR();
     recognition.continuous = false;
@@ -231,17 +229,16 @@ export default function StreamView() {
         "no-speech": "No speech detected, try again",
         "network": "Speech recognition unavailable",
       };
-      setMicError(errorMessages[event.error] || `Speech error: ${event.error}`);
-      setIsListening(false);
+      setSttStatus(errorMessages[event.error] || `Speech error: ${event.error}`);
+      setListeningAgent(null);
     };
 
     recognition.onend = () => {
-      setIsListening(false);
+      setListeningAgent(null);
     };
 
     recognitionRef.current = recognition;
     recognition.start();
-    setIsListening(true);
   }, []);
 
   const handleMicUp = useCallback(() => {
@@ -251,40 +248,16 @@ export default function StreamView() {
   }, []);
 
   // Process transcript after recognition ends and transcript is finalized
-  // setState is gated by isListening flag set in onend callback; this reacts to finalized speech input
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (isListening || !transcript) return;
+    if (listeningAgent || !transcript) return;
 
-    const parsed = parseVoiceCommand(transcript);
-    if (!parsed) {
-      setMicError("Couldn't identify agent. Try: \"pm one, create a login page\"");
-      return;
-    }
-    if (!parsed.message) {
-      setMicError("Please include a message after the agent name");
-      return;
-    }
+    const target = lastAgentRef.current;
+    if (!target) return;
 
-    dispatch(sendMessage({ to: parsed.agent, message: parsed.message }));
-    setSentConfirmation(
-      parsed.agent === "all" ? "Sent to all agents" : `Sent to ${parsed.agent}`
-    );
-
+    dispatch(sendMessage({ to: target, message: transcript }));
+    setSttStatus(target === "all" ? "Sent to all agents" : `Sent to ${target}`);
     setTranscript("");
-
-    // Clear confirmation after 2 seconds
-    if (sentTimerRef.current) clearTimeout(sentTimerRef.current);
-    sentTimerRef.current = setTimeout(() => setSentConfirmation(""), 2000);
-  }, [isListening, transcript, dispatch]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Cleanup sent timer on unmount
-  useEffect(() => {
-    return () => {
-      if (sentTimerRef.current) clearTimeout(sentTimerRef.current);
-    };
-  }, []);
+  }, [listeningAgent, transcript, dispatch]);
 
   const handleToggle = useCallback(() => {
     if (tts.enabled) {
@@ -492,52 +465,78 @@ export default function StreamView() {
         </Select>
       </Box>
 
-      {/* Push-to-talk mic button */}
+      {/* Per-agent hold-to-talk buttons */}
       <Divider sx={{ width: "100%", maxWidth: 300, my: 1 }} />
       <Typography variant="subtitle2" color="text.secondary">
-        Voice Command
+        Voice Commands
       </Typography>
-      <IconButton
-        onPointerDown={handleMicDown}
-        onPointerUp={handleMicUp}
-        onPointerLeave={isListening ? handleMicUp : undefined}
-        color={isListening ? "error" : "default"}
-        sx={{
-          width: 64,
-          height: 64,
-          border: 2,
-          borderColor: isListening ? "error.main" : "grey.400",
-          ...(isListening && {
-            animation: "pulse 1s ease-in-out infinite",
-            "@keyframes pulse": {
-              "0%": { boxShadow: "0 0 0 0 rgba(211,47,47,0.4)" },
-              "70%": { boxShadow: "0 0 0 12px rgba(211,47,47,0)" },
-              "100%": { boxShadow: "0 0 0 0 rgba(211,47,47,0)" },
-            },
-          }),
-        }}
-        aria-label={isListening ? "Listening..." : "Hold to speak"}
-        data-testid="mic-button"
-      >
-        {sentConfirmation ? (
-          <CheckCircleIcon sx={{ fontSize: 32, color: "success.main" }} />
-        ) : (
-          <MicIcon sx={{ fontSize: 32 }} />
-        )}
-      </IconButton>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, justifyContent: "center", maxWidth: 360 }}>
+        {agents.map((agent) => (
+          <Box key={agent.name} sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+            <IconButton
+              onPointerDown={() => handleMicDown(agent.name)}
+              onPointerUp={handleMicUp}
+              onPointerLeave={listeningAgent === agent.name ? handleMicUp : undefined}
+              color={listeningAgent === agent.name ? "error" : "default"}
+              sx={{
+                width: 56,
+                height: 56,
+                border: 2,
+                borderColor: listeningAgent === agent.name ? "error.main" : "grey.400",
+                ...(listeningAgent === agent.name && {
+                  animation: "pulse 1s ease-in-out infinite",
+                  "@keyframes pulse": {
+                    "0%": { boxShadow: "0 0 0 0 rgba(211,47,47,0.4)" },
+                    "70%": { boxShadow: "0 0 0 12px rgba(211,47,47,0)" },
+                    "100%": { boxShadow: "0 0 0 0 rgba(211,47,47,0)" },
+                  },
+                }),
+              }}
+              aria-label={`Hold to send to ${agent.name}`}
+              data-testid={`stt-button-${agent.name}`}
+            >
+              <MicIcon sx={{ fontSize: 28 }} />
+            </IconButton>
+            <Typography variant="caption">{agent.name}</Typography>
+          </Box>
+        ))}
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}>
+          <IconButton
+            onPointerDown={() => handleMicDown("all")}
+            onPointerUp={handleMicUp}
+            onPointerLeave={listeningAgent === "all" ? handleMicUp : undefined}
+            color={listeningAgent === "all" ? "error" : "default"}
+            sx={{
+              width: 56,
+              height: 56,
+              border: 2,
+              borderColor: listeningAgent === "all" ? "error.main" : "grey.400",
+              ...(listeningAgent === "all" && {
+                animation: "pulse 1s ease-in-out infinite",
+                "@keyframes pulse": {
+                  "0%": { boxShadow: "0 0 0 0 rgba(211,47,47,0.4)" },
+                  "70%": { boxShadow: "0 0 0 12px rgba(211,47,47,0)" },
+                  "100%": { boxShadow: "0 0 0 0 rgba(211,47,47,0)" },
+                },
+              }),
+            }}
+            aria-label="Hold to send to all agents"
+            data-testid="stt-button-all"
+          >
+            <MicIcon sx={{ fontSize: 28 }} />
+          </IconButton>
+          <Typography variant="caption">All Agents</Typography>
+        </Box>
+      </Box>
 
-      {/* Live transcript / status */}
+      {/* STT status */}
       <Typography
         variant="body2"
-        color={micError ? "error" : sentConfirmation ? "success.main" : "text.secondary"}
+        color={sttStatus && sttStatus.startsWith("Sent") ? "success.main" : sttStatus ? "error" : "text.secondary"}
         sx={{ minHeight: 24, textAlign: "center", maxWidth: 340 }}
         data-testid="mic-status"
       >
-        {micError
-          || sentConfirmation
-          || (isListening
-            ? (transcript || "Listening...")
-            : "Hold mic to speak a command")}
+        {sttStatus || (listeningAgent ? `Listening for ${listeningAgent}...` : "Hold a button to speak")}
       </Typography>
 
       {/* Error snackbar */}
