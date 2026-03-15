@@ -12,13 +12,15 @@ import ListItem from "@mui/material/ListItem";
 import ListItemText from "@mui/material/ListItemText";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Switch from "@mui/material/Switch";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppDispatch, useAppSelector } from "../store";
 import { createStatus, updateStatus, deleteStatus } from "../store/projectSlice";
 
-const EMPTY_FORM = { name: "", description: "", instructions: "", agentName: "" };
+const EMPTY_FORM = { name: "", description: "", instructions: "", agentName: "", monitor: false };
 
 export default function StatusManagerDialog({ open, onClose, projectId }) {
   const dispatch = useAppDispatch();
@@ -48,6 +50,7 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
         instructions: form.instructions.trim(),
         agentName: form.agentName,
         order: statuses.length,
+        monitor: form.monitor,
       })
     );
     setForm(EMPTY_FORM);
@@ -59,6 +62,7 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
     if (editForm.description.trim() !== status.description) changes.description = editForm.description.trim();
     if (editForm.instructions.trim() !== status.instructions) changes.instructions = editForm.instructions.trim();
     if (editForm.agentName !== status.agentName) changes.agentName = editForm.agentName || null;
+    if (editForm.monitor !== (status.monitor ?? false)) changes.monitor = editForm.monitor;
 
     if (Object.keys(changes).length > 0) {
       await dispatch(updateStatus({ projectId, statusId: status.objectId, ...changes }));
@@ -87,6 +91,7 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
       description: status.description || "",
       instructions: status.instructions || "",
       agentName: status.agentName || "",
+      monitor: status.monitor ?? false,
     });
   };
 
@@ -140,6 +145,17 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
               </MenuItem>
             ))}
           </TextField>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={form.monitor}
+                onChange={(e) => setForm({ ...form, monitor: e.target.checked })}
+                size="small"
+                data-testid="status-new-monitor"
+              />
+            }
+            label="Monitor idle"
+          />
           <Button
             variant="contained"
             onClick={handleCreate}
@@ -240,6 +256,17 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
                         </MenuItem>
                       ))}
                     </TextField>
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={editForm.monitor}
+                          onChange={(e) => setEditForm({ ...editForm, monitor: e.target.checked })}
+                          size="small"
+                          data-testid="status-edit-monitor"
+                        />
+                      }
+                      label="Monitor idle"
+                    />
                     <Box sx={{ display: "flex", gap: 1 }}>
                       <Button size="small" variant="contained" onClick={() => handleEditSave(status)}>
                         Save
@@ -257,6 +284,11 @@ export default function StatusManagerDialog({ open, onClose, projectId }) {
                         {status.agentName && (
                           <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
                             [{status.agentName}]
+                          </Typography>
+                        )}
+                        {status.monitor && (
+                          <Typography component="span" variant="caption" color="primary" sx={{ ml: 1 }}>
+                            [monitor]
                           </Typography>
                         )}
                       </Typography>

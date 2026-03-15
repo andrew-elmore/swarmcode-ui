@@ -108,12 +108,14 @@ export const STATUS_NEW_NAME = '[data-testid="status-new-name"]';
 export const STATUS_NEW_DESCRIPTION = '[data-testid="status-new-description"]';
 export const STATUS_NEW_INSTRUCTIONS = '[data-testid="status-new-instructions"]';
 export const STATUS_NEW_AGENT = '[data-testid="status-new-agent"]';
+export const STATUS_NEW_MONITOR = '[data-testid="status-new-monitor"]';
 export const STATUS_ADD_BUTTON = '[data-testid="status-add-button"]';
 export const STATUS_LIST_ITEM = '[data-testid="status-list-item"]';
 export const STATUS_MOVE_UP = '[data-testid="status-move-up"]';
 export const STATUS_MOVE_DOWN = '[data-testid="status-move-down"]';
 export const STATUS_DELETE = '[data-testid="status-delete"]';
 export const STATUS_EDIT_NAME = '[data-testid="status-edit-name"]';
+export const STATUS_EDIT_MONITOR = '[data-testid="status-edit-monitor"]';
 
 // Error States
 export const ERROR_ALERT = '[data-testid="error-alert"]';

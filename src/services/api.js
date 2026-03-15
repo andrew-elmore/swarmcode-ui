@@ -202,17 +202,18 @@ export async function updateProjectAgent({ projectId, agentName, isActive, sortO
 }
 
 
-export async function createStatus({ projectId, name, description, instructions, agentName, order }) {
-  return callFunction("createStatus", { projectId, name, description, instructions, agentName, order });
+export async function createStatus({ projectId, name, description, instructions, agentName, order, monitor }) {
+  return callFunction("createStatus", { projectId, name, description, instructions, agentName, order, monitor });
 }
 
-export async function updateStatus({ projectId, statusId, name, description, instructions, agentName, order }) {
+export async function updateStatus({ projectId, statusId, name, description, instructions, agentName, order, monitor }) {
   const params = { projectId, statusId };
   if (name !== undefined) params.name = name;
   if (description !== undefined) params.description = description;
   if (instructions !== undefined) params.instructions = instructions;
   if (agentName !== undefined) params.agentName = agentName;
   if (order !== undefined) params.order = order;
+  if (monitor !== undefined) params.monitor = monitor;
   return callFunction("updateStatus", params);
 }
 

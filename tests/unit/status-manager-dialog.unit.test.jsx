@@ -146,3 +146,98 @@ describe("CARD-001: projectSlice — status reducers", () => {
     });
   });
 });
+
+// ─── CARD-094: monitor field in reducers ────────────────────────────────────
+
+const STATUS_MONITORED = {
+  objectId: "st5",
+  name: "implement",
+  agentName: "developer-1",
+  order: 1,
+  monitor: true,
+};
+
+const STATUS_UNMONITORED = {
+  objectId: "st6",
+  name: "review",
+  agentName: "qa-1",
+  order: 2,
+  monitor: false,
+};
+
+describe("CARD-094: projectSlice — monitor field in reducers", () => {
+  describe("createStatus.fulfilled with monitor field", () => {
+    test("stores monitor: true in state when status is created with monitor: true", () => {
+      const action = {
+        type: createStatus.fulfilled.type,
+        payload: { status: STATUS_MONITORED },
+      };
+      const state = projectReducer(initialState, action);
+      const stored = state.statuses.find((s) => s.objectId === "st5");
+      expect(stored).toBeDefined();
+      expect(stored.monitor).toBe(true);
+    });
+
+    test("stores monitor: false in state when status is created with monitor: false", () => {
+      const action = {
+        type: createStatus.fulfilled.type,
+        payload: { status: STATUS_UNMONITORED },
+      };
+      const state = projectReducer(initialState, action);
+      const stored = state.statuses.find((s) => s.objectId === "st6");
+      expect(stored).toBeDefined();
+      expect(stored.monitor).toBe(false);
+    });
+
+    test("monitor field survives sort-by-order after append", () => {
+      const action = {
+        type: createStatus.fulfilled.type,
+        payload: { status: STATUS_MONITORED },
+      };
+      const state = projectReducer(stateWithStatuses, action);
+      const stored = state.statuses.find((s) => s.objectId === "st5");
+      expect(stored.monitor).toBe(true);
+    });
+  });
+
+  describe("updateStatus.fulfilled with monitor field", () => {
+    const stateWithMonitored = {
+      ...initialState,
+      statuses: [STATUS_MONITORED, STATUS_UNMONITORED],
+    };
+
+    test("replaces monitor: true with monitor: false in state", () => {
+      const updated = { ...STATUS_MONITORED, monitor: false };
+      const action = {
+        type: updateStatus.fulfilled.type,
+        payload: { status: updated },
+      };
+      const state = projectReducer(stateWithMonitored, action);
+      const stored = state.statuses.find((s) => s.objectId === "st5");
+      expect(stored.monitor).toBe(false);
+    });
+
+    test("replaces monitor: false with monitor: true in state", () => {
+      const updated = { ...STATUS_UNMONITORED, monitor: true };
+      const action = {
+        type: updateStatus.fulfilled.type,
+        payload: { status: updated },
+      };
+      const state = projectReducer(stateWithMonitored, action);
+      const stored = state.statuses.find((s) => s.objectId === "st6");
+      expect(stored.monitor).toBe(true);
+    });
+
+    test("sibling status monitor value is unaffected by the update", () => {
+      const updated = { ...STATUS_MONITORED, monitor: false };
+      const action = {
+        type: updateStatus.fulfilled.type,
+        payload: { status: updated },
+      };
+      const state = projectReducer(stateWithMonitored, action);
+      // STATUS_UNMONITORED (st6) should remain monitor: false
+      const sibling = state.statuses.find((s) => s.objectId === "st6");
+      expect(sibling.monitor).toBe(false);
+    });
+  });
+});

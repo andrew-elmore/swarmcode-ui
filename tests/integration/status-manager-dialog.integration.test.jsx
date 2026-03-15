@@ -402,3 +402,196 @@ describe("CARD-001: StatusManagerDialog — delete flow", () => {
     );
   });
 });
+
+// ─── CARD-094: monitor field in StatusManagerDialog ──────────────────────────
+
+const STATUS_WITH_MONITOR = {
+  objectId: "st-m1",
+  name: "implement",
+  agentName: "developer-1",
+  description: "Implementation phase",
+  instructions: "Write the code",
+  order: 1,
+  monitor: true,
+};
+
+const STATUS_WITHOUT_MONITOR = {
+  objectId: "st-m2",
+  name: "review",
+  agentName: "qa-1",
+  description: "Review phase",
+  instructions: "Review carefully",
+  order: 2,
+  monitor: false,
+};
+
+describe("CARD-094: StatusManagerDialog — monitor toggle (create form)", () => {
+  test("status-new-monitor Switch renders and is unchecked by default", () => {
+    renderDialog();
+    const switchEl = screen.getByTestId("status-new-monitor");
+    expect(switchEl).toBeInTheDocument();
+    const checkbox = switchEl.querySelector('input[type="checkbox"]');
+    expect(checkbox.checked).toBe(false);
+  });
+
+  test("toggling status-new-monitor checks the switch", async () => {
+    const user = userEvent.setup();
+    renderDialog();
+    const checkbox = screen
+      .getByTestId("status-new-monitor")
+      .querySelector('input[type="checkbox"]');
+    await user.click(checkbox);
+    expect(checkbox.checked).toBe(true);
+  });
+
+  test("createStatus dispatched with monitor: true when switch is on", async () => {
+    const user = userEvent.setup();
+    renderDialog({}, makeProjectState([]));
+
+    await user.type(
+      screen.getByTestId("status-new-name").querySelector("input"),
+      "Monitored Step"
+    );
+    await user.type(
+      screen.getByTestId("status-new-description").querySelector("input"),
+      "Step description"
+    );
+    await user.type(
+      screen.getByTestId("status-new-instructions").querySelector("textarea"),
+      "Do this step"
+    );
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: /agent/i }));
+    await waitFor(() => screen.getByRole("option", { name: "pm-1" }));
+    fireEvent.click(screen.getByRole("option", { name: "pm-1" }));
+
+    // Toggle monitor ON
+    const checkbox = screen
+      .getByTestId("status-new-monitor")
+      .querySelector('input[type="checkbox"]');
+    await user.click(checkbox);
+
+    await user.click(screen.getByTestId("status-add-button"));
+
+    await waitFor(() => {
+      expect(api.createStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ monitor: true })
+      );
+    });
+  });
+
+  test("createStatus dispatched with monitor: false when switch is off (default)", async () => {
+    const user = userEvent.setup();
+    renderDialog({}, makeProjectState([]));
+
+    await user.type(
+      screen.getByTestId("status-new-name").querySelector("input"),
+      "Plain Step"
+    );
+    await user.type(
+      screen.getByTestId("status-new-description").querySelector("input"),
+      "Step description"
+    );
+    await user.type(
+      screen.getByTestId("status-new-instructions").querySelector("textarea"),
+      "Do this step"
+    );
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: /agent/i }));
+    await waitFor(() => screen.getByRole("option", { name: "pm-1" }));
+    fireEvent.click(screen.getByRole("option", { name: "pm-1" }));
+
+    // Leave monitor switch OFF (default)
+    await user.click(screen.getByTestId("status-add-button"));
+
+    await waitFor(() => {
+      expect(api.createStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ monitor: false })
+      );
+    });
+  });
+});
+
+describe("CARD-094: StatusManagerDialog — monitor badge in status list", () => {
+  test("[monitor] badge is shown when status.monitor is true", () => {
+    renderDialog({}, makeProjectState([STATUS_WITH_MONITOR]));
+    expect(screen.getByText("[monitor]")).toBeInTheDocument();
+  });
+
+  test("[monitor] badge is absent when status.monitor is false", () => {
+    renderDialog({}, makeProjectState([STATUS_WITHOUT_MONITOR]));
+    expect(screen.queryByText("[monitor]")).not.toBeInTheDocument();
+  });
+
+  test("[monitor] badge absent when monitor field is undefined (legacy status)", () => {
+    const legacyStatus = {
+      objectId: "st-legacy",
+      name: "old-step",
+      agentName: "pm-1",
+      description: "Old step",
+      instructions: "Do it",
+      order: 0,
+      // no monitor field
+    };
+    renderDialog({}, makeProjectState([legacyStatus]));
+    expect(screen.queryByText("[monitor]")).not.toBeInTheDocument();
+  });
+});
+
+describe("CARD-094: StatusManagerDialog — monitor toggle (edit form)", () => {
+  test("status-edit-monitor Switch renders with monitor: true when status has monitor: true", async () => {
+    const user = userEvent.setup();
+    renderDialog({}, makeProjectState([STATUS_WITH_MONITOR]));
+
+    await user.click(screen.getByText("implement"));
+
+    const editSwitch = screen.getByTestId("status-edit-monitor");
+    expect(editSwitch).toBeInTheDocument();
+    const checkbox = editSwitch.querySelector('input[type="checkbox"]');
+    expect(checkbox.checked).toBe(true);
+  });
+
+  test("status-edit-monitor Switch renders unchecked when status has monitor: false", async () => {
+    const user = userEvent.setup();
+    renderDialog({}, makeProjectState([STATUS_WITHOUT_MONITOR]));
+
+    await user.click(screen.getByText("review"));
+
+    const editSwitch = screen.getByTestId("status-edit-monitor");
+    const checkbox = editSwitch.querySelector('input[type="checkbox"]');
+    expect(checkbox.checked).toBe(false);
+  });
+
+  test("toggling monitor OFF in edit dispatches updateStatus with monitor: false", async () => {
+    const user = userEvent.setup();
+    renderDialog({}, makeProjectState([STATUS_WITH_MONITOR]));
+
+    await user.click(screen.getByText("implement"));
+
+    // Toggle monitor OFF (it starts as true)
+    const checkbox = screen
+      .getByTestId("status-edit-monitor")
+      .querySelector('input[type="checkbox"]');
+    await user.click(checkbox);
+
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(api.updateStatus).toHaveBeenCalledWith(
+        expect.objectContaining({ monitor: false })
+      );
+    });
+  });
+
+  test("no updateStatus dispatch when monitor is unchanged in edit", async () => {
+    const user = userEvent.setup();
+    renderDialog({}, makeProjectState([STATUS_WITH_MONITOR]));
+
+    await user.click(screen.getByText("implement"));
+
+    // Save without changing anything
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(api.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+});
