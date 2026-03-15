@@ -18,6 +18,7 @@ import {
   STREAM_VOLUME,
   STREAM_SPEED,
   MIC_BUTTON,
+  QUEUE_ITEM_TIMESTAMP,
 } from '../../helpers/selectors';
 
 test.describe('Stream View — UI and Controls', () => {
@@ -472,5 +473,114 @@ test.describe('Stream View — mobile', () => {
     // Verify stream view renders
     await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 5000 });
     await expect(page.locator(STREAM_VIEW).getByText('Audio Stream')).toBeVisible();
+  });
+});
+
+// ─── CARD-096: auto-scroll, timestamps, layout ────────────────────────────────
+
+test.describe('Stream View — CARD-096: timestamps, auto-scroll, layout', () => {
+  let projectId: string;
+  let projectPath: string;
+
+  test.beforeAll(async () => {
+    const project = await createTestProject('CARD-096 Stream UI Test');
+    projectId = project.projectId;
+    projectPath = project.path;
+    await seedDefaultAgents(projectId);
+
+    // Seed non-broadcast messages (1:1) from multiple senders so they carry createdAt
+    await callFunction('sendMessage', {
+      projectId,
+      from: 'pm-1',
+      to: 'developer-1',
+      message: 'CARD-096 timestamp test message A',
+    });
+    await callFunction('sendMessage', {
+      projectId,
+      from: 'developer-1',
+      to: 'qa-1',
+      message: 'CARD-096 timestamp test message B',
+    });
+    await callFunction('sendMessage', {
+      projectId,
+      from: 'qa-1',
+      to: 'pm-1',
+      message: 'CARD-096 timestamp test message C',
+    });
+  });
+
+  test.afterAll(async () => {
+    if (projectPath) await teardownProject(projectPath);
+  });
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.speechSynthesis.speak = (utterance: SpeechSynthesisUtterance) => {
+        setTimeout(() => utterance.onend?.({ type: 'end' } as SpeechSynthesisEvent), 50);
+      };
+      window.speechSynthesis.cancel = () => {};
+      window.speechSynthesis.getVoices = () => [];
+    });
+  });
+
+  test('queue items with createdAt show queue-item-timestamp on Stream page', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+
+    // Wait for preloaded messages to appear in queue
+    await expect(page.locator(STREAM_QUEUE_ITEM).first()).toBeVisible({ timeout: 10_000 });
+
+    // At least one timestamp should be visible (messages were seeded with createdAt)
+    await expect(page.locator(QUEUE_ITEM_TIMESTAMP).first()).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('timestamp text is in HH:MM format', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(STREAM_QUEUE_ITEM).first()).toBeVisible({ timeout: 10_000 });
+
+    const tsText = await page.locator(QUEUE_ITEM_TIMESTAMP).first().textContent();
+    // toLocaleTimeString produces variants like "2:30 PM", "14:30", "02:30 PM"
+    expect(tsText).toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  test('stream-queue scrolls to bottom on initial load', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(STREAM_QUEUE_ITEM).first()).toBeVisible({ timeout: 10_000 });
+
+    // After preload, the queue list's scrollTop should equal its scrollHeight
+    // (the auto-scroll useEffect fires on tts.queue.length change)
+    const isScrolledToBottom = await page.locator(STREAM_QUEUE).evaluate((el) => {
+      // Allow 2px tolerance for sub-pixel rounding
+      return Math.abs(el.scrollTop - (el.scrollHeight - el.clientHeight)) <= 2
+        || el.scrollHeight <= el.clientHeight; // no overflow — also fine
+    });
+    expect(isScrolledToBottom).toBe(true);
+  });
+
+  test('play button dimensions are 56x56 (layout check)', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(STREAM_TOGGLE)).toBeVisible({ timeout: 5_000 });
+
+    const box = await page.locator(STREAM_TOGGLE).boundingBox();
+    expect(box).not.toBeNull();
+    // Allow ±4px tolerance for border/padding in different viewports
+    expect(box!.width).toBeGreaterThanOrEqual(52);
+    expect(box!.width).toBeLessThanOrEqual(64);
+    expect(box!.height).toBeGreaterThanOrEqual(52);
+    expect(box!.height).toBeLessThanOrEqual(64);
+  });
+
+  test('message queue maxHeight is 320 — list does not exceed it', async ({ page }) => {
+    await page.goto(`/${projectId}`);
+    await expect(page.locator(STREAM_VIEW)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(STREAM_QUEUE)).toBeVisible({ timeout: 5_000 });
+
+    const box = await page.locator(STREAM_QUEUE).boundingBox();
+    expect(box).not.toBeNull();
+    // Container height must not exceed maxHeight: 320 (allow small tolerance for border)
+    expect(box!.height).toBeLessThanOrEqual(325);
   });
 });

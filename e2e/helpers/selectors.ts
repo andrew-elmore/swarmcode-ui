@@ -81,6 +81,7 @@ export const STREAM_VOLUME = '[data-testid="stream-volume"]';
 export const STREAM_SPEED = '[data-testid="stream-speed"]';
 export const MIC_BUTTON = '[data-testid="mic-button"]';
 export const MIC_STATUS = '[data-testid="mic-status"]';
+export const QUEUE_ITEM_TIMESTAMP = '[data-testid="queue-item-timestamp"]';
 
 // Sprint Manager
 export const MANAGE_SPRINTS_BUTTON = '[data-testid="manage-sprints-button"]';

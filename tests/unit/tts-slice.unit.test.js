@@ -263,3 +263,82 @@ describe("CARD-092: TTS no-replay of preloaded messages", () => {
     queue.forEach((item) => expect(item.status).toBe("done"));
   });
 });
+
+// ─── CARD-096: createdAt stored in enqueueMessage ─────────────────────────────
+
+describe("CARD-096: enqueueMessage stores createdAt", () => {
+  test("createdAt is stored when provided", () => {
+    const store = makeStore();
+    store.dispatch(
+      enqueueMessage({ from: "pm-1", message: "hello", createdAt: "2026-03-15T10:00:00Z" })
+    );
+    const { queue } = store.getState().tts;
+    expect(queue[0].createdAt).toBe("2026-03-15T10:00:00Z");
+  });
+
+  test("createdAt is null when not provided", () => {
+    const store = makeStore();
+    store.dispatch(enqueueMessage({ from: "pm-1", message: "hello" }));
+    const { queue } = store.getState().tts;
+    expect(queue[0].createdAt).toBeNull();
+  });
+
+  test("createdAt is null when explicitly passed as undefined", () => {
+    const store = makeStore();
+    store.dispatch(
+      enqueueMessage({ from: "pm-1", message: "hello", createdAt: undefined })
+    );
+    const { queue } = store.getState().tts;
+    expect(queue[0].createdAt).toBeNull();
+  });
+
+  test("multiple enqueueMessage dispatches each store their own createdAt", () => {
+    const store = makeStore();
+    store.dispatch(
+      enqueueMessage({ from: "pm-1", message: "first", createdAt: "2026-03-15T09:00:00Z" })
+    );
+    store.dispatch(
+      enqueueMessage({ from: "developer-1", message: "second", createdAt: null })
+    );
+    const { queue } = store.getState().tts;
+    expect(queue[0].createdAt).toBe("2026-03-15T09:00:00Z");
+    expect(queue[1].createdAt).toBeNull();
+  });
+});
+
+// ─── CARD-096: fetchStreamMessages.fulfilled maps createdAt ──────────────────
+
+describe("CARD-096: fetchStreamMessages.fulfilled maps createdAt", () => {
+  test("fulfilled queue items include createdAt from API response", async () => {
+    const store = makeStore();
+    await store.dispatch(fetchStreamMessages("projA111"));
+    const { queue } = store.getState().tts;
+    expect(queue[0].createdAt).toBe("2026-03-01T10:00:00Z");
+    expect(queue[1].createdAt).toBe("2026-03-01T10:01:00Z");
+    expect(queue[2].createdAt).toBe("2026-03-01T10:02:00Z");
+  });
+
+  test("fulfilled queue item has null createdAt when message lacks the field", async () => {
+    api.getRecentMessages.mockResolvedValueOnce({
+      messages: [{ id: "m4", from: "devops-1", message: "No timestamp" }],
+    });
+    const store = makeStore();
+    await store.dispatch(fetchStreamMessages("projA111"));
+    const { queue } = store.getState().tts;
+    expect(queue[0].createdAt).toBeNull();
+  });
+
+  test("mix of messages with and without createdAt stores correctly", async () => {
+    api.getRecentMessages.mockResolvedValueOnce({
+      messages: [
+        { id: "m1", from: "pm-1", message: "Has timestamp", createdAt: "2026-03-15T08:00:00Z" },
+        { id: "m2", from: "developer-1", message: "No timestamp" },
+      ],
+    });
+    const store = makeStore();
+    await store.dispatch(fetchStreamMessages("projA111"));
+    const { queue } = store.getState().tts;
+    expect(queue[0].createdAt).toBe("2026-03-15T08:00:00Z");
+    expect(queue[1].createdAt).toBeNull();
+  });
+});

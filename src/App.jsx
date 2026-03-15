@@ -107,7 +107,7 @@ export default function App() {
       // Enqueue incoming agent messages for browser speechSynthesis
       const currentTts = ttsRef.current;
       if (resolvedMsg.from !== "owner" && currentTts.enabled) {
-        dispatch(enqueueMessage({ from: resolvedMsg.from, message: resolvedMsg.message }));
+        dispatch(enqueueMessage({ from: resolvedMsg.from, message: resolvedMsg.message, createdAt: resolvedMsg.createdAt || null }));
       }
     }).then((unsub) => {
       unsubscribe = unsub;

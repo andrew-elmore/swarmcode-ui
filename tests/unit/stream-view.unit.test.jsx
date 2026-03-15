@@ -664,3 +664,64 @@ describe("CARD-093: voiceCommandParser removed", () => {
     expect(files).not.toContain("voiceCommandParser.js");
   });
 });
+
+// ─── CARD-096: Layout, auto-scroll, timestamps (source-level) ─────────────────
+
+describe("CARD-096: StreamView.jsx source-level — layout and timestamps", () => {
+  const streamViewSrc = fs.readFileSync(
+    path.resolve(__dirname, "..", "..", "src", "components", "StreamView.jsx"),
+    "utf8"
+  );
+
+  test("play/stop button width is 56 (not 80)", () => {
+    expect(streamViewSrc).toMatch(/width:\s*56/);
+  });
+
+  test("play/stop button height is 56 (not 80)", () => {
+    expect(streamViewSrc).toMatch(/height:\s*56/);
+  });
+
+  test("message list maxHeight is 320 (not 240)", () => {
+    expect(streamViewSrc).toMatch(/maxHeight:\s*320/);
+  });
+
+  test("auto-scroll useEffect references tts.queue.length as dependency", () => {
+    expect(streamViewSrc).toContain("tts.queue.length");
+  });
+
+  test("auto-scroll useEffect sets scrollTop to scrollHeight", () => {
+    expect(streamViewSrc).toContain("scrollTop");
+    expect(streamViewSrc).toContain("scrollHeight");
+  });
+
+  test("queue-item-timestamp data-testid is present in source", () => {
+    expect(streamViewSrc).toContain('"queue-item-timestamp"');
+  });
+
+  test("timestamp is rendered only when item.createdAt is truthy", () => {
+    // The guard condition must be present
+    expect(streamViewSrc).toContain("item.createdAt");
+  });
+
+  test("timestamp uses toLocaleTimeString with hour and minute options", () => {
+    expect(streamViewSrc).toContain("toLocaleTimeString");
+    expect(streamViewSrc).toContain('"2-digit"');
+  });
+});
+
+describe("CARD-096: App.jsx source-level — createdAt forwarded to enqueueMessage", () => {
+  const appSrc = fs.readFileSync(
+    path.resolve(__dirname, "..", "..", "src", "App.jsx"),
+    "utf8"
+  );
+
+  test("App.jsx dispatches enqueueMessage with a createdAt field", () => {
+    // App must pass createdAt when it dispatches enqueueMessage from LiveQuery
+    expect(appSrc).toContain("createdAt");
+    expect(appSrc).toContain("enqueueMessage");
+  });
+
+  test("App.jsx reads createdAt from the resolved message", () => {
+    expect(appSrc).toMatch(/createdAt:\s*resolvedMsg\.createdAt/);
+  });
+});

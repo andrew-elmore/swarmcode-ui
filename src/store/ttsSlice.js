@@ -76,8 +76,8 @@ const ttsSlice = createSlice({
       state.error = null;
     },
     enqueueMessage(state, action) {
-      const { from, message } = action.payload;
-      state.queue.push({ id: _nextId++, from, message, status: "pending" });
+      const { from, message, createdAt } = action.payload;
+      state.queue.push({ id: _nextId++, from, message, status: "pending", createdAt: createdAt || null });
       // Auto-start if idle and TTS is enabled
       if (state.currentIndex === -1 && state.enabled) {
         state.currentIndex = state.queue.length - 1;
@@ -131,6 +131,7 @@ const ttsSlice = createSlice({
         from: msg.from || '',
         message: msg.message || '',
         status: 'done',
+        createdAt: msg.createdAt || null,
       }));
 
       // Find the first active (pending or speaking) item to preserve it and everything after

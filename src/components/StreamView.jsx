@@ -176,6 +176,13 @@ export default function StreamView() {
     }
   }, [tts.currentIndex]);
 
+  // Auto-scroll to bottom on new messages (load + LiveQuery arrivals)
+  useEffect(() => {
+    if (queueListRef.current) {
+      queueListRef.current.scrollTop = queueListRef.current.scrollHeight;
+    }
+  }, [tts.queue.length]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -327,8 +334,8 @@ export default function StreamView() {
         onClick={handleToggle}
         color={tts.enabled ? "error" : "primary"}
         sx={{
-          width: 80,
-          height: 80,
+          width: 56,
+          height: 56,
           border: 2,
           borderColor: tts.enabled ? "error.main" : "primary.main",
         }}
@@ -336,9 +343,9 @@ export default function StreamView() {
         data-testid="stream-toggle"
       >
         {tts.enabled ? (
-          <StopIcon sx={{ fontSize: 40 }} />
+          <StopIcon sx={{ fontSize: 28 }} />
         ) : (
-          <PlayArrowIcon sx={{ fontSize: 40 }} />
+          <PlayArrowIcon sx={{ fontSize: 28 }} />
         )}
       </IconButton>
 
@@ -355,7 +362,7 @@ export default function StreamView() {
         sx={{
           width: "100%",
           maxWidth: isMobile ? 300 : 400,
-          maxHeight: 240,
+          maxHeight: 320,
           overflow: "auto",
           borderRadius: 2,
           border: `1px solid ${theme.palette.divider}`,
@@ -396,13 +403,16 @@ export default function StreamView() {
               >
                 <ListItemText
                   primary={
-                    <Typography
-                      variant="body2"
-                      component="span"
-                      sx={{ fontWeight: 600 }}
-                    >
-                      {item.from}
-                    </Typography>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Typography variant="body2" component="span" sx={{ fontWeight: 600 }}>
+                        {item.from}
+                      </Typography>
+                      {item.createdAt && (
+                        <Typography variant="caption" color="text.secondary" component="span" data-testid="queue-item-timestamp">
+                          {new Date(item.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </Typography>
+                      )}
+                    </Box>
                   }
                   secondary={
                     item.message.length > 80
