@@ -1,5 +1,6 @@
 /**
  * CARD-089 E2E Tests — URL Router
+ * CARD-090 E2E Tests — Agents load on direct URL navigation
  *
  * Covers:
  *   1. "/" shows Projects page with no tab bar
@@ -8,6 +9,7 @@
  *   4. Direct URL navigation: /:projectId/board loads the Board tab
  *   5. Browser back / forward navigation
  *   6. AgentsView project dropdown navigates to /:newId/agents
+ *   7. CARD-090: direct URL to /:projectId/agents loads agents list
  */
 
 import { test, expect, Page } from '@playwright/test';
@@ -21,6 +23,7 @@ import {
   TAB_COMMANDS,
   TAB_ARTICLES,
   PROJECT_SELECTOR,
+  agentListItem,
 } from '../../helpers/selectors';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -369,5 +372,54 @@ test.describe('URL Router — AgentsView project dropdown navigates', () => {
 
     // Agents tab should remain selected
     await expect(page.locator(TAB_AGENTS)).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+// ─── Suite 7: CARD-090 — direct URL agents load (no waterfall) ────────────────
+//
+// Regression guard: navigating directly to /:projectId/agents must load and
+// display agents without waiting for a fetchProject waterfall. The fix uses
+// projectIdParam from useParams() to dispatch fetchAgents immediately.
+
+test.describe('CARD-090: direct URL to /:projectId/agents loads agents list', () => {
+  let projectId: string;
+  let projectPath: string;
+
+  test.beforeAll(async () => {
+    const project = await createTestProject('CARD-090 Agents Load Test');
+    projectId = project.projectId;
+    projectPath = project.path;
+    await seedDefaultAgents(project.projectId);
+  });
+
+  test.afterAll(async () => {
+    if (projectPath) await teardownProject(projectPath);
+  });
+
+  test('agents list is visible after direct URL navigation to /:projectId/agents', async ({ page }) => {
+    // Cold navigate — no prior app state
+    await page.goto(`/${projectId}/agents`);
+
+    // Tab bar loads and Agents tab is active
+    await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator(TAB_AGENTS)).toHaveAttribute('aria-selected', 'true');
+
+    // Agents heading renders
+    await expect(page.getByRole('heading', { name: 'Agents' })).toBeVisible({ timeout: 10_000 });
+
+    // At least one seeded agent appears — confirms fetchAgents fired without
+    // waiting for the fetchProject waterfall (CARD-090 regression guard)
+    await expect(page.locator(agentListItem('pm-1'))).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('all seeded agents are visible after direct URL navigation', async ({ page }) => {
+    await page.goto(`/${projectId}/agents`);
+
+    await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 15_000 });
+
+    // All default agents seeded by seedDefaultAgents should be visible
+    for (const name of ['pm-1', 'senior-dev-1', 'developer-1', 'qa-1', 'devops-1']) {
+      await expect(page.locator(agentListItem(name))).toBeVisible({ timeout: 10_000 });
+    }
   });
 });

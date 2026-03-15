@@ -205,3 +205,78 @@ describe('AgentsView — dropdown value reflects URL projectId', () => {
     expect(screen.getByRole('combobox', { name: /project/i })).toHaveTextContent('Project B');
   });
 });
+
+// ─── CARD-090: fetchAgents fires immediately on cold mount ─────────────────────
+// Regression guard: fetchAgents must NOT wait for s.project.project to populate.
+// It must fire as soon as projectIdParam (from useParams) is available.
+
+describe('AgentsView — fetchAgents fires on cold mount without Redux project state (CARD-090)', () => {
+  test('dispatches fetchAgents(projectIdParam) when s.project.project is null', async () => {
+    // Cold state: fetchProject has not completed yet — s.project.project is null
+    renderAgentsView('/projA111/agents', {
+      project: {
+        project: null,
+        cards: [], sprints: [], statuses: [],
+        sprintFilter: null, selectedCard: null,
+        loading: false, error: null, lastPoll: null,
+      },
+    });
+
+    // fetchAgents must fire immediately with the URL param, not wait for project load
+    await waitFor(() => {
+      expect(api.getAgents).toHaveBeenCalledWith('projA111');
+    });
+  });
+
+  test('fetchAgents receives the URL projectId, not undefined', async () => {
+    // Verify the arg is correct even when Redux project.project is absent
+    renderAgentsView('/projB222/agents');
+
+    await waitFor(() => {
+      expect(api.getAgents).toHaveBeenCalledWith('projB222');
+    });
+    // Must NOT be called with undefined
+    expect(api.getAgents).not.toHaveBeenCalledWith(undefined);
+  });
+
+  test('fetchAgents fires before fetchProject completes (no waterfall)', async () => {
+    // fetchProject is slow; fetchAgents should not wait for it
+    let fetchProjectResolve = null;
+    api.getOrCreateProject.mockImplementation(
+      () => new Promise((resolve) => {
+        fetchProjectResolve = () => resolve({ project: { objectId: 'projA111' }, cards: [], sprints: [], statuses: [] });
+      })
+    );
+
+    renderAgentsView('/projA111/agents');
+
+    // fetchAgents called immediately (fetchProject still pending)
+    await waitFor(() => {
+      expect(api.getAgents).toHaveBeenCalledWith('projA111');
+    });
+
+    // Resolve fetchProject after the assertion — confirms no waterfall
+    if (fetchProjectResolve) fetchProjectResolve();
+  });
+
+  test('fetchAgents re-fires with new projectId after URL-driven project change', async () => {
+    // Initial render at projA
+    renderAgentsView('/projA111/agents', {
+      projects: {
+        projects: [PROJECT_A, PROJECT_B],
+        activeProject: PROJECT_A,
+        loading: false, error: null,
+      },
+    });
+
+    await waitFor(() => expect(api.getAgents).toHaveBeenCalledWith('projA111'));
+
+    // Switch project via dropdown (navigates to projB URL)
+    fireEvent.mouseDown(screen.getByRole('combobox', { name: /project/i }));
+    await waitFor(() => screen.getByRole('option', { name: 'Project B' }));
+    fireEvent.click(screen.getByRole('option', { name: 'Project B' }));
+
+    // After navigation, fetchAgents fires with projB222
+    await waitFor(() => expect(api.getAgents).toHaveBeenCalledWith('projB222'));
+  });
+});

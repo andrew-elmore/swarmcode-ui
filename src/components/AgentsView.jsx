@@ -76,10 +76,10 @@ export default function AgentsView() {
 
   // Load project-scoped agents when project selected
   useEffect(() => {
-    if (projectId) {
-      dispatch(fetchAgents(projectId));
+    if (projectIdParam) {
+      dispatch(fetchAgents(projectIdParam));
     }
-  }, [dispatch, projectId]);
+  }, [dispatch, projectIdParam]);
 
   // Compute assigned vs unassigned agents
   const assignedNames = useMemo(() => new Set(agents.map((a) => a.name)), [agents]);
