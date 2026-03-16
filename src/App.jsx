@@ -130,7 +130,7 @@ export default function App() {
   }, [dispatch, projectIdInUrl, liveQueryRefreshFlag]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <AppBar position="static">
         <Toolbar
           sx={{

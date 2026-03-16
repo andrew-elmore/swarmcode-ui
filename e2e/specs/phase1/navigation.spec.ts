@@ -226,4 +226,47 @@ test.describe('Navigation — mobile', () => {
       timeout: 3000,
     });
   });
+
+  // ─── CARD-101: Mobile scroll — height: 100% fix ────────────────────────────
+
+  test('CARD-101: app root height does not exceed viewport height on mobile (no 100vh overflow)', async ({ page }) => {
+    await page.goto('/');
+
+    const viewportHeight = page.viewportSize()!.height;
+
+    // #root height should equal viewport height — not exceed it
+    // (100vh would exceed on iOS Safari when chrome is visible; 100% stays within bounds)
+    const rootHeight = await page.locator('#root').evaluate(
+      (el) => el.getBoundingClientRect().height
+    );
+
+    expect(rootHeight).toBeLessThanOrEqual(viewportHeight + 1); // 1px float tolerance
+  });
+
+  test('CARD-101: all navigation tabs visible on mobile without page-level scroll', async ({ page }) => {
+    await page.goto('/');
+    await selectProject(page, projectName);
+    await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
+
+    // All tabs must be visible in the initial viewport — none pushed below the fold
+    const tabSelectors = [TAB_MESSAGES, TAB_BOARD, TAB_AGENTS, TAB_STREAM, TAB_PROJECTS, TAB_COMMANDS, TAB_ARTICLES];
+    for (const sel of tabSelectors) {
+      await expect(page.locator(sel)).toBeVisible();
+    }
+  });
+
+  test('CARD-101: body does not have a scrollbar (app manages its own overflow)', async ({ page }) => {
+    await page.goto('/');
+    await selectProject(page, projectName);
+    await expect(page.locator(TAB_MESSAGES)).toBeVisible({ timeout: 10_000 });
+
+    // body.scrollHeight should match body.clientHeight — no page-level overflow
+    const overflows = await page.evaluate(() => ({
+      scrollHeight: document.body.scrollHeight,
+      clientHeight: document.body.clientHeight,
+    }));
+
+    // Allow a small tolerance for sub-pixel rounding
+    expect(overflows.scrollHeight).toBeLessThanOrEqual(overflows.clientHeight + 5);
+  });
 });
