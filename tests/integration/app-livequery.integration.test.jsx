@@ -47,9 +47,10 @@ jest.mock("../../src/services/api", () => ({
   listArticles: jest.fn(),
   getConversation: jest.fn(),
   sendMessage: jest.fn(),
-  subscribeToMessages: jest.fn(() => Promise.resolve(() => {})),
-  subscribeToCommands: jest.fn(() => Promise.resolve(() => {})),
-  subscribeToPings: jest.fn(() => Promise.resolve(() => {})),
+  // CARD-099: subscribeToMessages is now synchronous — returns a function, not a Promise
+  subscribeToMessages: jest.fn(() => () => {}),
+  subscribeToCommands: jest.fn(() => () => {}),
+  subscribeToPings: jest.fn(() => () => {}),
   getRecentMessages: jest.fn(() => Promise.resolve({ messages: [] })),
   listRecentCommands: jest.fn(() => Promise.resolve({ commands: [] })),
   getLatestPing: jest.fn(() => Promise.resolve({ ping: null })),
@@ -101,7 +102,7 @@ function makeColdStore(overrides = {}) {
 
 function renderAppAt(path, storeOverrides = {}) {
   const store = makeColdStore(storeOverrides);
-  render(
+  const utils = render(
     <Provider store={store}>
       <ThemeProvider theme={theme}>
         <MemoryRouter initialEntries={[path]}>
@@ -110,7 +111,7 @@ function renderAppAt(path, storeOverrides = {}) {
       </ThemeProvider>
     </Provider>
   );
-  return { store };
+  return { store, ...utils };
 }
 
 beforeEach(() => {
@@ -194,5 +195,74 @@ describe("CARD-092: App.jsx LiveQuery uses projectIdInUrl (not Redux project sta
     });
     // fetchProject is still pending (never-resolving mock) — confirmed waterfall didn't block LiveQuery
     expect(api.getOrCreateProject).toHaveBeenCalled();
+  });
+});
+
+// ─── CARD-099: synchronous subscribe API contract ────────────────────────────
+
+describe("CARD-099: App.jsx uses synchronous unsubscribe from subscribeToMessages", () => {
+  test("subscribeToMessages return value is used synchronously (not via .then())", async () => {
+    // Verify the mock contract: subscribeToMessages returns a function, not a Promise.
+    // If App.jsx called .then() on it, it would fail because functions don't have .then().
+    let capturedReturnValue;
+    api.subscribeToMessages.mockImplementationOnce(() => {
+      const unsub = () => {};
+      capturedReturnValue = unsub;
+      return unsub;
+    });
+
+    renderAppAt("/projA111");
+
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalledWith("projA111", expect.any(Function));
+    });
+
+    // The return value should be a function (synchronous unsubscribe), not a Promise
+    expect(typeof capturedReturnValue).toBe("function");
+  });
+
+  test("subscribeToMessages cleanup function is called on unmount (synchronous)", async () => {
+    let unsubCalled = false;
+    api.subscribeToMessages.mockImplementationOnce(() => () => {
+      unsubCalled = true;
+    });
+
+    const { unmount } = renderAppAt("/projA111");
+
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalled();
+    });
+
+    // Unmounting triggers useEffect cleanup
+    unmount();
+    expect(unsubCalled).toBe(true);
+  });
+
+  test("re-subscription on projectId change cleans up previous subscription synchronously", async () => {
+    const cleanupCalls = [];
+    api.subscribeToMessages
+      .mockImplementationOnce(() => () => cleanupCalls.push("first"))
+      .mockImplementationOnce(() => () => cleanupCalls.push("second"));
+
+    const { rerender } = renderAppAt("/projA111");
+
+    await waitFor(() => {
+      expect(api.subscribeToMessages).toHaveBeenCalledWith("projA111", expect.any(Function));
+    });
+
+    // Navigate to a different project — triggers cleanup of first subscription
+    rerender(
+      <Provider store={makeColdStore()}>
+        <ThemeProvider theme={theme}>
+          <MemoryRouter initialEntries={["/projB222"]}>
+            <App />
+          </MemoryRouter>
+        </ThemeProvider>
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(cleanupCalls).toContain("first");
+    });
   });
 });

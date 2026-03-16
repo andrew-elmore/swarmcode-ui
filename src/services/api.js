@@ -45,12 +45,13 @@ let _messageSubscription = null;
 /**
  * Subscribe to new Message objects via LiveQuery.
  * Calls onMessage(msg) for each new message created.
- * Returns an unsubscribe function.
+ * Returns a synchronous unsubscribe function.
  */
-export async function subscribeToMessages(projectId, onMessage) {
+export function subscribeToMessages(projectId, onMessage) {
   if (!projectId) return () => {};
 
-  // Unsubscribe previous if any
+  let cancelled = false;
+
   if (_messageSubscription) {
     _messageSubscription.unsubscribe();
     _messageSubscription = null;
@@ -59,39 +60,43 @@ export async function subscribeToMessages(projectId, onMessage) {
   const Project = Parse.Object.extend("Project");
   const query = new Parse.Query("Message");
   query.equalTo("project", Project.createWithoutData(projectId));
-  query.include('from');
-  query.include('to');
-  const subscription = await query.subscribe();
-  _messageSubscription = subscription;
+  // include() removed -- pointer stubs are resolved via agentIdMapRef in App.jsx
 
-  subscription.on("create", (object) => {
-    // Extract name if included, or objectId for lookup via agentIdMap in Redux.
-    const rawFrom = object.get("from");
-    const rawTo = object.get("to");
-    const resolveAgent = (raw) => {
-      if (!raw) return null;
-      if (typeof raw === "string") return raw; // Pre-migration: plain string
-      if (raw.get && raw.get("name")) return raw.get("name"); // Included Pointer
-      return raw.id || null; // Pointer stub: return objectId for caller to resolve
-    };
-    const msg = {
-      id: object.id,
-      from: resolveAgent(rawFrom),
-      to: resolveAgent(rawTo),
-      fromId: rawFrom?.id || null,  // Always provide objectId for agentIdMap lookup
-      toId: rawTo?.id || null,
-      subject: object.get("subject"),
-      message: object.get("message"),
-      createdAt: object.get("createdAt"),
-      broadcast: object.get("broadcast") || false,
-      broadcastId: object.get("broadcastId") || null,
-    };
-    onMessage(msg);
+  query.subscribe().then((sub) => {
+    if (cancelled) { sub.unsubscribe(); return; }
+    _messageSubscription = sub;
+
+    sub.on("create", (object) => {
+      const rawFrom = object.get("from");
+      const rawTo = object.get("to");
+      const resolveAgent = (raw) => {
+        if (!raw) return null;
+        if (typeof raw === "string") return raw; // Pre-migration: plain string
+        if (raw.get && raw.get("name")) return raw.get("name"); // Included Pointer
+        return raw.id || null; // Pointer stub: return objectId for caller to resolve
+      };
+      const msg = {
+        id: object.id,
+        from: resolveAgent(rawFrom),
+        to: resolveAgent(rawTo),
+        fromId: rawFrom?.id || null,  // Always provide objectId for agentIdMap lookup
+        toId: rawTo?.id || null,
+        subject: object.get("subject"),
+        message: object.get("message"),
+        createdAt: object.get("createdAt"),
+        broadcast: object.get("broadcast") || false,
+        broadcastId: object.get("broadcastId") || null,
+      };
+      onMessage(msg);
+    });
   });
 
   return () => {
-    subscription.unsubscribe();
-    _messageSubscription = null;
+    cancelled = true;
+    if (_messageSubscription) {
+      _messageSubscription.unsubscribe();
+      _messageSubscription = null;
+    }
   };
 }
 
@@ -302,7 +307,9 @@ export async function getLatestPing(projectId) {
 
 let _commandSubscription = null;
 
-export async function subscribeToCommands(projectId, onCommand) {
+export function subscribeToCommands(projectId, onCommand) {
+  let cancelled = false;
+
   if (_commandSubscription) {
     _commandSubscription.unsubscribe();
     _commandSubscription = null;
@@ -311,40 +318,46 @@ export async function subscribeToCommands(projectId, onCommand) {
   const query = new Parse.Query("Command");
   const Project = Parse.Object.extend("Project");
   query.equalTo("project", Project.createWithoutData(projectId));
-  const subscription = await query.subscribe();
-  _commandSubscription = subscription;
 
-  subscription.on("create", (object) => {
-    onCommand({
-      type: "create",
-      command: {
-        objectId: object.id,
-        action: object.get("action"),
-        status: object.get("status"),
-        error: object.get("error") || null,
-        createdAt: object.get("createdAt"),
-        fulfilledAt: object.get("fulfilledAt") || null,
-      },
+  query.subscribe().then((sub) => {
+    if (cancelled) { sub.unsubscribe(); return; }
+    _commandSubscription = sub;
+
+    sub.on("create", (object) => {
+      onCommand({
+        type: "create",
+        command: {
+          objectId: object.id,
+          action: object.get("action"),
+          status: object.get("status"),
+          error: object.get("error") || null,
+          createdAt: object.get("createdAt"),
+          fulfilledAt: object.get("fulfilledAt") || null,
+        },
+      });
     });
-  });
 
-  subscription.on("update", (object) => {
-    onCommand({
-      type: "update",
-      command: {
-        objectId: object.id,
-        action: object.get("action"),
-        status: object.get("status"),
-        error: object.get("error") || null,
-        createdAt: object.get("createdAt"),
-        fulfilledAt: object.get("fulfilledAt") || null,
-      },
+    sub.on("update", (object) => {
+      onCommand({
+        type: "update",
+        command: {
+          objectId: object.id,
+          action: object.get("action"),
+          status: object.get("status"),
+          error: object.get("error") || null,
+          createdAt: object.get("createdAt"),
+          fulfilledAt: object.get("fulfilledAt") || null,
+        },
+      });
     });
   });
 
   return () => {
-    subscription.unsubscribe();
-    _commandSubscription = null;
+    cancelled = true;
+    if (_commandSubscription) {
+      _commandSubscription.unsubscribe();
+      _commandSubscription = null;
+    }
   };
 }
 
@@ -366,7 +379,9 @@ export async function getLiveQueryStatus() {
 }
 
 
-export async function subscribeToPings(projectId, onPing) {
+export function subscribeToPings(projectId, onPing) {
+  let cancelled = false;
+
   if (_pingSubscription) {
     _pingSubscription.unsubscribe();
     _pingSubscription = null;
@@ -375,23 +390,29 @@ export async function subscribeToPings(projectId, onPing) {
   const query = new Parse.Query("Ping");
   const Project = Parse.Object.extend("Project");
   query.equalTo("project", Project.createWithoutData(projectId));
-  const subscription = await query.subscribe();
-  _pingSubscription = subscription;
 
-  const handler = (object) => {
-    onPing({
-      objectId: object.id,
-      projectId: object.get("project")?.id,
-      agentStatus: object.get("agentStatus"),
-      updatedAt: object.get("updatedAt"),
-    });
-  };
+  query.subscribe().then((sub) => {
+    if (cancelled) { sub.unsubscribe(); return; }
+    _pingSubscription = sub;
 
-  subscription.on("create", handler);
-  subscription.on("update", handler);
+    const handler = (object) => {
+      onPing({
+        objectId: object.id,
+        projectId: object.get("project")?.id,
+        agentStatus: object.get("agentStatus"),
+        updatedAt: object.get("updatedAt"),
+      });
+    };
+
+    sub.on("create", handler);
+    sub.on("update", handler);
+  });
 
   return () => {
-    subscription.unsubscribe();
-    _pingSubscription = null;
+    cancelled = true;
+    if (_pingSubscription) {
+      _pingSubscription.unsubscribe();
+      _pingSubscription = null;
+    }
   };
 }

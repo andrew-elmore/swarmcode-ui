@@ -89,9 +89,7 @@ export default function App() {
   useEffect(() => {
     if (!projectIdInUrl) return;
 
-    let unsubscribe = null;
-
-    subscribeToMessages(projectIdInUrl, (msg) => {
+    const unsubscribe = subscribeToMessages(projectIdInUrl, (msg) => {
       // Resolve Pointer objectIds to agent names via agentIdMap.
       const idMap = agentIdMapRef.current;
       const resolvedFrom = (msg.fromId && idMap[msg.fromId]) || msg.from;
@@ -109,32 +107,25 @@ export default function App() {
       if (resolvedMsg.from !== "owner" && currentTts.enabled) {
         dispatch(enqueueMessage({ from: resolvedMsg.from, message: resolvedMsg.message, createdAt: resolvedMsg.createdAt || null }));
       }
-    }).then((unsub) => {
-      unsubscribe = unsub;
     });
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    return () => unsubscribe();
   }, [dispatch, projectIdInUrl, liveQueryRefreshFlag]);
 
   // LiveQuery subscriptions for Command and Ping classes
   useEffect(() => {
     if (!projectIdInUrl) return;
-    let unsubCmd = null;
-    let unsubPing = null;
-
-    subscribeToCommands(projectIdInUrl, (event) => {
+    const unsubCmd = subscribeToCommands(projectIdInUrl, (event) => {
       dispatch(updateCommand(event.command));
-    }).then((unsub) => { unsubCmd = unsub; });
+    });
 
-    subscribeToPings(projectIdInUrl, (ping) => {
+    const unsubPing = subscribeToPings(projectIdInUrl, (ping) => {
       dispatch(setPing(ping));
-    }).then((unsub) => { unsubPing = unsub; });
+    });
 
     return () => {
-      if (unsubCmd) unsubCmd();
-      if (unsubPing) unsubPing();
+      unsubCmd();
+      unsubPing();
     };
   }, [dispatch, projectIdInUrl, liveQueryRefreshFlag]);
 
