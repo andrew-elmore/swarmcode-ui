@@ -121,9 +121,9 @@ beforeEach(() => {
   api.showCard.mockResolvedValue({ card: {} });
   api.sendMessage.mockResolvedValue({ success: true });
   api.getConversation.mockResolvedValue({ messages: [] });
-  api.subscribeToMessages.mockResolvedValue(jest.fn()); // returns unsubscribe function
-  api.subscribeToCommands.mockResolvedValue(jest.fn());
-  api.subscribeToPings.mockResolvedValue(jest.fn());
+  api.subscribeToMessages.mockReturnValue(jest.fn()); // returns unsubscribe function (sync, CARD-099)
+  api.subscribeToCommands.mockReturnValue(jest.fn());
+  api.subscribeToPings.mockReturnValue(jest.fn());
   api.getRecentMessages.mockResolvedValue({ messages: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });

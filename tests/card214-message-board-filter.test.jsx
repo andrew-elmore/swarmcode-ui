@@ -92,8 +92,9 @@ afterEach(() => jest.restoreAllMocks());
 describe('CARD-214 Unit: api.js subscribeToMessages source', () => {
 
   test('subscribeToMessages accepts projectId as first parameter', () => {
+    // CARD-099: function is now synchronous (not async) — match either form
     expect(apiSrc).toMatch(
-      /async function subscribeToMessages\(\s*projectId\s*,\s*onMessage\s*\)/
+      /(?:async\s+)?function subscribeToMessages\(\s*projectId\s*,\s*onMessage\s*\)/
     );
   });
 
@@ -102,9 +103,9 @@ describe('CARD-214 Unit: api.js subscribeToMessages source', () => {
   });
 
   test('subscribeToMessages filters LiveQuery by Project Pointer using createWithoutData', () => {
-    // Extract the subscribeToMessages function body
+    // CARD-099: function is now synchronous — regex no longer requires 'async'
     const fnBlock =
-      apiSrc.match(/async function subscribeToMessages[\s\S]*?^export async function/m)?.[0] ?? '';
+      apiSrc.match(/(?:async\s+)?function subscribeToMessages[\s\S]*?^export/m)?.[0] ?? '';
     expect(fnBlock).toContain('Project.createWithoutData(projectId)');
     expect(fnBlock).toContain('query.equalTo("project"');
   });

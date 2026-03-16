@@ -150,9 +150,9 @@ function renderWithProviders(ui, { store, initialPath = '/', ...options } = {}) 
 
 beforeEach(() => {
   api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
-  api.subscribeToMessages.mockResolvedValue(jest.fn());
-  api.subscribeToCommands.mockResolvedValue(jest.fn());
-  api.subscribeToPings.mockResolvedValue(jest.fn());
+  api.subscribeToMessages.mockReturnValue(jest.fn()); // sync unsubscribe (CARD-099)
+  api.subscribeToCommands.mockReturnValue(jest.fn());
+  api.subscribeToPings.mockReturnValue(jest.fn());
   api.getRecentMessages.mockResolvedValue({ messages: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });
