@@ -139,8 +139,9 @@ describe('CARD-214 Unit: App.jsx subscribeToMessages effect source', () => {
 
   test('resetConversations is dispatched before fetchProject in ProjectLayout effect', () => {
     // CARD-089: resetConversations + fetchProject moved to ProjectLayout.jsx
+    // CARD-100: guard changed from activeProject check to initializedRef check
     const effectBlock =
-      projectLayoutSrc.match(/if \(found && activeProject[\s\S]*?dispatch\(fetchProject\(/)?.[0] ?? '';
+      projectLayoutSrc.match(/if \(found && (?:activeProject|initializedRef)[\s\S]*?dispatch\(fetchProject\(/)?.[0] ?? '';
     expect(effectBlock).not.toBe('');
 
     const resetIdx = effectBlock.indexOf('dispatch(resetConversations())');
