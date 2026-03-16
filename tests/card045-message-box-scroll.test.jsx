@@ -110,9 +110,9 @@ beforeEach(() => {
   api.getOrCreateProject.mockResolvedValue({ project: null, cards: [] });
   api.sendMessage.mockResolvedValue({ success: true });
   api.getConversation.mockResolvedValue({ messages: [] });
-  api.subscribeToMessages.mockResolvedValue(jest.fn());
-  api.subscribeToCommands.mockResolvedValue(jest.fn());
-  api.subscribeToPings.mockResolvedValue(jest.fn());
+  api.subscribeToMessages.mockReturnValue(jest.fn()); // sync (CARD-099)
+  api.subscribeToCommands.mockReturnValue(jest.fn()); // sync (CARD-099)
+  api.subscribeToPings.mockReturnValue(jest.fn()); // sync (CARD-099)
   api.getRecentMessages.mockResolvedValue({ messages: [] });
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.getAgents.mockResolvedValue({ agents: DEFAULT_AGENTS });

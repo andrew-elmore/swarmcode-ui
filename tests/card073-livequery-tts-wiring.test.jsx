@@ -50,10 +50,10 @@ jest.mock("../src/services/api", () => ({
   getConversation: jest.fn(),
   subscribeToMessages: jest.fn((projectId, onMessage) => {
     capturedOnMessage = onMessage;
-    return Promise.resolve(() => {});
+    return () => {}; // sync unsubscribe (CARD-099)
   }),
-  subscribeToCommands: jest.fn().mockResolvedValue(() => {}),
-  subscribeToPings: jest.fn().mockResolvedValue(() => {}),
+  subscribeToCommands: jest.fn(() => () => {}), // sync (CARD-099)
+  subscribeToPings: jest.fn(() => () => {}), // sync (CARD-099)
   getRecentMessages: jest.fn(),
   addRecentProject: jest.fn(),
   getRecentProjects: jest.fn(),

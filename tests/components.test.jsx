@@ -497,7 +497,7 @@ describe("MessagesView", () => {
 
   test("calls unsubscribe on unmount", async () => {
     const unsubscribeFn = jest.fn();
-    api.subscribeToMessages.mockResolvedValue(unsubscribeFn);
+    api.subscribeToMessages.mockReturnValue(unsubscribeFn); // sync (CARD-099)
 
     const { unmount } = renderWithProviders(<App />, { initialPath: '/test-board-id' });
     await waitFor(() => {
@@ -516,7 +516,7 @@ describe("MessagesView", () => {
     let liveQueryCallback = null;
     api.subscribeToMessages.mockImplementation((projectId, cb) => {
       liveQueryCallback = cb;
-      return Promise.resolve(jest.fn());
+      return jest.fn(); // sync unsubscribe (CARD-099)
     });
 
     const store = createTestStore({
@@ -593,7 +593,7 @@ describe("ChatView — lazy loading", () => {
   }
 
   test("shows 'Load older messages' button when hasMore=true", async () => {
-    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.subscribeToMessages.mockReturnValue(jest.fn()); // sync (CARD-099)
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
@@ -618,7 +618,7 @@ describe("ChatView — lazy loading", () => {
   });
 
   test("hides 'Load older messages' button when hasMore=false", async () => {
-    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.subscribeToMessages.mockReturnValue(jest.fn()); // sync (CARD-099)
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
@@ -643,7 +643,7 @@ describe("ChatView — lazy loading", () => {
   });
 
   test("shows 'Loading...' text when loadingMore=true", async () => {
-    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.subscribeToMessages.mockReturnValue(jest.fn()); // sync (CARD-099)
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,
@@ -670,7 +670,7 @@ describe("ChatView — lazy loading", () => {
   });
 
   test("shows empty state when no messages", async () => {
-    api.subscribeToMessages.mockResolvedValue(jest.fn());
+    api.subscribeToMessages.mockReturnValue(jest.fn()); // sync (CARD-099)
     api.getConversation.mockResolvedValue({ messages: [], hasMore: false });
     const store = createTestStore({
       agents: DEFAULT_AGENTS_STATE,

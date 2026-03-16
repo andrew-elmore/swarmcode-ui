@@ -93,7 +93,7 @@ beforeEach(() => {
   api.showCard.mockResolvedValue({ card: {} });
   api.sendMessage.mockResolvedValue({ success: true });
   api.getConversation.mockResolvedValue({ messages: [] });
-  api.subscribeToMessages.mockResolvedValue(jest.fn());
+  api.subscribeToMessages.mockReturnValue(jest.fn()); // sync (CARD-099)
   api.getRecentProjects.mockResolvedValue({ projects: [] });
   api.addRecentProject.mockResolvedValue({ success: true });
   api.getAgents.mockResolvedValue({
@@ -102,8 +102,8 @@ beforeEach(() => {
       { name: "developer-1", description: "Developer", isActive: true, sortOrder: 1 },
     ],
   });
-  api.subscribeToCommands.mockResolvedValue(jest.fn());
-  api.subscribeToPings.mockResolvedValue(jest.fn());
+  api.subscribeToCommands.mockReturnValue(jest.fn()); // sync (CARD-099)
+  api.subscribeToPings.mockReturnValue(jest.fn()); // sync (CARD-099)
 });
 
 afterEach(() => jest.restoreAllMocks());
