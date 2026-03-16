@@ -122,7 +122,8 @@ afterEach(() => jest.restoreAllMocks());
 // ─── App layout: viewport constraint ────────────────────────────────────────
 
 describe("CARD-060: App layout constrains content to viewport", () => {
-  test("root Box has height:100vh and column flex direction", () => {
+  test("root Box has height:100% and column flex direction", () => {
+    // CARD-101: changed from 100vh to 100% to fix mobile scroll on iOS Safari
     const { container } = renderApp();
 
     // Root Box is the outermost div rendered by App
@@ -132,7 +133,7 @@ describe("CARD-060: App layout constrains content to viewport", () => {
     const styles = window.getComputedStyle(rootBox);
     expect(styles.display).toBe("flex");
     expect(styles.flexDirection).toBe("column");
-    expect(styles.height).toBe("100vh");
+    expect(styles.height).toBe("100%");
   });
 
   test("main content Box has minHeight:0 to allow flex shrink", () => {
