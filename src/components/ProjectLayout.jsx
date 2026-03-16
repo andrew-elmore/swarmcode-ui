@@ -1,14 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useParams, Outlet } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../store";
 import { fetchRecentProjects, setActiveProject } from "../store/projectsSlice";
 import { fetchProject } from "../store/projectSlice";
 import { resetConversations } from "../store/messagesSlice";
+import { clearAgents } from "../store/agentsSlice";
 
 export default function ProjectLayout() {
   const { projectId } = useParams();
   const dispatch = useAppDispatch();
-  const { projects, activeProject } = useAppSelector((s) => s.projects);
+  const { projects } = useAppSelector((s) => s.projects);
+  const initializedRef = useRef(null);
 
   // Fetch projects list if not yet loaded
   useEffect(() => {
@@ -21,12 +23,14 @@ export default function ProjectLayout() {
   useEffect(() => {
     if (!projectId || projects.length === 0) return;
     const found = projects.find((p) => p.objectId === projectId);
-    if (found && activeProject?.objectId !== projectId) {
+    if (found && initializedRef.current !== projectId) {
+      initializedRef.current = projectId;
       dispatch(setActiveProject(found));
       dispatch(resetConversations());
+      dispatch(clearAgents());
       dispatch(fetchProject(found.path));
     }
-  }, [dispatch, projectId, projects, activeProject]);
+  }, [dispatch, projectId, projects]);
 
   return <Outlet />;
 }

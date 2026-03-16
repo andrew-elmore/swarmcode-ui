@@ -9,6 +9,8 @@
  */
 
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -34,9 +36,9 @@ jest.mock('../../src/services/api', () => ({
   getArticle: jest.fn(),
   getConversation: jest.fn(),
   sendMessage: jest.fn(),
-  subscribeToMessages: jest.fn(() => Promise.resolve(() => {})),
-  subscribeToCommands: jest.fn(() => Promise.resolve(() => {})),
-  subscribeToPings: jest.fn(() => Promise.resolve(() => {})),
+  subscribeToMessages: jest.fn(() => () => {}),
+  subscribeToCommands: jest.fn(() => () => {}),
+  subscribeToPings: jest.fn(() => () => {}),
   listCards: jest.fn(),
   showCard: jest.fn(),
   createCard: jest.fn(),
@@ -237,7 +239,10 @@ describe('ProjectLayout — URL to Redux activeProject sync', () => {
     );
   });
 
-  test('does NOT dispatch fetchProject when activeProject already matches URL projectId', async () => {
+  test('dispatches fetchProject on fresh mount even when activeProject already matches URL (CARD-100 fix)', async () => {
+    // CARD-100: old guard was activeProject?.objectId === projectId which blocked init.
+    // New guard is useRef-based: ref starts null on every fresh mount, so init always
+    // fires once per mount regardless of activeProject state.
     renderAtPath('/projA111', {
       projects: {
         projects: [PROJECT_A, PROJECT_B],
@@ -257,10 +262,9 @@ describe('ProjectLayout — URL to Redux activeProject sync', () => {
         lastPoll: null,
       },
     });
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 100));
-    });
-    expect(api.getOrCreateProject).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(api.getOrCreateProject).toHaveBeenCalledWith(PROJECT_A.path)
+    );
   });
 
   test('does NOT dispatch fetchProject when URL projectId is not in projects list', async () => {
@@ -276,5 +280,92 @@ describe('ProjectLayout — URL to Redux activeProject sync', () => {
       await new Promise((r) => setTimeout(r, 100));
     });
     expect(api.getOrCreateProject).not.toHaveBeenCalled();
+  });
+});
+
+// ─── CARD-100: Source-level assertions — useRef init guard ────────────────────
+
+const layoutSrc = fs.readFileSync(
+  path.resolve(__dirname, '..', '..', 'src', 'components', 'ProjectLayout.jsx'),
+  'utf8'
+);
+
+describe('CARD-100: ProjectLayout — source-level useRef init guard', () => {
+  test('useRef is imported from react', () => {
+    expect(layoutSrc).toMatch(/import\s*\{[^}]*useRef[^}]*\}\s*from\s*['"]react['"]/);
+  });
+
+  test('clearAgents is imported from agentsSlice', () => {
+    expect(layoutSrc).toMatch(/import\s*\{[^}]*clearAgents[^}]*\}\s*from\s*['"][^'"]*agentsSlice['"]/);
+  });
+
+  test('initializedRef is declared with useRef(null)', () => {
+    expect(layoutSrc).toMatch(/initializedRef\s*=\s*useRef\s*\(\s*null\s*\)/);
+  });
+
+  test('init guard checks initializedRef.current !== projectId', () => {
+    expect(layoutSrc).toMatch(/initializedRef\.current\s*!==\s*projectId/);
+  });
+
+  test('init block assigns initializedRef.current = projectId (prevents re-init)', () => {
+    expect(layoutSrc).toMatch(/initializedRef\.current\s*=\s*projectId/);
+  });
+
+  test('clearAgents() is dispatched in the init block', () => {
+    expect(layoutSrc).toMatch(/dispatch\s*\(\s*clearAgents\s*\(\s*\)\s*\)/);
+  });
+});
+
+// ─── CARD-100: Behavioral — init fires on fresh mount ─────────────────────────
+
+describe('CARD-100: ProjectLayout — ref-based init fires on fresh mount', () => {
+  test('dispatches fetchProject exactly once per fresh mount (ref guard prevents duplicate)', async () => {
+    renderAtPath('/projA111', {
+      projects: {
+        projects: [PROJECT_A, PROJECT_B],
+        activeProject: null,
+        loading: false,
+        error: null,
+      },
+    });
+    await waitFor(() => expect(api.getOrCreateProject).toHaveBeenCalledTimes(1));
+    // Wait to confirm the ref guard prevents any second call
+    await act(async () => { await new Promise((r) => setTimeout(r, 100)); });
+    expect(api.getOrCreateProject).toHaveBeenCalledTimes(1);
+  });
+
+  test('clearAgents empties agents list when init fires', async () => {
+    const { store } = renderAtPath('/projA111', {
+      projects: {
+        projects: [PROJECT_A, PROJECT_B],
+        activeProject: null,
+        loading: false,
+        error: null,
+      },
+      agents: {
+        agents: [{ name: 'agent-x', sortOrder: 0 }],
+        allAgents: [],
+        loading: false,
+        error: null,
+      },
+    });
+    // clearAgents is dispatched synchronously during init — agents should clear immediately
+    await waitFor(() =>
+      expect(store.getState().agents.agents).toHaveLength(0)
+    );
+  });
+
+  test('setActiveProject updates Redux activeProject when init fires', async () => {
+    const { store } = renderAtPath('/projB222', {
+      projects: {
+        projects: [PROJECT_A, PROJECT_B],
+        activeProject: PROJECT_A,
+        loading: false,
+        error: null,
+      },
+    });
+    await waitFor(() =>
+      expect(store.getState().projects.activeProject?.objectId).toBe('projB222')
+    );
   });
 });

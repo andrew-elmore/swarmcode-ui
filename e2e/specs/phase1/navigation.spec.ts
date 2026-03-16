@@ -12,6 +12,8 @@ import {
   TAB_ARTICLES,
   MESSAGE_INPUT,
   MOBILE_DRAWER_TOGGLE,
+  ADD_AGENT_BUTTON,
+  ADD_PROJECT_BUTTON,
 } from '../../helpers/selectors';
 
 test.describe('Navigation', () => {
@@ -83,6 +85,84 @@ test.describe('Navigation', () => {
     // The message input should still have the draft text
     const inputValue = await page.locator(MESSAGE_INPUT).locator('input, textarea').inputValue();
     expect(inputValue).toBe('unsent draft message');
+  });
+});
+
+// ─── CARD-100: Project init from home page ────────────────────────────────────
+
+test.describe('CARD-100: Navigation — project init from home page', () => {
+  let projectId: string;
+  let projectPath: string;
+  let projectName: string;
+
+  test.beforeAll(async () => {
+    const project = await createTestProject('Init Test Project');
+    projectId = project.projectId;
+    projectPath = project.path;
+    projectName = project.name;
+    await seedDefaultAgents(projectId);
+  });
+
+  test.afterAll(async () => {
+    if (projectPath) await teardownProject(projectPath);
+  });
+
+  test('selecting project from home page loads project data (agents tab populated)', async ({ page }) => {
+    await page.goto('/');
+    await selectProject(page, projectName);
+
+    // Navigate to Agents tab — agents should be loaded (not empty)
+    await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 10_000 });
+    await page.locator(TAB_AGENTS).click();
+
+    // Add Agent button should be visible, confirming the tab rendered without crash
+    await expect(page.locator(ADD_AGENT_BUTTON)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('selecting same project twice (home → project → home → project) loads correctly second time', async ({ page }) => {
+    // First visit
+    await page.goto('/');
+    await selectProject(page, projectName);
+    await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 10_000 });
+
+    // Return to home (Projects tab)
+    await page.locator(TAB_PROJECTS).click();
+    await expect(page.locator(ADD_PROJECT_BUTTON)).toBeVisible({ timeout: 5_000 });
+
+    // Second visit — select the same project again from home
+    await selectProject(page, projectName);
+    await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 10_000 });
+
+    // Agents tab should still render without crash on second visit
+    await page.locator(TAB_AGENTS).click();
+    await expect(page.locator(ADD_AGENT_BUTTON)).toBeVisible({ timeout: 5_000 });
+  });
+
+  test('navigating between two projects loads each project correctly', async ({ page }) => {
+    // Seed a second project
+    const projectB = await createTestProject('Init Test Project B');
+    await seedDefaultAgents(projectB.projectId);
+
+    try {
+      await page.goto('/');
+      await selectProject(page, projectName);
+      await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 10_000 });
+
+      // Go to Agents tab on project A
+      await page.locator(TAB_AGENTS).click();
+      await expect(page.locator(ADD_AGENT_BUTTON)).toBeVisible({ timeout: 5_000 });
+
+      // Navigate to Projects tab and select project B
+      await page.locator(TAB_PROJECTS).click();
+      await selectProject(page, projectB.name);
+      await expect(page.locator(TAB_AGENTS)).toBeVisible({ timeout: 10_000 });
+
+      // Agents tab on project B should also load without error
+      await page.locator(TAB_AGENTS).click();
+      await expect(page.locator(ADD_AGENT_BUTTON)).toBeVisible({ timeout: 5_000 });
+    } finally {
+      await teardownProject(projectB.path);
+    }
   });
 });
 

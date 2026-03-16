@@ -81,6 +81,9 @@ const agentsSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    clearAgents(state) {
+      state.agents = [];
+    },
   },
   extraReducers: (builder) => {
     // fetchAgents (project-scoped)
@@ -189,5 +192,5 @@ const agentsSlice = createSlice({
   },
 });
 
-export const { clearError } = agentsSlice.actions;
+export const { clearError, clearAgents } = agentsSlice.actions;
 export default agentsSlice.reducer;
