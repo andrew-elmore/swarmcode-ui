@@ -367,6 +367,50 @@ export function subscribeToCommands(projectId, onCommand) {
 }
 
 
+let _cardSubscription = null;
+
+export function subscribeToCards(projectId, onCardEvent) {
+  let cancelled = false;
+
+  if (_cardSubscription) {
+    _cardSubscription.unsubscribe();
+    _cardSubscription = null;
+  }
+
+  const query = new Parse.Query("Card");
+  const Project = Parse.Object.extend("Project");
+  query.equalTo("project", Project.createWithoutData(projectId));
+
+  query.subscribe().then((sub) => {
+    if (cancelled) { sub.unsubscribe(); return; }
+    _cardSubscription = sub;
+
+    const mapCard = (object) => ({
+      objectId: object.id,
+      cardId: object.get("cardId"),
+      title: object.get("title"),
+      description: object.get("description") || null,
+      priority: object.get("priority") || null,
+      statusId: object.get("status")?.id || null,
+      assigneeId: object.get("assignee")?.id || null,
+      sprintId: object.get("sprint")?.id || null,
+    });
+
+    sub.on("create", (object) => onCardEvent({ type: "create", card: mapCard(object) }));
+    sub.on("update", (object) => onCardEvent({ type: "update", card: mapCard(object) }));
+    sub.on("delete", (object) => onCardEvent({ type: "delete", objectId: object.id }));
+  });
+
+  return () => {
+    cancelled = true;
+    if (_cardSubscription) {
+      _cardSubscription.unsubscribe();
+      _cardSubscription = null;
+    }
+  };
+}
+
+
 let _pingSubscription = null;
 
 /**

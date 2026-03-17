@@ -60,6 +60,7 @@ jest.mock("../src/services/api", () => ({
   deleteArticle: jest.fn(),
   searchArticles: jest.fn(),
   getArticle: jest.fn(),
+  subscribeToCards: jest.fn(() => () => {}),
 }));
 
 const theme = createTheme({

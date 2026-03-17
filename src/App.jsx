@@ -23,7 +23,8 @@ import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
 import { updateCommand, setPing } from "./store/commandsSlice";
 import { logoutUser, restoreSession } from "./store/authSlice";
-import { subscribeToMessages, subscribeToCommands, subscribeToPings } from "./services/api";
+import { upsertCard, removeCard } from "./store/projectSlice";
+import { subscribeToMessages, subscribeToCommands, subscribeToPings, subscribeToCards } from "./services/api";
 import AgentsView from "./components/AgentsView";
 import ArticlesView from "./components/ArticlesView";
 import BoardView from "./components/BoardView";
@@ -53,6 +54,8 @@ export default function App() {
   const dispatch = useAppDispatch();
   const selectedAgent = useAppSelector((s) => s.messages.selectedAgent);
   const agents = useAppSelector((s) => s.agents.agents);
+  const statuses = useAppSelector((s) => s.project.statuses ?? []);
+  const sprints = useAppSelector((s) => s.project.sprints ?? []);
   const liveQueryRefreshFlag = useAppSelector((s) => s.messages.liveQueryRefreshFlag);
   const tts = useAppSelector((s) => s.tts);
   const ttsRef = useRef(tts);
@@ -68,6 +71,21 @@ export default function App() {
     agents.forEach((a) => { if (a.objectId) map[a.objectId] = a.name; });
     agentIdMapRef.current = map;
   }, [agents]);
+
+  // Build status and sprint objectId -> name lookup maps for Card LiveQuery resolution
+  const statusIdMapRef = useRef({});
+  useEffect(() => {
+    const map = {};
+    statuses.forEach((s) => { if (s.objectId) map[s.objectId] = s.name; });
+    statusIdMapRef.current = map;
+  }, [statuses]);
+
+  const sprintIdMapRef = useRef({});
+  useEffect(() => {
+    const map = {};
+    sprints.forEach((s) => { if (s.objectId) map[s.objectId] = s.name; });
+    sprintIdMapRef.current = map;
+  }, [sprints]);
 
   const agentLabels = buildAgentLabels(agents);
 
@@ -132,6 +150,27 @@ export default function App() {
       unsubPing();
     };
   }, [dispatch, projectIdInUrl, liveQueryRefreshFlag]);
+
+  // LiveQuery subscription for Card class
+  useEffect(() => {
+    if (!projectIdInUrl) return;
+    const unsubscribe = subscribeToCards(projectIdInUrl, (event) => {
+      if (event.type === "delete") {
+        dispatch(removeCard(event.objectId));
+        return;
+      }
+      const { card } = event;
+      const resolved = {
+        ...card,
+        status: (card.statusId && statusIdMapRef.current[card.statusId]) || card.statusId || null,
+        assignee: (card.assigneeId && agentIdMapRef.current[card.assigneeId]) || card.assigneeId || null,
+        sprintName: (card.sprintId && sprintIdMapRef.current[card.sprintId]) || card.sprintId || null,
+        sprint: (card.sprintId && sprintIdMapRef.current[card.sprintId]) || card.sprintId || null,
+      };
+      dispatch(upsertCard(resolved));
+    });
+    return () => unsubscribe();
+  }, [dispatch, projectIdInUrl]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>

@@ -62,6 +62,7 @@ jest.mock("../src/services/api", () => ({
   assignAgentToProject: jest.fn(),
   unassignAgentFromProject: jest.fn(),
   updateProjectAgent: jest.fn(),
+  subscribeToCards: jest.fn(() => () => {}),
 }));
 
 // CARD-090: StreamView now uses speechSynthesis — mock it for jsdom

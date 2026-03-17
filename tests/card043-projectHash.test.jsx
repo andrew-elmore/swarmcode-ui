@@ -43,6 +43,7 @@ jest.mock("../src/services/api", () => ({
   deleteAgent: jest.fn(),
   subscribeToCommands: jest.fn(),
   subscribeToPings: jest.fn(),
+  subscribeToCards: jest.fn(() => () => {}),
 }));
 
 const theme = createTheme({

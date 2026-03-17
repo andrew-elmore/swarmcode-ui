@@ -76,6 +76,7 @@ jest.mock('../../src/services/api', () => ({
   subscribeToMessages: jest.fn(() => () => {}), // sync unsubscribe (CARD-099)
   subscribeToCommands: jest.fn(() => () => {}),
   subscribeToPings: jest.fn(() => () => {}),
+  subscribeToCards: jest.fn(() => () => {}),
 }));
 
 import App from '../../src/App';

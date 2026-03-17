@@ -110,6 +110,22 @@ const projectSlice = createSlice({
     setSprintFilter(state, action) {
       state.sprintFilter = action.payload;
     },
+    upsertCard(state, action) {
+      const card = action.payload;
+      const idx = state.cards.findIndex((c) => c.cardId === card.cardId);
+      if (idx !== -1) {
+        state.cards[idx] = card;
+      } else {
+        state.cards.push(card);
+      }
+      if (state.selectedCard?.cardId === card.cardId) {
+        state.selectedCard = card;
+      }
+    },
+    removeCard(state, action) {
+      // action.payload = objectId (Parse objectId, not cardId)
+      state.cards = state.cards.filter((c) => c.objectId !== action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(fetchProject.pending, (state) => {
@@ -229,5 +245,5 @@ const projectSlice = createSlice({
   },
 });
 
-export const { clearError, clearSelectedCard, setSprintFilter } = projectSlice.actions;
+export const { clearError, clearSelectedCard, setSprintFilter, upsertCard, removeCard } = projectSlice.actions;
 export default projectSlice.reducer;

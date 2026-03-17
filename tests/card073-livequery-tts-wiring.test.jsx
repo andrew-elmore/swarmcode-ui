@@ -66,6 +66,7 @@ jest.mock("../src/services/api", () => ({
   getSprints: jest.fn(),
   updateSprint: jest.fn(),
   deleteSprint: jest.fn(),
+  subscribeToCards: jest.fn(() => () => {}),
 }));
 
 import { MemoryRouter } from "react-router-dom";

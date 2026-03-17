@@ -59,6 +59,7 @@ jest.mock("../../src/services/api", () => ({
   loginUser: jest.fn(),
   logoutUser: jest.fn(),
   searchArticles: jest.fn(() => Promise.resolve({ articles: [] })),
+  subscribeToCards: jest.fn(() => () => {}),
 }));
 
 import * as api from "../../src/services/api";
