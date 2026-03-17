@@ -683,9 +683,10 @@ describe("CARD-096: StreamView.jsx source-level — layout and timestamps", () =
   });
 
   test("message list has minHeight (not maxHeight) after CARD-097 layout redesign", () => {
-    // CARD-096 set maxHeight: 320; CARD-097 removed the cap and added minHeight: 220
+    // CARD-096 set maxHeight: 320; CARD-097 removed the cap; CARD-102 uses flex: 1, minHeight: 0
     expect(streamViewSrc).not.toMatch(/maxHeight:\s*320/);
-    expect(streamViewSrc).toMatch(/minHeight:\s*220/);
+    expect(streamViewSrc).toMatch(/flex:\s*1/);
+    expect(streamViewSrc).toMatch(/minHeight:\s*0/);
   });
 
   test("auto-scroll useEffect references tts.queue.length as dependency", () => {
@@ -762,8 +763,10 @@ describe("CARD-097: StreamView.jsx source-level — message list layout", () => 
     "utf8"
   );
 
-  test("message list has minHeight: 220 (floor to prevent collapse)", () => {
-    expect(streamViewSrc).toMatch(/minHeight:\s*220/);
+  test("message list uses flex: 1, minHeight: 0 after CARD-102 scroll fix", () => {
+    // CARD-102 replaced minHeight: 220 with flex: 1, minHeight: 0 for proper scroll behaviour
+    expect(streamViewSrc).toMatch(/flex:\s*1/);
+    expect(streamViewSrc).toMatch(/minHeight:\s*0/);
   });
 
   test("message list does NOT have a maxHeight constraint", () => {

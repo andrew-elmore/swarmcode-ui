@@ -308,12 +308,16 @@ export default function StreamView() {
       sx={{
         p: isMobile ? 2 : 3,
         maxWidth: 640,
+        width: "100%",
         mx: "auto",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: 2,
         mt: isMobile ? 2 : 4,
+        height: "100%",
+        overflow: "hidden",
+        boxSizing: "border-box",
       }}
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -399,7 +403,8 @@ export default function StreamView() {
       <Box
         sx={{
           width: "100%",
-          minHeight: 220,
+          flex: 1,
+          minHeight: 0,
           overflow: "auto",
           borderRadius: 2,
           border: `1px solid ${theme.palette.divider}`,
