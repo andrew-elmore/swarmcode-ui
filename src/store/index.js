@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { useDispatch, useSelector } from "react-redux";
 import agentsReducer from "./agentsSlice";
 import articlesReducer from "./articlesSlice";
+import devicesReducer from "./devicesSlice";
 import authReducer from "./authSlice";
 import projectReducer from "./projectSlice";
 import commandsReducer from "./commandsSlice";
@@ -14,6 +15,7 @@ const store = configureStore({
     agents: agentsReducer,
     articles: articlesReducer,
     auth: authReducer,
+    devices: devicesReducer,
     project: projectReducer,
     commands: commandsReducer,
     messages: messagesReducer,

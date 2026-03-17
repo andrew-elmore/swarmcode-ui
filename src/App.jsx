@@ -17,6 +17,7 @@ import HeadphonesIcon from "@mui/icons-material/Headphones";
 import TerminalIcon from "@mui/icons-material/Terminal";
 import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
+import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
 import QrCode2Icon from "@mui/icons-material/QrCode2";
 import { useAppDispatch, useAppSelector } from "./store";
 import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
@@ -31,6 +32,7 @@ import BoardView from "./components/BoardView";
 import CommandsView from "./components/CommandsView";
 import LoginDialog from "./components/LoginDialog";
 import MessagesView from "./components/MessagesView";
+import DevicesView from "./components/DevicesView";
 import QRCodeDialog from "./components/QRCodeDialog";
 import RegisterView from "./components/RegisterView";
 import ProjectsView from "./components/ProjectsView";
@@ -42,7 +44,7 @@ import { buildAgentLabels } from "./constants";
 // Tab index -> URL path segment mapping
 // Tab 0: Stream (/:projectId index), Tab 1: Messages, Tab 2: Board,
 // Tab 3: Agents, Tab 4: Commands, Tab 5: Articles
-const TAB_PATHS = ['', 'messages', 'board', 'agents', 'commands', 'articles'];
+const TAB_PATHS = ['', 'messages', 'board', 'agents', 'commands', 'articles', 'devices'];
 
 export default function App() {
   const [loginOpen, setLoginOpen] = useState(false);
@@ -217,6 +219,7 @@ export default function App() {
                   <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                   <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                   <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
+                  <Tab key="devices" data-testid="tab-devices" icon={<PhoneAndroidIcon />} sx={{ minWidth: 48, minHeight: 40, px: 1 }} />,
                 ]
               ) : (
                 [
@@ -226,6 +229,7 @@ export default function App() {
                   <Tab key="agents" data-testid="tab-agents" icon={<SmartToyIcon />} iconPosition="start" label="Agents" />,
                   <Tab key="commands" data-testid="tab-commands" icon={<TerminalIcon />} iconPosition="start" label="Commands" />,
                   <Tab key="articles" data-testid="tab-articles" icon={<DescriptionIcon />} iconPosition="start" label="Articles" />,
+                  <Tab key="devices" data-testid="tab-devices" icon={<PhoneAndroidIcon />} iconPosition="start" label="Devices" />,
                 ]
               )}
             </Tabs>
@@ -335,6 +339,7 @@ export default function App() {
             <Route path="agents" element={<AgentsView />} />
             <Route path="commands" element={<CommandsView />} />
             <Route path="articles" element={<ArticlesView />} />
+            <Route path="devices" element={<DevicesView />} />
           </Route>
         </Routes>
       </Box>

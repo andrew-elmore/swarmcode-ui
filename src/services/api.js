@@ -309,6 +309,14 @@ export async function registerUserDevice(deviceId) {
   return callFunction("registerUserDevice", { deviceId });
 }
 
+export async function getUserDevices() {
+  return callFunction("getUserDevices", {});
+}
+
+export async function deleteUserDevice(objectId) {
+  return callFunction("deleteUserDevice", { objectId });
+}
+
 
 let _commandSubscription = null;
 
