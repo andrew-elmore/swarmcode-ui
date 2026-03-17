@@ -122,6 +122,8 @@ beforeEach(() => {
   api.getRecentProjects.mockResolvedValue({
     projects: [{ objectId: "projA111", path: "/path/a", name: "Project A" }],
   });
+  // CARD-106: fetchAgents is now dispatched by ProjectLayout; mock must return { agents: [] }
+  api.getAgents.mockResolvedValue({ agents: [] });
 });
 
 afterEach(() => jest.clearAllMocks());

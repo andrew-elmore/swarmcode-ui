@@ -116,6 +116,8 @@ function renderAtPath(urlPath, preloadedState = {}) {
 beforeEach(() => {
   api.getRecentProjects.mockResolvedValue({ projects: [PROJECT_A, PROJECT_B] });
   api.getOrCreateProject.mockResolvedValue(PROJECT_A_RESPONSE);
+  // CARD-106: fetchAgents is now dispatched by ProjectLayout; mock must return { agents: [] }
+  api.getAgents.mockResolvedValue({ agents: [] });
 });
 
 afterEach(() => jest.clearAllMocks());

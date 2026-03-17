@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from "../store";
 import { fetchRecentProjects, setActiveProject } from "../store/projectsSlice";
 import { fetchProject } from "../store/projectSlice";
 import { resetConversations } from "../store/messagesSlice";
-import { clearAgents } from "../store/agentsSlice";
+import { clearAgents, fetchAgents } from "../store/agentsSlice";
 
 export default function ProjectLayout() {
   const { projectId } = useParams();
@@ -28,6 +28,7 @@ export default function ProjectLayout() {
       dispatch(setActiveProject(found));
       dispatch(resetConversations());
       dispatch(clearAgents());
+      dispatch(fetchAgents(found.objectId));
       dispatch(fetchProject(found.path));
     }
   }, [dispatch, projectId, projects]);
