@@ -305,6 +305,11 @@ export async function getLatestPing(projectId) {
 }
 
 
+export async function registerUserDevice(deviceId) {
+  return callFunction("registerUserDevice", { deviceId });
+}
+
+
 let _commandSubscription = null;
 
 export function subscribeToCommands(projectId, onCommand) {
