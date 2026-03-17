@@ -18,7 +18,6 @@ import TerminalIcon from "@mui/icons-material/Terminal";
 import DescriptionIcon from "@mui/icons-material/Description";
 import MenuIcon from "@mui/icons-material/Menu";
 import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
-import QrCode2Icon from "@mui/icons-material/QrCode2";
 import { useAppDispatch, useAppSelector } from "./store";
 import { appendMessage, setMobileDrawerOpen } from "./store/messagesSlice";
 import { enqueueMessage } from "./store/ttsSlice";
@@ -33,7 +32,6 @@ import CommandsView from "./components/CommandsView";
 import LoginDialog from "./components/LoginDialog";
 import MessagesView from "./components/MessagesView";
 import DevicesView from "./components/DevicesView";
-import QRCodeDialog from "./components/QRCodeDialog";
 import RegisterView from "./components/RegisterView";
 import ProjectsView from "./components/ProjectsView";
 import ProjectSelector from "./components/ProjectSelector";
@@ -48,7 +46,6 @@ const TAB_PATHS = ['', 'messages', 'board', 'agents', 'commands', 'articles', 'd
 
 export default function App() {
   const [loginOpen, setLoginOpen] = useState(false);
-  const [qrOpen, setQrOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const theme = useTheme();
@@ -242,17 +239,6 @@ export default function App() {
             </Typography>
           )}
           {!isMobile && <ProjectSelector />}
-          {!isMobile && authUser && (
-            <IconButton
-              color="inherit"
-              size="small"
-              sx={{ ml: 1 }}
-              onClick={() => setQrOpen(true)}
-              title="Register a Device"
-            >
-              <QrCode2Icon />
-            </IconButton>
-          )}
           {!isMobile && (
             authUser ? (
               <Button
@@ -292,17 +278,6 @@ export default function App() {
             )}
             <Box sx={{ flex: 1 }} />
             <ProjectSelector />
-            {authUser && (
-              <IconButton
-                color="inherit"
-                size="small"
-                sx={{ ml: 1 }}
-                onClick={() => setQrOpen(true)}
-                title="Register a Device"
-              >
-                <QrCode2Icon />
-              </IconButton>
-            )}
             {authUser ? (
               <Button
                 color="inherit"
@@ -326,7 +301,6 @@ export default function App() {
         )}
       </AppBar>
       <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} />
-      <QRCodeDialog open={qrOpen} onClose={() => setQrOpen(false)} />
 
       <Box component="main" sx={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
         <Routes>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Typography from "@mui/material/Typography";
@@ -12,25 +13,24 @@ export default function RegisterView() {
   const dispatch = useAppDispatch();
   const authUser = useAppSelector((s) => s.auth.user);
   const [sessionRestored, setSessionRestored] = useState(false);
-  const [apiStatus, setApiStatus] = useState(null); // null | 'success' | 'error'
+  const [internalStatus, setInternalStatus] = useState(null); // null | 'success' | 'error'
+  const [searchParams] = useSearchParams();
+  const deviceId = searchParams.get("deviceId");
+
+  // missing_device is derived -- no setState needed
+  const apiStatus = deviceId ? internalStatus : "missing_device";
 
   useEffect(() => {
     dispatch(restoreSession()).then(() => setSessionRestored(true));
   }, [dispatch]);
 
   useEffect(() => {
-    if (!sessionRestored || !authUser) return;
-
-    let deviceId = localStorage.getItem("swarmcode-device-id");
-    if (!deviceId) {
-      deviceId = crypto.randomUUID();
-      localStorage.setItem("swarmcode-device-id", deviceId);
-    }
+    if (!sessionRestored || !deviceId || !authUser) return;
 
     registerUserDevice(deviceId)
-      .then(() => setApiStatus("success"))
-      .catch(() => setApiStatus("error"));
-  }, [authUser, sessionRestored]);
+      .then(() => setInternalStatus("success"))
+      .catch(() => setInternalStatus("error"));
+  }, [authUser, sessionRestored, deviceId]);
 
   // Derive display state during render -- no synchronous setState in effects
   const unauthenticated = sessionRestored && !authUser;
@@ -75,6 +75,12 @@ export default function RegisterView() {
         {apiStatus === "error" && (
           <Alert severity="error" sx={{ mt: 2 }}>
             Registration failed. Please try again.
+          </Alert>
+        )}
+
+        {apiStatus === "missing_device" && (
+          <Alert severity="error" sx={{ mt: 2 }}>
+            Invalid registration link -- no device ID found.
           </Alert>
         )}
       </Paper>
